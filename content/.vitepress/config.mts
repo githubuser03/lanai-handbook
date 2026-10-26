@@ -108,6 +108,7 @@ export default defineConfig({
           { text: '成本試算表', link: '/decide/tco' },
           { text: '風險自評', link: '/decide/risk-checklist' },
           { text: '授權紅旗', link: '/decide/license-flags' },
+          { text: '開源模型選型與資安評分', link: '/decide/model-selection' },
           { text: '30 天 PoC 計畫', link: '/decide/poc-30days' }
         ]
       },
