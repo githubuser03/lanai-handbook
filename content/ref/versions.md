@@ -31,7 +31,7 @@
 | DeepEval | 4.3.1 | 2026-10-16 | [PyPI deepeval](https://pypi.org/project/deepeval/) | 已核對 PyPI |
 | Ragas | 0.4.3 | 2026-01-13 | [PyPI ragas](https://pypi.org/project/ragas/) | 已核對 PyPI: 截至 2026-10-26 最新版仍為 0.4.3 |
 | MCP 規格 | 2026-07-28 版 | 2026-07-28 | [MCP 官方部落格, 規格變更紀錄](https://blog.modelcontextprotocol.io/posts/2026-07-28/) | 已核對官方部落格與規格頁; 規格變更紀錄載明前一版為 2025-11-25 |
-| gVisor (runsc) | 20261019.0 | 2026-10-22 | [releasealert.dev 彙整的 google/gvisor releases (二手來源; 官方 release 頁本輪擷取失敗)](https://releasealert.dev/github/google/gvisor) | gVisor 以日期為版本號, 約每週發布; 前一個穩定版為 20261012.0 (2026-10-16) |
+| gVisor (runsc) | 20261019.0 | 2026-10-19 | [gVisor 官方 GitHub 儲存庫的 git tag release-20261019.0 (以 git ls-remote 查詢, 日期為 tag 所指提交的日期)](https://github.com/google/gvisor) | gVisor 以日期為版本號, 約每週發布; 前一個版本為 release-20261012.0 |
 | Podman | v6.1.4 | 2026-10-12 | [Podman GitHub Releases](https://github.com/podman-container-tools/podman/releases/tag/v6.1.4) | 已核對官方 release 頁; 同日另發布 5.8.9 維護版. 儲存庫網址 github.com/containers/podman 現由 podman-container-tools/podman 提供 |
 | SOPS | v3.13.3 | 2026-07-23 | [SOPS GitHub Releases](https://github.com/getsops/sops/releases) | 已核對官方 releases 頁, 標示為 Latest |
 
@@ -79,7 +79,7 @@ LiteLLM 官方事故報告 (2026-10-21) 記載, 企業版客戶會收到一個�
 - Langflow CVE-2026-0768 的利用觀測: [CSA 研究筆記: Langflow AI framework credential harvesting (2026-09-04)](https://labs.cloudsecurityalliance.org/research/csa-research-note-langflow-ai-framework-credential-harvestin/), [Security Affairs: Hackers target Langflow in CVE-2026-0768 attacks (二手來源)](https://securityaffairs.com/198270/hacking/hackers-target-langflow-in-cve-2026-0768-attacks/)
 - LiteLLM 預定公開的漏洞: [LiteLLM 官方事故報告 (2026-10-21)](https://docs.litellm.ai/blog/security-incident-oct-21-2026), [SOCRadar: New LiteLLM supply chain attack hits PyPI and Docker (二手來源)](https://socradar.io/blog/litellm-supply-chain-attack-pypi-docker/), [LiteLLM 官方部落格 security 標籤](https://docs.litellm.ai/blog/tags/security)
 - GGUF 解析漏洞的早期案例: [Cisco Talos: TALOS-2024-1912 (CVE-2024-21825)](https://talosintelligence.com/vulnerability_reports/TALOS-2024-1912)
-- gVisor 版本: 官方 release 頁本輪擷取失敗, 改用 releasealert.dev 的彙整 (二手來源), 使用前請到 google/gvisor 的 GitHub Releases 確認.
+- gVisor 版本: 以 git 直接查詢官方儲存庫的 tag 確認 (2026-10-27), 日期為 tag 所指提交的日期; 正式發布頁的上架日可能晚幾天.
 
 ## 已知的所有權變動
 

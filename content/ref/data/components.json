@@ -212,13 +212,13 @@
     {
       "component": "gVisor (runsc)",
       "version": "20261019.0",
-      "date": "2026-10-22",
-      "source_name": "releasealert.dev 彙整的 google/gvisor releases (二手來源; 官方 release 頁本輪擷取失敗)",
-      "source_url": "https://releasealert.dev/github/google/gvisor",
-      "source_type": "secondary",
+      "date": "2026-10-19",
+      "source_name": "gVisor 官方 GitHub 儲存庫的 git tag release-20261019.0 (以 git ls-remote 查詢, 日期為 tag 所指提交的日期)",
+      "source_url": "https://github.com/google/gvisor",
+      "source_type": "primary",
       "verified_on": "2026-10-26",
       "expires_after_days": 30,
-      "status": "gVisor 以日期為版本號, 約每週發布; 前一個穩定版為 20261012.0 (2026-10-16)"
+      "status": "gVisor 以日期為版本號, 約每週發布; 前一個版本為 release-20261012.0"
     },
     {
       "component": "Podman",
