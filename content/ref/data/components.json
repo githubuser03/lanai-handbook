@@ -1,0 +1,356 @@
+{
+  "versions": [
+    {
+      "component": "Ollama",
+      "version": "v0.40.10",
+      "date": "2026-10-26 查證",
+      "source_name": "研究 1",
+      "source_url": null,
+      "source_type": "internal",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對官方 releases"
+    },
+    {
+      "component": "llama.cpp",
+      "version": "b11848",
+      "date": "2026-10-26 查證",
+      "source_name": "研究 1",
+      "source_url": null,
+      "source_type": "internal",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對官方 releases"
+    },
+    {
+      "component": "LM Studio",
+      "version": "0.4.26",
+      "date": "2026-10-26 查證",
+      "source_name": "研究 1",
+      "source_url": null,
+      "source_type": "internal",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對官方頁面"
+    },
+    {
+      "component": "vLLM",
+      "version": "0.32.0",
+      "date": "2026-10-26 查證",
+      "source_name": "研究 1",
+      "source_url": null,
+      "source_type": "internal",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對官方 releases"
+    },
+    {
+      "component": "Open WebUI",
+      "version": "v0.12.4 (研究 1) / v0.11.4, 2026-09-21 (研究 2, vdf.ai)",
+      "date": "-",
+      "source_name": "兩份研究",
+      "source_url": null,
+      "source_type": "internal",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "**兩者互相矛盾, 待核對**"
+    },
+    {
+      "component": "LibreChat",
+      "version": "v0.8.8",
+      "date": "2026-09-30",
+      "source_name": "vdf.ai",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "AnythingLLM",
+      "version": "v1.17.0",
+      "date": "2026-10-01",
+      "source_name": "vdf.ai",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "LiteLLM",
+      "version": "最近安全版本 v1.106.2; v1.107.0 為惡意版本",
+      "date": "2026-10-21",
+      "source_name": "LiteLLM 官方事故報告, Wiz",
+      "source_url": null,
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "事件仍在追蹤"
+    },
+    {
+      "component": "LangGraph",
+      "version": "1.2.16",
+      "date": "2026-10-16",
+      "source_name": "FutureAGI (二手來源)",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "Qdrant",
+      "version": "1.19.2",
+      "date": "2026-10-05",
+      "source_name": "vdf.ai",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "Chroma",
+      "version": "1.5.9",
+      "date": "2026-05-05",
+      "source_name": "vdf.ai",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "LanceDB",
+      "version": "0.39.0",
+      "date": "2026-09-17",
+      "source_name": "vdf.ai",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "Docling",
+      "version": "v2.111",
+      "date": "2026 年中",
+      "source_name": "Medium 比較文",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "Dify",
+      "version": "v1.17.0",
+      "date": "2026-08-25",
+      "source_name": "guard0 TrustVector",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "NeMo Guardrails",
+      "version": "v0.24.1",
+      "date": "2026-09-16",
+      "source_name": "研究 2",
+      "source_url": null,
+      "source_type": "internal",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "Guardrails AI",
+      "version": "0.11.0",
+      "date": "2026-08",
+      "source_name": "研究 2",
+      "source_url": null,
+      "source_type": "internal",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "DeepEval",
+      "version": "4.3.1",
+      "date": "2026-10-16",
+      "source_name": "研究 2",
+      "source_url": null,
+      "source_type": "internal",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "待核對"
+    },
+    {
+      "component": "Ragas",
+      "version": "0.4.3",
+      "date": "2026-01-13",
+      "source_name": "研究 2",
+      "source_url": null,
+      "source_type": "internal",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "二手來源稱此後未再發版"
+    },
+    {
+      "component": "MCP 規格",
+      "version": "2026-07-28 版",
+      "date": "2026-07-28",
+      "source_name": "MCP 官方部落格",
+      "source_url": null,
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "前一版為 2025-11-25"
+    }
+  ],
+  "litellm_cves": [
+    {
+      "component": "LiteLLM",
+      "cve": "CVE-2026-35029",
+      "summary": "授權繞過, 可改設定並執行程式碼",
+      "affected": "1.83.0 以前",
+      "source_name": "SentinelOne",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "資安廠商"
+    },
+    {
+      "component": "LiteLLM",
+      "cve": "CVE-2026-42208",
+      "summary": "未驗證 SQL 注入",
+      "affected": "1.81.16 至 1.83.6; 修補於 1.83.7, 官方建議 1.83.10-stable",
+      "source_name": "LiteLLM 官方部落格, Bishop Fox",
+      "source_url": null,
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "官方"
+    },
+    {
+      "component": "LiteLLM",
+      "cve": "CVE-2026-42271",
+      "summary": "低權限金鑰經 MCP preview 端點命令注入",
+      "affected": "1.74.2 至 1.83.6",
+      "source_name": "SentinelOne",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "資安廠商"
+    },
+    {
+      "component": "LiteLLM",
+      "cve": "CVE-2026-59819",
+      "summary": "管理者經 `/health/test_connection` 讀取本機檔案",
+      "affected": "1.83.10-stable 以前",
+      "source_name": "SentinelOne",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "資安廠商"
+    },
+    {
+      "component": "LiteLLM",
+      "cve": "CVE-2026-59822",
+      "summary": "MCP Streamable HTTP 驗證繞過 (CWE-287, CWE-306), CVSS v3.1 8.2, v4.0 8.8",
+      "affected": "1.84.0 以前; 修補於 1.84.0",
+      "source_name": "Wiz 弱點資料庫",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "資安廠商 (非第一手); **該頁對 KEV 列入與否前後不一 (內文稱未列入, 標示欄稱已列入), 發布日也有 2026-06-30 與 2026-07-08 兩種寫法, 兩者皆未確認, 請以 CISA KEV 清單與 GHSA 為準**"
+    },
+    {
+      "component": "LiteLLM",
+      "cve": "CVE-2026-84377",
+      "summary": "SSRF, 上游供應商金鑰外洩, CVSS 6.5",
+      "affected": "2026-09-30 公告",
+      "source_name": "safeguard.sh",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "資安廠商部落格 (非第一手), 待以 GHSA 或 NVD 查證"
+    },
+    {
+      "component": "LiteLLM",
+      "cve": "CVE-2026-114612",
+      "summary": "加密情境重用導致提權為 proxy_admin, CVSS 9.9",
+      "affected": "1.87.0 至 1.104.0-rc.1",
+      "source_name": "dev.to/cvereports",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "**二手來源; 本輪查證未找到第一手來源, 暫不採信, 請勿引用, 待以 GHSA 或 NVD 查證**"
+    }
+  ],
+  "other_cves": [
+    {
+      "component": "LibreChat",
+      "cve": "CVE-2026-32625",
+      "summary": "CVSS 9.6, MCP URL 注入外洩伺服器機密, 0.8.4-rc1 修補",
+      "source_name": "SentinelOne",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": ""
+    },
+    {
+      "component": "AnythingLLM",
+      "cve": "CVE-2026-48116",
+      "summary": "代理檔案搜尋技能參數注入 RCE, CVSS 7.5; 公告未列修補版本",
+      "source_name": "vdf.ai (2026-10 查證)",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": ""
+    },
+    {
+      "component": "Langflow",
+      "cve": "CVE-2026-0768",
+      "summary": "CVSS 9.8, 未驗證即以 root 執行程式碼, 自 2026-08-29 起觀測到持續利用",
+      "source_name": "VulnCheck",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": ""
+    },
+    {
+      "component": "n8n",
+      "cve": "CVE-2026-21858",
+      "summary": "CVSS 10.0, 未驗證, 1.121.0 修補",
+      "source_name": "VulnCheck",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": ""
+    },
+    {
+      "component": "MCP 相關",
+      "cve": "CVE-2025-49596, CVE-2025-6514 等",
+      "summary": "見[第 13.3 節](/apply/13-workflow-agent-mcp)",
+      "source_name": "The Hacker News, JFrog",
+      "source_url": null,
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": ""
+    }
+  ]
+}
