@@ -41,7 +41,7 @@
 | [M1 推論伺服器](/build/m1-inference) | 里程碑 1 | 推論伺服器 vLLM 執行對話模型; 長文件須確認上下文長度足夠 |
 | [M2 使用者介面與反向代理](/build/m2-ui-proxy) | 里程碑 1 | Open WebUI 是法務與法遵人員提問與上傳文件的對話介面, 只接受內網連線 |
 | [M3 模型入庫與存放](/build/m3-model-intake) | 里程碑 2 | 模型經入庫檢查 |
-| [M4 檢索 (RAG)](/build/m4-retrieval) | 里程碑 2 | Docling 把合約與法規的 Word, PDF 解析成純文字; 法規條文獨立成知識庫, 存在 Qdrant 向量庫 |
+| [M4 檢索 (RAG)](/build/m4-retrieval) | 里程碑 2 | Docling 把合約與法規的 Word, PDF 解析成純文字 (掃描檔會用到的 OCR 引擎見 M4.1 節); 法規條文獨立成知識庫, 存在 Qdrant 向量庫 |
 | [M5 模型閘道與身分驗證](/build/m5-gateway-identity) | 里程碑 2 | Keycloak 管理帳號與群組, 限定只有法務, 法遵人員能使用; LiteLLM 是模型呼叫的閘道, 以虛擬金鑰控管用量 |
 | [M6 可觀測, 稽核與評估](/build/m6-observability) | 里程碑 2 | 已知差異的測試合約與對照題; 呼叫紀錄 |
 

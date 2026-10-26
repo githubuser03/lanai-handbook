@@ -4,7 +4,7 @@
 - 等級: ○ 依情境
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: K5.4 節的 BFCL 分數取自官方排行榜提供的資料檔 data_overall.csv (頁面標示最後更新 2026-04-12), 模型範例已更換, 數字須對照官方排行榜與各模型卡; Nemotron 一列為模型卡自報的 BFCL v3 分數, 未經排行榜重跑; K5.4 節引用的 arXiv 2608.22472 只讀了摘要, 摘要未列具體數字; K5.5 節的 MCP 規格版本, NSA 指引日期本輪未重新核對; K5.3 節的題目配置與判定方式為整理者建議, 未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 待查證: K5.4 節的 BFCL 分數取自官方排行榜提供的資料檔 data_overall.csv (頁面標示最後更新 2026-04-12), 模型範例已更換, 數字須對照官方排行榜與各模型卡; K5.4 節引用的 arXiv 2608.22472 只讀了摘要, 摘要未列具體數字; K5.5 節的 MCP 規格版本, NSA 指引日期本輪未重新核對; K5.3 節的題目配置與判定方式為整理者建議, 未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 模型本身不會「動手」, 它只會輸出「要呼叫哪個工具, 帶什麼參數」, 由程式去執行. 多數情境不需要代理框架, 以「固定步驟的工作流程程式碼 + 每步一次函式呼叫 + 程式端驗證」取得的可靠度最高 (信心: 中). MCP 是讓多個客戶端共用同一組工具的標準協定, 代理則是讓模型自己決定下一步; 兩者都屬於符合特定條件才用的元件.
@@ -60,7 +60,7 @@ BFCL 的總分可以想成考試的加權總分: 各科依比重加起來. 只�
 
 **3. 版本與資料日期**: 官方頁面標示的最後更新日與評測程式版本 (commit 與 PyPI (Python 套件的官方發布平台) 上套件 `bfcl-eval` 的版本), 是判斷分數是否可以互相比較的依據; 總分組成在 V3 與 V4 之間已經改變, V3 部落格也註明其總分組成已過時 (來源: BFCL 排行榜頁, BFCL V3 部落格). 彙整站轉載的分數可能來自不同時間點, 也可能混用不同版本的欄位. K5.4 節的表格取自官方排行榜網站提供的資料檔 (data_overall.csv), 資料版本須與頁面標示的最後更新日對照 (待核對).
 
-**4. 模型卡自報分數**: 模型發布者在模型卡上自報的 BFCL 分數, 可能使用不同的評測版本, 子集或提示格式, 沒有經過排行榜團隊重跑. 這類分數只能當作發布者的宣稱, 不應與排行榜分數放在同一欄比較 (信心: 高). K5.4 節的 NVIDIA-Nemotron-Nano-9B-v2 一列即屬此類, 該列為 BFCL v3 分數, 與其他列的 V4 版本不同.
+**4. 模型卡自報分數**: 模型發布者在模型卡上自報的 BFCL 分數, 可能使用不同的評測版本, 子集或提示格式, 沒有經過排行榜團隊重跑. 這類分數只能當作發布者的宣稱, 不應與排行榜分數放在同一欄比較 (信心: 高).
 
 **評測本身的限制**: 官方部落格自己列出的限制包含: 網路搜尋只有 100 題; 部分模型不使用工具, 直接以訓練資料作答, 仍可能答對; 答案以正規化後的精確比對評分, 標準嚴格 (來源: BFCL V4 部落格). 除此之外, 排行榜的函式與請求都是通用情境, 不是讀者自己的工具與繁體中文請求; 地端執行的量化版本, 也可能與排行榜評測的版本不同 (推論, 信心: 中). 因此排行榜適合用來縮小候選範圍, 最後仍須用 K5.3 節的方法實測.
 
@@ -111,9 +111,8 @@ BFCL 的總分可以想成考試的加權總分: 各科依比重加起來. 只�
 | Gemma-3-27b-it (Prompt) | 29.47% | 87.17% | 74.54% | 10.75% |
 | Granite-3.1-8B-Instruct (FC) | 27.10% | 78.33% | 60.33% | 7.50% |
 | xLAM-2-8b-fc-r (FC) | 46.68% | 84.58% | 67.95% | 70.00% |
-| NVIDIA-Nemotron-Nano-9B-v2 (模型卡自報, BFCL v3, 開啟推理) | 66.9% | - | - | - |
 
-資料來源: BFCL V4 (Berkeley Function Calling Leaderboard) 官方資料檔 data_overall.csv, 2026-10-26 下載, 頁面標示最後更新 2026-04-12; Nemotron 一列為模型卡自報的 BFCL v3 分數.
+資料來源: BFCL V4 (Berkeley Function Calling Leaderboard) 官方資料檔 data_overall.csv, 2026-10-26 下載, 頁面標示最後更新 2026-04-12.
 
 讓通用 8B 模型自主串接 5 步以上的工具, 失敗是常態 (信心: 中). 另有一篇論文 (arXiv 2608.22472) 指出, 把函式呼叫改以「指令遵循式」(instruction-following) 對話處理, 準確率高於原生函式呼叫與提示式函式呼叫, 且量化後仍維持表現; 論文摘要未列具體數字. 這表示提示格式與流程設計的影響可能大於換框架 (信心: 中).
 
@@ -195,7 +194,6 @@ Simon Willison 於 2023 年提出雙 LLM 模式 (Dual LLM pattern), 把助理拆
 - [BFCL V4 部落格: 網路搜尋與總分組成](https://gorilla.cs.berkeley.edu/blogs/15_bfcl_v4_web_search.html)
 - [BFCL 排行榜資料檔 (data_overall.csv)](https://gorilla.cs.berkeley.edu/data_overall.csv)
 - [BFCL 程式碼與資料 (GitHub)](https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard)
-- [Hugging Face: nvidia/NVIDIA-Nemotron-Nano-9B-v2](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2)
 - [Hugging Face: Salesforce/Llama-xLAM-2-8b-fc-r (授權 cc-by-nc-4.0, 僅供研究用途)](https://huggingface.co/Salesforce/Llama-xLAM-2-8b-fc-r)
 - [Small Reasoning Models are Instruction Followers in Function Calling (arXiv 2608.22472)](https://arxiv.org/abs/2608.22472)
 - [OWASP GenAI: LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)

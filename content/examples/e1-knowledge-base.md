@@ -125,7 +125,7 @@
 ### 檢索與模型
 
 - 向量庫改用 Qdrant: `VECTOR_DB=qdrant`, `QDRANT_URI` 指向入口區的 Qdrant, `QDRANT_API_KEY` 設定 API 金鑰 (官方環境變數文件).
-- 文件解析設為 Docling (見 P1 的設定要點); 嵌入模型例如 EmbeddingGemma 或 nomic-embed-text-v2-moe, 依 M4.3 節以各部門文件實測後決定.
+- 文件解析設為 Docling (見 P1 的設定要點; 掃描檔會用到的 OCR 引擎見 [M4.1 節](/build/m4-retrieval)); 嵌入模型例如 EmbeddingGemma 或 nomic-embed-text-v2-moe, 依 M4.3 節以各部門文件實測後決定.
 - Open WebUI 連模型改經 LiteLLM, 使用 Open WebUI 專用的虛擬金鑰, 並限制可用模型 (LiteLLM 文件的 `/key/generate` 支援 `models` 與 `metadata` 欄位).
 - Open WebUI 以 `ENABLE_OTEL` 開啟 OpenTelemetry (預設關閉). 官方文件列出的預設匯出協定 (`OTEL_OTLP_SPAN_EXPORTER`) 為 gRPC, 而 Langfuse 只接收 HTTP 版的 OTLP, 因此先送到 OTel Collector (接收紀錄, 轉換格式後再轉送的中繼程式), 再由 Collector 以 HTTP 轉送 Langfuse (見 M6.4 節).
 - 標為 `ConfigVar` 的環境變數只在第一次啟動時生效, 之後的變更要在管理介面調整, 並記錄在變更紀錄中 (見 O2).

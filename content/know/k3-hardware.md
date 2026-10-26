@@ -98,7 +98,6 @@
 |---|---|---|---|---|
 | google/gemma-4-31B-it | 密集 | 30.7B | Apache-2.0 | 60 層, 上下文 262,144 |
 | Gemma 4 26B A4B (同一張模型卡所列變體) | MoE | 25.2B / 3.8B | Apache-2.0 | 128 個專家, 每 token 啟用 8 個加 1 個共享專家 |
-| nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16 | Mamba2 與 Transformer 混合的 MoE | 30B / 3.5B | NVIDIA Nemotron Open Model License (與 Nemotron Nano 9B v2 的 NVIDIA Open Model License 是不同條款; 條文載明可商用, 見 [K4](/know/k4-licenses)) | 支援至 1M 上下文, 預設設定 256K |
 | mistralai/Magistral-Small-2509 | 模型卡未載明 | 24B | Apache 2.0 | 低於 30B 範圍, 供對照; 上下文 128k |
 | openai/gpt-oss-20b | MoE | 21B / 3.6B | Apache 2.0 | 低於 30B 範圍, 供對照; MoE 權重為 MXFP4, 模型卡稱可在 16GB 記憶體執行 |
 
@@ -172,7 +171,6 @@ A 至 F 是整理者為本手冊設計的分級, 不是業界標準 (推論). A 
 模型卡與設定 (官方):
 
 - [google/gemma-4-31B-it](https://huggingface.co/google/gemma-4-31B-it) 與其 [config.json](https://huggingface.co/google/gemma-4-31B-it/raw/main/config.json)
-- [nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16)
 - [mistralai/Magistral-Small-2509](https://huggingface.co/mistralai/Magistral-Small-2509)
 - [mistralai/Mistral-Small-3.2-24B-Instruct-2506 config.json](https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506/raw/main/config.json)
 - [openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b)

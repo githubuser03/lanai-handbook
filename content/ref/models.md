@@ -31,7 +31,6 @@
 | A | 無獨立顯示卡 | [microsoft/Phi-4-mini-instruct](https://huggingface.co/microsoft/Phi-4-mini-instruct/blob/main/README.md) | 3.8B | 2.3GB | MIT |
 | A | 同上 | [google/gemma-4-E2B-it](https://huggingface.co/google/gemma-4-E2B-it) | 有效 2.3B (含嵌入層 5.1B) | 3.1GB (以 5.1B 計) | Apache 2.0 |
 | B | 8 至 12GB 顯示記憶體 | [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) | 8B | 4.9GB | Llama 3.1 Community License |
-| B | 同上 | [nvidia/NVIDIA-Nemotron-Nano-9B-v2](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2) | 9B | 5.5GB | NVIDIA Open Model License |
 | B | 同上 (繁體中文) | [MediaTek-Research/Llama-Breeze2-8B-Instruct](https://huggingface.co/MediaTek-Research/Llama-Breeze2-8B-Instruct) | 8B | 4.9GB | Llama 3.2 Community License |
 | C | Apple Silicon 16GB | 同等級 B | - | - | - |
 | D | 16GB 顯示記憶體 (或 Apple Silicon 32GB 以上) | [taide/Gemma-3-TAIDE-12b-Chat-2602](https://huggingface.co/taide/Gemma-3-TAIDE-12b-Chat-2602) (繁體中文) | 12.4B | 7.6GB | (Gemma 版次)-TAIDE 模型授權條款 |
@@ -41,14 +40,13 @@
 | E | 同上 | Gemma 4 26B A4B (見 [Gemma 4 模型卡](https://huggingface.co/google/gemma-4-31B-it)) | 25.2B, 每 token 啟用 3.8B (MoE) | 15.4GB | Apache 2.0 |
 | E | 同上 | [ibm-granite/granite-4.0-h-small](https://huggingface.co/ibm-granite/granite-4.0-h-small) | 32B, 每 token 啟用 9B (MoE) | 19.6GB | Apache 2.0 |
 | E | 同上 | [google/gemma-4-31B-it](https://huggingface.co/google/gemma-4-31B-it) | 30.7B | 18.8GB | Apache 2.0 |
-| E | 同上 | [nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16) | 30B, 每 token 啟用 3.5B (MoE) | 18.4GB | NVIDIA Nemotron Open Model License |
 | F | 48GB 以上或多卡; 此模型須 80GB | gpt-oss-120b (見 [gpt-oss-20b 模型卡](https://huggingface.co/openai/gpt-oss-20b)) | 117B, 每 token 啟用 5.1B (MoE) | 模型卡稱可放進單張 80GB GPU | Apache 2.0 |
 
 資料來源: 參數量, 授權與記憶體說明取自各模型的 Hugging Face 模型卡 (2026-10-27 擷取); 4 位元權重為整理者依上述算式推算. 等級與模型的對應為整理者推論 (信心: 中), 與 [K3.1 節](/know/k3-hardware)的估算一致: B 級放 8B 級餘裕較大, D 級放約 14B 級餘裕較大, 約 30B 以上通常放不下 16GB. E 級中約 30B 至 32B 級的模型 (權重約 18.4 至 19.6GB) 在 24GB 時已接近或超過 K2 建議的八成上限 (約 19.2GB), 上下文須壓低, 或改用 32GB 以上的配置.
 
 由上表可見, 每升一個等級, 可選的模型大約大一倍. 等級 F 在 48GB 時可讓一個約 30B 至 35B 級的模型保留充足的上下文並服務多人; 同時常駐多個這類模型, 或跑約 70B 級, 需要 64GB 至 96GB 以上 (見 [K3.1 節](/know/k3-hardware)與 K3.4 節, 推論). 實際挑選時要再看三件事:
 
-- **授權**: Llama, Gemma (TAIDE 沿用), NVIDIA 的自訂授權各有條件, 對外提供服務前請依 [K4](/know/k4-licenses) 與[授權速查](/ref/licenses)檢查. Apache 2.0 與 MIT 的限制最少.
+- **授權**: Llama, Gemma (TAIDE 沿用) 的自訂授權各有條件, 對外提供服務前請依 [K4](/know/k4-licenses) 與[授權速查](/ref/licenses)檢查. Apache 2.0 與 MIT 的限制最少.
 - **MoE 的取捨**: MoE 模型每次只啟用一小部分參數, 產生文字較快, 但權重仍要全部放進記憶體, 容量以總參數計 (見 [K3.4 節](/know/k3-hardware)).
 - **工具呼叫**: 要讓模型操作工具時, 另看 [K5](/know/k5-tools-agents) 的 BFCL 分數; 通用小模型的多輪表現普遍偏低.
 
@@ -72,7 +70,6 @@
 |---|---|
 | Phi-4-mini-instruct | 列出 23 種語言, 含中文; 同時說明英文以外的語言表現較差 |
 | Llama-3.1-8B-Instruct | 正式支援 8 種語言, 不含中文; 說明訓練資料涵蓋更多語言 |
-| NVIDIA-Nemotron-Nano-9B-v2 | 輸入語言清單含中文, 但模型概述的語言清單不含中文, 兩處不一致 |
 | Gemma 4 系列 | 開箱支援 35 種以上語言, 以 140 種以上語言預訓練; 未列出語言清單 |
 | granite-4.0-h-small | 列出 12 種語言, 含中文 |
 | Mistral-Small-3.2-24B | 標示 24 種語言, 未列出清單 |
@@ -88,8 +85,6 @@
 - [Hugging Face 模型卡: google/gemma-4-E2B-it](https://huggingface.co/google/gemma-4-E2B-it)
 - [Hugging Face 模型卡: google/gemma-4-31B-it](https://huggingface.co/google/gemma-4-31B-it) (Gemma 4 家族表: E2B, E4B, 12B, 26B A4B, 31B)
 - [Hugging Face 模型卡: meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)
-- [Hugging Face 模型卡: nvidia/NVIDIA-Nemotron-Nano-9B-v2](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2)
-- [Hugging Face 模型卡: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16)
 - [Hugging Face 模型卡: openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b) (含 gpt-oss-120b 的參數與記憶體說明)
 - [Hugging Face 模型卡: mistralai/Mistral-Small-3.2-24B-Instruct-2506](https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506)
 - [Hugging Face 模型卡: ibm-granite/granite-4.0-h-small](https://huggingface.co/ibm-granite/granite-4.0-h-small)

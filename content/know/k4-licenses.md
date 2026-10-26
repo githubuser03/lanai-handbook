@@ -4,10 +4,10 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: TAIDE 授權條款要點改依國研院 TAIDE 網站公布的條款全文整理, 見[授權速查](/ref/licenses); Gemma 4 授權檔原文 (本輪依 Google 開源部落格與 Gemma 條款頁的指引, 未直接讀授權檔); NVIDIA Open Model License, NVIDIA Nemotron Open Model License 與 Mistral AI Research License 的要點為整理者依授權全文歸納, 非逐條對照; 模型範例已更換, 授權標示須對照各模型的 Hugging Face 頁面; 量化或轉檔版本是否沿用原模型授權為推論; 本章不構成法律意見; 文中的類比為整理者所寫, 不代表技術或法律上完全等同
+- 待查證: TAIDE 授權條款要點改依國研院 TAIDE 網站公布的條款全文整理, 見[授權速查](/ref/licenses); Gemma 4 授權檔原文 (本輪依 Google 開源部落格與 Gemma 條款頁的指引, 未直接讀授權檔); Mistral AI Research License 的要點為整理者依授權全文歸納, 非逐條對照; 模型範例已更換, 授權標示須對照各模型的 Hugging Face 頁面; 量化或轉檔版本是否沿用原模型授權為推論; 本章不構成法律意見; 文中的類比為整理者所寫, 不代表技術或法律上完全等同
 :::
 
-**結論**: 模型與軟體的授權各自獨立, 要分開檢查. 模型授權分兩類: Apache 2.0, MIT 這類通用開源授權, 以及 Llama, Gemma (Gemma 4 以前), NVIDIA Nemotron, Mistral Large, TAIDE 這類自訂授權; 後者常附使用政策, 標示, 規模門檻或用途限制. 軟體則要分清楚 OSI 開源與「原始碼公開」: n8n (流程自動化平台), Open WebUI (對話介面), Dify (AI 應用開發平台) 的原始碼都看得到, 但授權對使用方式設有限制. 個人與內部使用通常不受影響, 一旦對外提供服務, 最嚴格的條款決定能做什麼 (信心: 中). 每個模型入庫時就把授權記下來 (見 [M3](/build/m3-model-intake)), 之後才查得到.
+**結論**: 模型與軟體的授權各自獨立, 要分開檢查. 模型授權分兩類: Apache 2.0, MIT 這類通用開源授權, 以及 Llama, Gemma (Gemma 4 以前), Mistral Large, TAIDE 這類自訂授權; 後者常附使用政策, 標示, 規模門檻或用途限制. 軟體則要分清楚 OSI 開源與「原始碼公開」: n8n (流程自動化平台), Open WebUI (對話介面), Dify (AI 應用開發平台) 的原始碼都看得到, 但授權對使用方式設有限制. 個人與內部使用通常不受影響, 一旦對外提供服務, 最嚴格的條款決定能做什麼 (信心: 中). 每個模型入庫時就把授權記下來 (見 [M3](/build/m3-model-intake)), 之後才查得到.
 
 ::: tip 本章常見名詞
 | 詞 | 意思 |
@@ -38,8 +38,6 @@
 | MIT | 常見於軟體, 模型較少 | 所有副本須保留著作權聲明與授權聲明; 不提供任何擔保 (來源: OSI 的 MIT 授權全文) |
 | Llama 4 Community License | Llama 4 系列 | 以 Llama 4 版本發布日為準, 發布日前一個月的月活躍使用者超過 7 億者須另向 Meta 申請授權 (一次性判定); 散布時須明顯標示「Built with Llama」; 以 Llama 建立或改良並散布的模型, 名稱開頭須加「Llama」; Acceptable Use Policy 納入合約 (來源: Llama 4 Community License, 2025-04-05 生效) |
 | Gemma Terms of Use | Gemma 4 以前的 Gemma 模型, EmbeddingGemma | 不得用於 Prohibited Use Policy 列出的用途; 散布時須把使用限制寫入下游合約, 附條款副本與 Notice 檔; Google 保留遠端或以其他方式限制違規使用的權利 (來源: Gemma Terms of Use, 2026-04-01 修訂) |
-| NVIDIA Open Model License | NVIDIA-Nemotron-Nano-9B-v2 | 授予永久, 全球, 非專屬, 免費, 免權利金的使用, 修改, 散布與銷售授權; 散布時附授權副本, 並在 Notice 檔寫明「Licensed by NVIDIA Corporation under the NVIDIA Open Model License」; 繞過模型內的安全護欄 (guardrail) 又未採取相當的替代護欄時, 授權自動終止; 對該模型或衍生模型提起著作權或專利侵權訴訟者, 該模型的授權終止; 條文未設使用者數或營收門檻; NVIDIA 可更新條款, 使用者須遵守新版或停止使用 (來源: NVIDIA Open Model License, 2025-10-24 版) |
-| NVIDIA Nemotron Open Model License | NVIDIA-Nemotron-3-Nano-30B-A3B | 與上一列是不同條款. 授予永久, 全球, 非專屬, 免費, 免權利金且不可撤銷的授權, 條文寫明可商用; 作品附有 NOTICE 檔時, 散布衍生作品須寫明「Licensed by NVIDIA Corporation under the NVIDIA Nemotron Model License」並附授權副本; 對該作品或其輸出提起專利或著作權侵權訴訟者, 授權自提訴日終止; 條文中沒有「繞過護欄即終止」的條款; NVIDIA 不主張對輸出內容的權利 (來源: NVIDIA Nemotron Open Model License, 2025-12-15 版) |
 | Mistral AI Research License | Mistral-Large-Instruct-2411 | 使用範圍限於 Research Purposes, 即個人, 科學或學術研究, 且為非營利, 非商業; 條文明列公司員工或外包人員的日常工作使用, 任何以營收為目的的活動 (含測試與 PoC), 以及商業單位提供的託管服務, 都不屬於研究用途; 其他用途須另向 Mistral AI 申請授權, 由其自行決定是否核發 (來源: Mistral AI Research License MRL-0.1 第 3.2 條與定義) |
 | 其他自訂授權 | TAIDE | 條文各不相同, 須逐份閱讀; TAIDE 模型頁面標示「(Gemma 版次)-TAIDE 模型授權條款」, 須登入並同意條款才能下載 (來源: TAIDE Hugging Face 模型頁) |
 
@@ -138,12 +136,9 @@ AGPL 值得單獨留意. AGPL v3 第 13 條要求: 修改過的程式若讓使�
 - [Llama 4 Community License Agreement](https://dev.meta.ai/llama/llama4/license)
 - [Gemma Terms of Use](https://ai.google.dev/gemma/terms)
 - [Google Open Source Blog: Gemma 4: Expanding the Gemmaverse with Apache 2.0](https://opensource.googleblog.com/2026/03/gemma-4-expanding-the-gemmaverse-with-apache-20.html)
-- [NVIDIA Open Model License Agreement](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/)
-- [NVIDIA Nemotron Open Model License (2025-12-15 版)](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-nemotron-open-model-license/)
 - [Mistral AI Research License (MRL-0.1)](https://mistral.ai/static/licenses/MRL-0.1.md)
 - [Hugging Face: mistralai/Mistral-7B-Instruct-v0.3](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3)
 - [Hugging Face: mistralai/Mistral-Large-Instruct-2411](https://huggingface.co/mistralai/Mistral-Large-Instruct-2411)
-- [Hugging Face: nvidia/NVIDIA-Nemotron-Nano-9B-v2](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2)
 - [Hugging Face: google/embeddinggemma-300m](https://huggingface.co/google/embeddinggemma-300m)
 - [Hugging Face: openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b)
 - [Hugging Face: taide/Gemma-3-TAIDE-12b-Chat-2602](https://huggingface.co/taide/Gemma-3-TAIDE-12b-Chat-2602)

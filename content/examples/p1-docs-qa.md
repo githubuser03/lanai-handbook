@@ -88,7 +88,7 @@ docker run -d --name docling --network localai \
 
 Open WebUI 的容器同樣加上 `--network localai` (其餘參數見 M2.2 節). 官方文件提醒, 除非另外設定 Redis (讓多個行程共用狀態的記憶體資料庫) 這類共享狀態機制, 否則 docling-serve 維持 `UVICORN_WORKERS=1`.
 
-**2. 在 Open WebUI 指定文件解析引擎.** 到 **Settings > Admin > Documents**, 把內容解析引擎 (Content Extraction Engine) 設為 **Docling**, Docling Server URL 填 `http://docling:5001` (這也是官方預設值). 上傳第一份文件後, 先預覽解析出的文字; 官方疑難排解頁指出, 模型「看不到」文件內容通常是解析問題, 而不是模型問題.
+**2. 在 Open WebUI 指定文件解析引擎.** 到 **Settings > Admin > Documents**, 把內容解析引擎 (Content Extraction Engine) 設為 **Docling**, Docling Server URL 填 `http://docling:5001` (這也是官方預設值). 處理掃描檔或圖片時, Docling 會用到 OCR 引擎; 預設的自動選擇與改指定其他引擎的方式見 [M4.1 節](/build/m4-retrieval)與 M4.5 節. 上傳第一份文件後, 先預覽解析出的文字; 官方疑難排解頁指出, 模型「看不到」文件內容通常是解析問題, 而不是模型問題.
 
 **3. 設定嵌入模型.** 嵌入模型決定系統如何判斷「兩段文字意思接近」, 可以想成替每個段落在一張意思地圖上標座標, 提問時找座標最近的段落. 同一頁的嵌入設定選 Ollama, 模型例如 `embeddinggemma` 或 `nomic-embed-text-v2-moe` (Ollama 模型庫的標籤). 兩者的取捨見 M4.2 節. EmbeddingGemma 約 300M 參數, 上下文 2,048 token, 預設標籤的檔案大小為 622MB, 授權為 Gemma Terms of Use; nomic-embed-text-v2-moe 總參數 475M, 每次運算啟用 305M, 上下文 512 token, Ollama 標籤的檔案大小為 958MB, 授權為 Apache 2.0 (來源: 各模型的 Hugging Face 模型卡, Ollama 模型庫標籤頁). nomic-embed-text-v2-moe 的模型卡要求查詢與文件分別加上 `search_query:` 與 `search_document:` 前綴; 介面無法設定前綴時, 優先選 EmbeddingGemma (推論, 信心: 中). 多語言支援範圍請以模型卡為準: EmbeddingGemma 模型卡寫明訓練資料涵蓋 100 多種口說語言, nomic-embed-text-v2-moe 模型卡標示約 100 種語言; 兩者對繁體中文的表現都須用 M4.3 節的自建測試集確認. 官方文件說明, 更換嵌入模型後必須重建所有知識庫的索引, 不同模型產生的向量不能混用.
 

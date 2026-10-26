@@ -35,6 +35,8 @@
 | Docling | MIT (程式碼; 個別模型授權另見各模型) | 可在本機執行, 支援 macOS, Linux, Windows (x86_64 與 arm64); 輸入格式涵蓋 PDF, DOCX, PPTX, XLSX, HTML, 圖片等 (來源: Docling GitHub README) |
 | Marker (Datalab) | 程式碼 Apache 2.0; 模型權重為修改版 OpenRAIL-M, 研究, 個人及資金或營收 500 萬美元以下的新創可免費使用, 其他商業用途須另洽 | 可在 GPU, CPU 或 Apple MPS 執行; 輸出 Markdown, JSON 等; 作者表示支援所有語言 (來源: Marker GitHub README, 作者自報) |
 
+**Docling 的 OCR 引擎**: OCR (光學字元辨識) 負責把掃描檔或圖片中的文字辨識出來, 只有處理掃描檔或圖片時才會用到; 一般由文書軟體輸出的 PDF, DOCX 可直接讀出文字. Docling 預設自動挑選 OCR 引擎: 在 Linux 上依序嘗試 Nemotron-OCR (有安裝時), RapidOCR (onnxruntime 版), EasyOCR, RapidOCR (torch 版), 第一個能啟動的就採用 (來源: Docling 原始碼 auto_ocr_model.py, v2.142.1); 一般安裝的環境通常會選到 RapidOCR (推論, 信心: 中). RapidOCR 的說明文件寫明其 OCR 模型由 PaddleOCR 轉換而來, 模型著作權屬於百度 (來源: RapidOCR README). 需要時可改指定其他引擎: Docling 支援 RapidOCR, EasyOCR, Tesseract (tesseract-CLI, tesserocr), ocrmac 等, 命令列以 `--ocr-engine` 指定, Python 以 `EasyOcrOptions`, `TesseractCliOcrOptions` 等選項類別指定 (來源: Docling 文件 OCR engines). 透過 docling-serve 時的做法見 M4.5 節.
+
 Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請以自己的文件實測. 最小可行做法是先人工把文件轉成乾淨的文字或 Markdown, 再匯入 (整理者建議).
 
 ## M4.2 嵌入模型, 向量庫與重排序
@@ -133,7 +135,7 @@ docker run -d --name docling --restart always \
   quay.io/docling-project/docling-serve@sha256:<摘要值>
 ```
 
-接著在 Open WebUI 的 Settings → Admin → Documents, 把內容擷取引擎 (content extraction engine) 改為 Docling, 並填入 Docling Server URL: Open WebUI 跑在 Docker 時填 `http://host.docker.internal:5001`, 兩者在同一個 Docker 自訂網路時可填 `http://docling:5001` (來源: 同上). 大型文件可調高 `DOCLING_SERVE_MAX_SYNC_WAIT` (預設 120 秒) (來源: 同上).
+接著在 Open WebUI 的 Settings → Admin → Documents, 把內容擷取引擎 (content extraction engine) 改為 Docling, 並填入 Docling Server URL: Open WebUI 跑在 Docker 時填 `http://host.docker.internal:5001`, 兩者在同一個 Docker 自訂網路時可填 `http://docling:5001` (來源: 同上). 大型文件可調高 `DOCLING_SERVE_MAX_SYNC_WAIT` (預設 120 秒) (來源: 同上). 要指定 OCR 引擎 (見 M4.1 節) 時, 在同一頁的 Docling 參數 (DOCLING_PARAMS JSON) 設定 `ocr_engine`, 可選 `tesseract`, `easyocr`, `ocrmac` 或 `rapidocr`, 例如 `{"do_ocr": true, "ocr_engine": "easyocr"}`; 語言代碼格式依引擎而定, Tesseract 用三字母代碼 (例如 eng), EasyOCR 用兩字母代碼 (例如 en) (來源: Open WebUI 文件 Docling Document Extraction; 未實機驗證). 所選引擎須已安裝在 docling-serve 映像中.
 
 ### 3. 啟動 Qdrant 並設定 API 金鑰 (進階組合)
 
@@ -182,6 +184,9 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "api-key: <金鑰>" http://127.0.0.1
 文件解析:
 
 - [Docling GitHub 儲存庫 (README, 授權)](https://github.com/docling-project/docling)
+- [Docling 文件: OCR engines in Docling (支援的引擎與指定方式)](https://docling-project.github.io/docling/concepts/OCR/)
+- [Docling 原始碼: auto_ocr_model.py (v2.142.1, OCR 引擎自動選擇順序)](https://github.com/docling-project/docling/blob/v2.142.1/docling/models/stages/ocr/auto_ocr_model.py)
+- [RapidOCR README (專案授權與 OCR 模型著作權說明)](https://raw.githubusercontent.com/RapidAI/RapidOCR/main/README.md)
 - [Marker GitHub 儲存庫 (README, 授權, 硬體需求)](https://github.com/datalab-to/marker)
 
 嵌入模型:
