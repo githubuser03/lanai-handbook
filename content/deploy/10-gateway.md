@@ -43,22 +43,22 @@ LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權, SSO 等�
 | 日期 | 事件 | 來源 |
 |---|---|---|
 | 2026-03-24 | TeamPCP 先入侵 LiteLLM CI/CD 中未鎖定版本的 Trivy 掃描工具, 竊取 PyPI 發布權杖, 再發布含後門的 1.82.7 與 1.82.8 | Snyk |
-| 2026-10-21 | 官方事故報告指出發布流程遭入侵, 惡意 v1.107.0 被推送到 Docker registry 與 PyPI; 惡意 wheel 於 UTC 11:39 至 13:23 在 PyPI 上架; v1.107.0, latest, main-latest, main-stable 標籤都曾指向惡意映像; 惡意程式放在 Python 啟動檔 (cook.pth, sitecustomize.py), 只要 Python 啟動就會執行 | LiteLLM 官方事故報告, Wiz, Help Net Security |
+| 2026-10-21 | 官方事故報告指出發布流程遭入侵, 攻擊者將惡意 v1.107.0 推送到 Docker registry 與 PyPI; 惡意 wheel 於 UTC 11:39 至 13:23 在 PyPI 上架; v1.107.0, latest, main-latest, main-stable 標籤都曾指向惡意映像; 惡意程式放在 Python 啟動檔 (cook.pth, sitecustomize.py), 只要 Python 啟動就會執行 | LiteLLM 官方事故報告, Wiz, Help Net Security |
 
-官方建議鎖定 `litellm==1.106.2`, 或 2026-10-21 之前發布的明確版本 (SOCRadar 轉述). 官方的攻擊鏈分析指出, 起點是 5 月 27 日一個 master key 被提交到公開儲存庫, 之後攻擊者竊得三組 GitHub 權杖. 官方說明企業版私有發行未受影響.
+官方建議鎖定 `litellm==1.106.2`, 或 2026-10-21 之前發布的明確版本 (SOCRadar 轉述). 官方的攻擊鏈分析指出, 起點是 5 月 27 日有一組 master key 出現在公開儲存庫, 之後攻擊者竊得三組 GitHub 權杖. 官方說明企業版私有發行未受影響.
 
 2026 年的 CVE 紀錄見[元件版本與安全公告頁](/ref/versions). 其中 CVE-2026-42208 為未驗證即可利用的 SQL 注入 (1.81.16 至 1.83.6, 修補於 1.83.7), 來源為 LiteLLM 官方部落格與 Bishop Fox.
 
 ### 判斷
 
-LiteLLM 的問題不在程式碼品質, 而在它是集中保存金鑰的高價值目標. 對單機讀者而言, 它帶來的攻擊面大於效益. 對多人環境而言, 虛擬金鑰與配額是實際需求, 此時須承擔其風險並落實下列措施 (信心: 中高):
+LiteLLM 的問題不在程式碼品質, 而在它是集中保存金鑰的高價值目標. 單機使用時, 它帶來的攻擊面大於效益. 多人環境則需要虛擬金鑰與配額, 此時須承擔其風險並落實下列措施 (信心: 中高):
 
 1. 以映像摘要值 (digest) 鎖定版本, 不使用 latest 或 main-stable 標籤.
 2. 只放在內網, 並在反向代理層封鎖管理路徑 (`/health/test_connection`, MCP 路由).
 3. 不開啟 MCP 功能.
 4. 上游金鑰只給最低權限.
 5. 訂閱 GitHub Security Advisories.
-6. 事先準備好金鑰輪替程序 (見第 20 章).
+6. 事先準備好金鑰輪替流程 (見第 20 章).
 
 ### 替代方案
 
