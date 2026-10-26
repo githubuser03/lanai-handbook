@@ -243,9 +243,58 @@ curl -X POST 'http://<閘道區主機>:4000/key/block' \
 ```
 
 5. **其他金鑰**: 該使用者在 Open WebUI 或 Langfuse 自行建立的 API 金鑰, 也不受 SSO 停用影響, 須逐一檢查與撤銷 (推論, 信心: 中).
-6. **紀錄**: 記錄停用時間與各步驟完成時間, 並依 M5.5 節的第 4 項測試確認.
+6. **紀錄**: 記錄停用時間與各步驟完成時間, 並依 M5.6 節的第 4 項測試確認.
 
-## M5.5 驗收測試
+## M5.5 雲端與地端並用: 路由, 備援與資料外送控制
+
+**結論**: LiteLLM 可以在同一個入口同時接地端 vLLM 與雲端模型, 並在地端故障時自動退到雲端. 但「退到雲端」等於請求內容離開內網, 因此備援要有明確的範圍. LiteLLM 官方文件提供金鑰層的 `disable_fallbacks`, 可讓特定金鑰「失敗就報錯, 不退到雲端」; 依請求標籤精確限制備援目的地的專門機制, 官方文件查無, 須自行實測 (信心: 中). 本手冊的架構中, 只有閘道區能對外連線, 所以即使設定錯誤, 地端各區也無法直接連到雲端; 控制點在閘道區的設定與防火牆.
+
+### 設定範例
+
+下列設定依 LiteLLM 官方文件的片段組合, 並非官方原樣, 模型名稱為示意, 未實機驗證. 官方文件對地端 OpenAI 相容服務有兩種寫法: `openai/` 前綴搭配 `api_base` (官方說明 `api_base` 須以 `/v1` 結尾), 以及 vLLM 專頁記載的 `hosted_vllm/` 前綴; 兩者皆為官方文件, 本手冊擇一使用 (來源: LiteLLM 文件 OpenAI-Compatible Endpoints 與 vLLM).
+
+```yaml
+model_list:
+  - model_name: local-chat
+    litellm_params:
+      model: openai/Qwen/Qwen3.6-35B-A3B
+      api_base: http://vllm-a:8000/v1
+      api_key: dummy
+  - model_name: cloud-chat
+    litellm_params:
+      model: <雲端供應商的模型名稱>
+      api_key: os.environ/CLOUD_API_KEY
+
+router_settings:
+  # local-chat 重試用盡仍失敗時, 改送 cloud-chat
+  fallbacks: [{"local-chat": ["cloud-chat"]}]
+
+litellm_settings:
+  num_retries: 3
+  request_timeout: 10
+  cooldown_time: 30
+```
+
+### 路由與備援的行為
+
+| 項目 | 官方說明 (來源: LiteLLM 文件 Routing 與 Reliability) |
+|---|---|
+| 負載平衡 | 同一個 `model_name` 的多筆 deployment 自成一組, 請求在組內分配 |
+| `routing_strategy` | 可選 `simple-shuffle` (預設, 官方建議正式環境使用), `least-busy`, `usage-based-routing-v2` (官方不建議正式環境使用, 原因是 Redis 負擔), `latency-based-routing`, `cost-based-routing` |
+| `order` | 數值愈小優先; 同一個 `order` 內依路由策略挑選, 失敗才換下一個 `order`, 每層各自重試 |
+| `fallbacks` | 重試用盡後才生效; 另有 `context_window_fallbacks`, `content_policy_fallbacks`, `default_fallbacks` |
+| 已知的文件矛盾 | `allowed_fails` 的官方註解與預設值 3 互相矛盾 (註解稱超過每分鐘 1 次), 使用前須實測 |
+
+### 控制資料是否離開內網
+
+1. **敏感金鑰關閉備援**: 官方文件說明 `disable_fallbacks: true` 可設在單次請求或金鑰的 `metadata` (於 `/key/generate` 設定), 效果是該請求不啟用備援. 處理敏感資料的代理或部門, 其金鑰應設定這個值, 地端失敗時回傳錯誤, 不退到雲端 (來源: LiteLLM 文件 Reliability).
+2. **標籤路由只當輔助**: Tag routing 可在 deployment 設定 `tags`, 請求以 `tags` 或 `metadata.tags` 指定, 並須啟用 `enable_tag_filtering: True`; 標籤前加 `!` 可把對應 deployment 從候選池排除. 但官方文件未明載「請求標籤是否嚴格限制只能使用同標籤的 deployment」, 也未說明標籤與備援目標之間如何互動, 因此不要單獨依賴標籤作為外送防線 (來源: LiteLLM 文件 Tag Based Routing; 判斷屬整理者推論, 信心: 中).
+3. **防火牆當最後防線**: 閘道區以外的各區本來就禁止對外連線 (見組裝總覽的分區表). 需要完全禁止某類資料外送時, 可為該類流量另設一個不含雲端 deployment 的 LiteLLM 實例, 或在防火牆只允許特定來源連到雲端供應商 (設計建議, 信心: 中高).
+4. **備援事件要看得到**: 每次備援都會讓請求改走雲端, 須在 Langfuse 或 LiteLLM 紀錄中能查出是哪把金鑰, 何時, 因何故障退到雲端 (設計建議).
+
+LiteLLM 管理端的 `fallback_management` 頁面僅提供 `/fallback` 端點與預算備援, 須設定 `STORE_MODEL_IN_DB=True`, 未見依標籤限制; `enforce_fallback_model_access` 出現在 Reliability 頁面, 但官方未說明其語意, 查無 (來源: LiteLLM 文件 Fallback Management 與 Reliability).
+
+## M5.6 驗收測試
 
 以下指令依各官方文件整理, `curl` 為通用工具, 未實機驗證. LiteLLM 位址以官方文件範例的 4000 連接埠為例.
 
@@ -310,6 +359,13 @@ curl -sS -m 5 -H 'Authorization: Bearer <vLLM API 金鑰>' http://<推論區主�
 | 以測試虛擬金鑰呼叫 LiteLLM | 請求遭拒 |
 | AD 停用後 (若使用 LDAP 串接) | Keycloak 中該帳號顯示為停用 |
 
+**5. 地端模型故障時, 一般金鑰退到雲端; 敏感金鑰不退**
+
+1. 建立兩把測試金鑰: 一把不加設定, 另一把在 `metadata` 設 `disable_fallbacks: true` (設定位置見 M5.5 節, 未實機驗證).
+2. 停止地端的 vLLM 行程, 兩把金鑰各送一次請求.
+3. 一般金鑰應成功回應, 且 LiteLLM 紀錄顯示由雲端模型回應; 敏感金鑰應回傳錯誤, 並且在雲端供應商的用量紀錄或閘道區的對外連線紀錄中, 看不到這次請求.
+4. 恢復 vLLM 後, 兩把金鑰都回到地端模型.
+
 ## 參考來源
 
 - [Keycloak 文件: Running Keycloak in a container](https://www.keycloak.org/server/containers)
@@ -331,3 +387,9 @@ curl -sS -m 5 -H 'Authorization: Bearer <vLLM API 金鑰>' http://<推論區主�
 - [LiteLLM 文件: Virtual Keys](https://docs.litellm.ai/docs/proxy/virtual_keys)
 - [LiteLLM 文件: Budgets, Rate Limits](https://docs.litellm.ai/docs/proxy/users)
 - [vLLM 文件: Security](https://docs.vllm.ai/en/latest/usage/security/)
+- [LiteLLM 文件: OpenAI-Compatible Endpoints](https://docs.litellm.ai/docs/providers/openai_compatible)
+- [LiteLLM 文件: vLLM](https://docs.litellm.ai/docs/providers/vllm)
+- [LiteLLM 文件: Routing, Load Balancing, Fallbacks](https://docs.litellm.ai/docs/routing)
+- [LiteLLM 文件: Reliability](https://docs.litellm.ai/docs/proxy/reliability.md)
+- [LiteLLM 文件: Tag Based Routing](https://docs.litellm.ai/docs/proxy/tag_routing)
+- [LiteLLM 文件: Fallback Management](https://docs.litellm.ai/docs/proxy/fallback_management.md)
