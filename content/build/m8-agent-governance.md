@@ -355,7 +355,7 @@ OWASP 的代理應用十大風險中, ASI07「Insecure Inter-Agent Communication
 
 ### 同時執行的容量與配額
 
-**GPU 是共用瓶頸.** 同時進行的請求數大致等於「同時執行的代理數」乘以「每個代理內同時送出的呼叫數」(推算, 非實測). vLLM 的 KV 快取不足時會發生搶佔 (preemption), 被搶佔的請求待空間足夠後重新計算; V1 預設的搶佔模式為 `RECOMPUTE`. 官方建議: 搶佔頻繁時降低 `max_num_seqs` 或 `max_num_batched_tokens`, 可縮小一批的請求數, 降低 KV 快取需求; 搶佔次數可由 Prometheus 指標或 `disable_log_stats=False` 觀察 (來源: vLLM 文件 Optimization and Tuning). 實務做法是先用一個代理量出單次執行的呼叫數與延遲, 再逐一加入其他代理, 觀察搶佔次數與延遲, 超過可接受範圍就停止增加, 或另加一台推論主機 (設計建議, 信心: 中).
+**GPU 是共用瓶頸.** 同時進行的請求數大致等於「同時執行的代理數」乘以「每個代理內同時送出的呼叫數」(推算, 非實測). vLLM 的 KV cache不足時會發生搶佔 (preemption), 被搶佔的請求待空間足夠後重新計算; V1 預設的搶佔模式為 `RECOMPUTE`. 官方建議: 搶佔頻繁時降低 `max_num_seqs` 或 `max_num_batched_tokens`, 可縮小一批的請求數, 降低 KV cache需求; 搶佔次數可由 Prometheus 指標或 `disable_log_stats=False` 觀察 (來源: vLLM 文件 Optimization and Tuning). 實務做法是先用一個代理量出單次執行的呼叫數與延遲, 再逐一加入其他代理, 觀察搶佔次數與延遲, 超過可接受範圍就停止增加, 或另加一台推論主機 (設計建議, 信心: 中).
 
 **金鑰層的限流.** LiteLLM 跨多個實例時, `tpm`, `rpm` 與 `max_parallel_requests` 的計數放在 Redis; Redis 無法連線時, 各實例會退回各自的記憶體計數, 例如 `rpm_limit: 2` 會變成每個實例各 2 次. 設定 `fail_closed_rate_limit_enforcement: true` 後, 無法驗證計數的請求會回 503 (來源: LiteLLM 文件 Users). 單一 LiteLLM 實例的部署不受影響; 多實例時, 建議啟用 fail closed (推論, 信心: 中).
 
