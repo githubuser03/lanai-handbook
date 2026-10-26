@@ -2,19 +2,21 @@
 
 **結論**: 本手冊以下方的架構圖為終點, 帶 IT 與資安人員從底層原理開始, 一次組裝一個模組, 把地端 AI 系統架起來, 最後用範例說明它能解決哪些個人與企業的日常問題. 立場中立, 不預設地端優於雲端.
 
-網站: https://githubuser03.github.io/docs-handbook-poc/
+LAN-AI 取自 LAN + AI, 意思是讓 AI 留在內網.
+
+網站: https://githubuser03.github.io/lanai-handbook/
 
 ## 怎麼讀
 
 | 部 | 內容 | 讀完能做到 |
 |---|---|---|
-| [架構地圖](https://githubuser03.github.io/docs-handbook-poc/start/map) | 最終要組出的系統, 每一塊由哪個模組組裝 | 知道自己需要哪幾塊 |
+| [架構地圖](https://githubuser03.github.io/lanai-handbook/start/map) | 最終要組出的系統, 每一塊由哪個模組組裝 | 知道自己需要哪幾塊 |
 | 第一部 底層知識 (K1 至 K6) | 模型, 量化, 硬體, 授權, 工具呼叫, 安全 | 看懂圖上每個方塊在做什麼 |
 | 第二部 模組化組裝 (M0 至 M9) | 由下往上, 每章組裝一個模組, 附驗收測試 | 一步一步把系統架起來 |
 | 第三部 應用範例 (P1 至 P3, E1 至 E4) | 個人與企業的常見用途 | 知道組好的系統怎麼用 |
 | 第四部 維運 (O1 至 O3) | 備份, 版本鎖定, 安全公告 | 讓系統長期安全運作 |
 
-學習路線: 個人讀者走 K1 至 K3, M0 至 M2 (需要時加 M4), 再看範例 P1 至 P3; 企業讀者走 K1 至 K6, M0 至 M6, 有人每週維運時再加 M7 至 M9, 再看範例 E1 至 E4. 決策者先讀[一頁決策摘要](https://githubuser03.github.io/docs-handbook-poc/decide/summary)與[該不該自架決策樹](https://githubuser03.github.io/docs-handbook-poc/decide/should-self-host).
+學習路線: 個人讀者走 K1 至 K3, M0 至 M2 (需要時加 M4), 再看範例 P1 至 P3; 企業讀者走 K1 至 K6, M0 至 M6, 有人每週維運時再加 M7 至 M9, 再看範例 E1 至 E4. 決策者先讀[一頁決策摘要](https://githubuser03.github.io/lanai-handbook/decide/summary)與[該不該自架決策樹](https://githubuser03.github.io/lanai-handbook/decide/should-self-host).
 
 ## 最終目標架構
 
@@ -50,7 +52,7 @@
 
 - Open WebUI 內建的程式碼執行 (Jupyter 引擎) 與外掛 (Tools, Functions) 都在伺服器端執行, 不能取代程式碼沙箱. 建議關閉 Jupyter 引擎, 外掛只限管理者匯入; 若啟用 Open Terminal, 部署在 VM 工具區.
 - 圖中「*」的連線 (介面呼叫 LangGraph) 沒有現成接法, 須自建轉接.
-- 圖中的產品為舉例, 版本與替代方案見[參考資料](https://githubuser03.github.io/docs-handbook-poc/ref/versions). 圖由 `scripts/gen-architecture.py` 產生, 修改圖面請改腳本後執行 `npm run diagram`.
+- 圖中的產品為舉例, 版本與替代方案見[參考資料](https://githubuser03.github.io/lanai-handbook/ref/versions). 圖由 `scripts/gen-architecture.py` 產生, 修改圖面請改腳本後執行 `npm run diagram`.
 
 ## 目前狀態 (資料基準日 2026-10-26)
 
