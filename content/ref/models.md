@@ -36,7 +36,7 @@
 | C | Apple Silicon 16GB | 同等級 B | - | - | - |
 | D | 16GB 顯示記憶體 (或 Apple Silicon 32GB 以上) | [taide/Gemma-3-TAIDE-12b-Chat-2602](https://huggingface.co/taide/Gemma-3-TAIDE-12b-Chat-2602) (繁體中文) | 12.4B | 7.6GB | (Gemma 版次)-TAIDE 模型授權條款 |
 | D | 同上 | Gemma 4 12B (見 [Gemma 4 模型卡](https://huggingface.co/google/gemma-4-31B-it)的家族表) | 11.95B | 7.3GB | Apache 2.0 |
-| D | 同上 | [openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b) | 21B, 每 token 啟用 3.6B (MoE) | 模型卡稱以 MXFP4 可在 16GB 記憶體內執行 | Apache 2.0 |
+| D | 同上 | [openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b) | 21B, 每 token 啟用 3.6B (MoE) | 模型卡稱 MoE 權重以 MXFP4 (一種 4 位元浮點量化格式) 訓練後量化, 可在 16GB 記憶體內執行 | Apache 2.0 |
 | E | 24GB 以上, 未滿 48GB 顯示記憶體 | [mistralai/Mistral-Small-3.2-24B-Instruct-2506](https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506) | 24B | 14.7GB | Apache 2.0 |
 | E | 同上 | Gemma 4 26B A4B (見 [Gemma 4 模型卡](https://huggingface.co/google/gemma-4-31B-it)) | 25.2B, 每 token 啟用 3.8B (MoE) | 15.4GB | Apache 2.0 |
 | E | 同上 | [ibm-granite/granite-4.0-h-small](https://huggingface.co/ibm-granite/granite-4.0-h-small) | 32B, 每 token 啟用 9B (MoE) | 19.6GB | Apache 2.0 |

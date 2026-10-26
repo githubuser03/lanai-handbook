@@ -87,7 +87,7 @@ LiteLLM 官方事故報告 (2026-10-21) 記載, 企業版客戶會收到一個�
 | llama-cpp-python | CVE-2024-34359 | 以未啟用沙箱的 Jinja2 渲染 GGUF 中繼資料中的對話範本, 可遠端執行程式碼; CVSS v3.1 9.6; 0.2.30 至 0.2.71 受影響, 0.2.72 修補, 2024-05-10 公告. 見 [M3.1 節](/build/m3-model-intake) | [GitHub Security Advisory GHSA-56xg-wfcc-g829](https://github.com/abetlen/llama-cpp-python/security/advisories/GHSA-56xg-wfcc-g829) |
 | Langflow | CVE-2026-33017 | 未經身分驗證即可利用的遠端執行程式碼; 2026-03-17 隨 1.9.0 公告, Sysdig 觀測到公告約 20 小時後即出現利用; 2026-03-25 列入 CISA KEV. 見 [M9.1 節](/build/m9-automation) | [CISA KEV 目錄 (列入日期); Cloud Security Alliance 研究筆記 (利用觀測)](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) |
 | n8n | CVE-2025-68613 | CVSS 9.9; 2026-03-11 列入 CISA KEV. 見 [M9.1 節](/build/m9-automation) | [CISA KEV 目錄](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) |
-| Flowise | CVE-2025-71333 | 2.2.4 以前的 /api/v1/attachments 端點, 未經身分驗證即可上傳任意檔案 (含路徑穿越); CVSS v3.1 9.8; 2.2.5 修補; NVD 2026-06-25 收錄. 見 [M9.1 節](/build/m9-automation) | [cvefeed.io 彙整的 NVD 紀錄 (二手來源; NVD 頁面本輪未能擷取)](https://cvefeed.io/vuln/detail/CVE-2025-71333) |
+| Flowise | CVE-2025-71333 | 2.2.4 及以前的 /api/v1/attachments 端點, 未經身分驗證即可上傳任意檔案 (chatId 與 chatflowId 可路徑穿越); CVSS v4.0 9.3 (CNA: VulnCheck); 2026-06-25 公開. CVE 紀錄未寫明修補版本, 升級前請以 Flowise 官方 release 說明為準. 見 [M9.1 節](/build/m9-automation) | [CVE.org 紀錄 (CNA: VulnCheck)](https://cveawg.mitre.org/api/cve/CVE-2025-71333) |
 
 <!-- data:other_cves:end -->
 

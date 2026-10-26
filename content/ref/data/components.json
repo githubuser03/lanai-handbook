@@ -516,10 +516,10 @@
     {
       "component": "Flowise",
       "cve": "CVE-2025-71333",
-      "summary": "2.2.4 以前的 /api/v1/attachments 端點, 未經身分驗證即可上傳任意檔案 (含路徑穿越); CVSS v3.1 9.8; 2.2.5 修補; NVD 2026-06-25 收錄. 見 [M9.1 節](/build/m9-automation)",
-      "source_name": "cvefeed.io 彙整的 NVD 紀錄 (二手來源; NVD 頁面本輪未能擷取)",
-      "source_url": "https://cvefeed.io/vuln/detail/CVE-2025-71333",
-      "source_type": "secondary",
+      "summary": "2.2.4 及以前的 /api/v1/attachments 端點, 未經身分驗證即可上傳任意檔案 (chatId 與 chatflowId 可路徑穿越); CVSS v4.0 9.3 (CNA: VulnCheck); 2026-06-25 公開. CVE 紀錄未寫明修補版本, 升級前請以 Flowise 官方 release 說明為準. 見 [M9.1 節](/build/m9-automation)",
+      "source_name": "CVE.org 紀錄 (CNA: VulnCheck)",
+      "source_url": "https://cveawg.mitre.org/api/cve/CVE-2025-71333",
+      "source_type": "primary",
       "verified_on": "2026-10-26",
       "expires_after_days": 30
     }
