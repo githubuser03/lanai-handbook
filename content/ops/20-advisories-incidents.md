@@ -2,7 +2,7 @@
 
 ::: info 本章屬性
 - 等級: ● 必要
-- 狀態: 草稿, 待人工審閱
+- 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
 :::
 
@@ -13,8 +13,8 @@
 | 管道 | 做法 |
 |---|---|
 | GitHub Security Advisories | 在每個使用中元件的 GitHub 儲存庫訂閱安全通知 (操作介面可能調整, 請以 GitHub 官方文件為準) |
-| 元件發行頁 | 升級前先讀發行說明 |
-| CISA Known Exploited Vulnerabilities (KEV) | 每月比對一次使用中元件是否列入 |
+| 元件發行頁 | 每週檢查一次安全公告; 升級前先讀發行說明 |
+| CISA Known Exploited Vulnerabilities (KEV) | 每月比對一次使用中元件是否列入 (頻率為建議值, 屬推論) |
 | 本手冊[元件版本與安全公告頁](/ref/versions) | 查看最後驗證日與已知問題 |
 
 ## 20.2 案例: LiteLLM 2026 年兩次供應鏈事件
