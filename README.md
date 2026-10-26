@@ -14,6 +14,66 @@
 
 決定要試做時, 接著讀[30 天 PoC 計畫](https://githubuser03.github.io/docs-handbook-poc/decide/poc-30days).
 
+## 最終目標架構
+
+下圖是手冊涵蓋的完整架構. 多數讀者只會用到其中一部分: 最小組合只需要 ● 標示的元件加上維運, 其餘依需求逐層加入 (第 3 章, 第 9 章).
+
+```mermaid
+%%{init: {'theme': 'neutral', 'flowchart': {'nodeSpacing': 22, 'rankSpacing': 40}}}%%
+flowchart TB
+  U["使用者裝置<br/>瀏覽器或桌面 App"]
+  CLOUD["雲端 API<br/>(可選)"]
+
+  subgraph HOST["主機或機房內網: 公網沒有任何連接埠轉發"]
+    direction LR
+    N1["● 存取控制<br/>Tailscale 或<br/>只綁 127.0.0.1"]
+    N2["○ Caddy<br/>HTTPS, 驗證<br/>速率限制"]
+    UI["● 使用者介面<br/>Open WebUI<br/>LibreChat<br/>AnythingLLM 擇一"]
+    AG["◇ 代理服務<br/>LangGraph<br/>寫入須人工確認"]
+    MCP["◇ MCP 伺服器容器<br/>非 root, 唯讀<br/>限制對外連線"]
+    SBX["◇ 程式碼沙箱<br/>無網路<br/>資源上限"]
+    DOC["○ 可信文件<br/>資料夾"]
+    PARSE["○ Docling<br/>文件解析"]
+    VDB["○ 向量庫<br/>Qdrant 等"]
+    GW["○ 閘道<br/>LiteLLM 或 Bifrost<br/>虛擬金鑰與配額"]
+    SW["○ 模型切換<br/>llama-swap"]
+    INF["● 推論引擎<br/>Ollama / llama.cpp<br/>LM Studio<br/>對話與嵌入模型"]
+
+  end
+
+  OPS["● 維運: 橫跨所有層, 所有組合都要有<br/>每週備份資料卷與設定<br/>版本鎖定, 升級與回退<br/>機密管理 (.env 權限 600)<br/>每週檢查安全公告<br/>○ 評估: promptfoo 測試集"]
+
+  U --> N1 --> N2 --> UI
+  UI --> AG
+  AG --> MCP
+  AG --> SBX
+  UI --> GW
+  AG --> GW
+  GW --> SW --> INF
+  UI -.->|"最小組合直連"| INF
+  DOC --> PARSE --> VDB
+  UI --> VDB
+  GW -.-> CLOUD
+  INF ~~~ OPS
+
+  classDef must fill:#e6e6e6,stroke:#222,stroke-width:2px,color:#111
+  classDef opt fill:#ffffff,stroke:#555,stroke-width:1px,color:#111
+  classDef adv fill:#ffffff,stroke:#555,stroke-width:1px,stroke-dasharray:5 3,color:#111
+  class N1,UI,INF,OPS must
+  class N2,GW,SW,DOC,PARSE,VDB opt
+  class AG,MCP,SBX adv
+  style HOST fill:#fafafa,stroke:#888
+```
+
+| 標示 | 意義 |
+|---|---|
+| ● 灰底粗框 | 必要, 所有組合都需要 |
+| ○ 白底實線 | 依情境才加, 條件見各章章首 |
+| ◇ 白底虛線 | 進階, 須有人每週維運 |
+| 虛線箭頭 | 選用路徑: 最小組合由介面直連推論引擎; 雲端 API 只經閘道連出 |
+
+圖中的元件名稱為舉例, 版本與替代方案見[參考資料](https://githubuser03.github.io/docs-handbook-poc/ref/versions). 各層的選擇條件見第 3 章與第 9 章.
+
 ## 目前狀態 (資料基準日 2026-10-26)
 
 | 項目 | 現況 |
