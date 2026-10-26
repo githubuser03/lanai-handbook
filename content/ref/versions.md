@@ -4,6 +4,8 @@
 本頁的版本號與 CVE 變動很快. 每列都標示來源與資料基準日 (2026-10-26), 來源連結為 2026-10-26 實際擷取確認的第一手頁面 (官方 releases, PyPI, 官方更新日誌, GHSA, NVD, CISA). 版本號以查證當日為準, 超過 30 天須重新核對. 同一 CVE 的評分在 GHSA 與 NVD 可能不同, 表中並列. 正文章節不寫版本號, 一律連到本頁.
 :::
 
+表中的 CVE (Common Vulnerabilities and Exposures) 是公開漏洞的統一編號; GHSA 是 GitHub 安全公告的編號; NVD 是美國國家漏洞資料庫, 會為 CVE 評分; CISA KEV 是美國網路安全暨基礎設施安全局列出的已知遭實際利用漏洞清單.
+
 ## 版本表
 
 <!-- data:versions:start -->

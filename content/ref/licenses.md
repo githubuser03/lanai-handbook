@@ -6,6 +6,8 @@
 
 ## OSI 開源與「原始碼公開」
 
+授權是作者對使用方式訂下的規則. 「開源」在業界有明確的定義, 看得到原始碼不等於開源.
+
 OSI (Open Source Initiative) 定義的開源授權不得對使用方式設限. 授權對使用方式有限制者, 原始碼雖然公開, 但不屬於 OSI 開源. 以 n8n 為例, 其授權檔 (Sustainable Use License) 規定軟體只能用於自身內部業務或非商業用途, 與 OSI 開源定義第 6 條 (授權不得限制特定使用領域) 不符. n8n 官方文件亦自述 "according to the Open Source Initiative (OSI), open source licenses can't include limitations on use, so we do not call ourselves open source" (此句引自先前整理, docs.n8n.io 原頁本輪未能擷取, 來源待補).
 
 本手冊對這類專案稱「原始碼公開」, 不稱「開源」.
@@ -43,7 +45,7 @@ OSI (Open Source Initiative) 定義的開源授權不得對使用方式設限. �
 | EmbeddingGemma | Gemma Terms of Use | Google 發布, 約 3 億參數; 須接受條款才能下載. 條款要點: 散布時須轉遞使用限制並附條款全文; Google 不主張對輸出內容的權利 |
 | Gemma-3-TAIDE-12b-Chat-2602 | (Gemma 版次)-TAIDE 模型授權條款 | 基底為 google/gemma-3-12b-pt; 須接受條款才能下載; 條款全文在外部連結, 商用條件本輪未擷取, 來源待補 |
 
-其餘模型授權於 K4 整理, 該章尚在撰寫中.
+其餘模型授權見 [K4](/know/k4-licenses).
 
 ## 授權疊加
 

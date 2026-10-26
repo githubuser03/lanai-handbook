@@ -249,7 +249,7 @@ decision := "human_approval" if {
 ### 容量: 三個代理同時送出請求
 
 - 同時進行的請求數, 大致等於同時調查的件數, 乘以每件的代理數, 再乘以每個代理內同時送出的呼叫數 (推算, 非實測). 本範例單件就有三個代理同時呼叫模型.
-- vLLM 在 KV 快取不足時會搶佔請求, 搶佔頻繁時官方建議降低 `max_num_seqs` 或 `max_num_batched_tokens` (來源: vLLM 文件 Optimization and Tuning; 整理見 M8.5 節).
+- vLLM 在 KV cache不足時會搶佔請求, 搶佔頻繁時官方建議降低 `max_num_seqs` 或 `max_num_batched_tokens` (來源: vLLM 文件 Optimization and Tuning; 整理見 M8.5 節).
 - 導入順序: 先讓一個代理單獨跑完一件調查, 記下呼叫次數與延遲; 再改成三個代理平行, 觀察延遲與搶佔次數; 最後才開放同時處理多件調查 (設計建議, 信心: 中). 硬體估算見 [K3.4 節](/know/k3-hardware).
 - 四個代理可以共用同一個模型. 若彙整代理改用較大的模型, 同一台機器常駐多個模型的做法見 M1.11 節.
 

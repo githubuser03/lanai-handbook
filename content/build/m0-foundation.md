@@ -4,14 +4,33 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: 本章指令與設定檔依官方文件整理, 尚未在實機執行; Proxmox VE 與 Proxmox Backup Server 的版本請以官方文件為準, 本章不列版本號; Proxmox VE 防火牆 `policy_in` 與 `policy_out` 的預設值官方文件未列出, 本章一律寫成明確設定; 各區服務的連接埠除 vLLM, Proxmox VE, Proxmox Backup Server 與 SSH 外, 請以各模組章節為準; Docker Desktop 容器能否使用 Apple GPU 本輪未查證; 標示「推論」的段落沒有官方文件依據
+- 待查證: 本章指令與設定檔依官方文件整理, 尚未在實機執行; Proxmox VE 與 Proxmox Backup Server 的版本請以官方文件為準, 本章不列版本號; Proxmox VE 防火牆 `policy_in` 與 `policy_out` 的預設值官方文件未列出, 本章一律寫成明確設定; 各區服務的連接埠除 vLLM, Proxmox VE, Proxmox Backup Server 與 SSH 外, 請以各模組章節為準; Docker Desktop 容器能否使用 Apple GPU 本輪未查證; 標示「推論」的段落沒有官方文件依據; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 後續每個模組都放在這一章準備的環境裡: 一台主機, 一個不對外開放的內網網段, 以及能還原的備份. 單人單機可以只用一台 Linux 或 Mac 加 Docker; 多人共用時, 改用 Proxmox VE 以 VM 劃分信任區, 並以 Proxmox Backup Server 備份 VM. 不論哪一種起點, 進入 M1 之前都要先完成一次還原演練.
 
 **這一塊在圖上的位置**: 實體主機 Proxmox VE, 各 VM 區的邊界, 以及備份伺服器. **前置模組**: 無. **完成後的狀態**: 主機, 網段與備份都已就位, 可以開始組裝 M1.
 
+這一章是整棟房子的地基: 決定機器放在哪裡, 誰能從哪裡連進來, 壞掉時怎麼復原. 地基沒打好, 之後每個模組都要回頭補. 本章內容偏向網路與系統管理; 單人單機的讀者只需要讀 M0.1 節的「單機起點」, M0.3 節與 M0.5 節.
+
+::: tip 本章常見名詞
+| 詞 | 意思 |
+|---|---|
+| 主機 (host) | 實際的那台電腦, 所有服務都跑在上面 |
+| VM (虛擬機) 與 LXC 容器 | VM 是在主機上切出的獨立電腦, 有自己的作業系統核心; LXC 容器較輕量, 但和主機共用核心 |
+| Proxmox VE | 在一台實體主機上建立與管理多台 VM 的開源平台 |
+| Docker 容器 | 把程式和它需要的檔案包成一包執行; 同樣和主機共用核心 |
+| 網段與 VLAN | 網段是一群可以直接互通的位址; VLAN 是在同一組實體網路上切出多個互不相通的網段 |
+| 防火牆 | 依規則決定哪些連線可以通過的機制 |
+| 連接埠 (port) | 同一台機器上區分不同服務的編號, 例如 Proxmox VE 管理介面用 8006 |
+| GPU 直通 (passthrough) | 把實體顯示卡直接交給某一台 VM 使用 |
+| 摘要值 (digest) | 映像內容算出來的一串固定字元, 內容一變就不同, 可用來鎖定版本 |
+| 雙因素驗證 (TFA) | 登入時除了密碼, 還要第二種證明, 例如手機驗證器 App 的動態碼 |
+:::
+
 ## M0.1 兩種起點: 單機或 Proxmox VE
+
+第一步是決定要用一台電腦直接跑所有服務, 還是先把主機切成多台 VM, 每台只放一類服務. 可以想成獨棟透天與分租公寓的差別: 透天一個人住最省事; 分租公寓每戶有自己的門鎖, 一戶出事比較不會波及其他戶, 但管理起來比較費工.
 
 兩種起點的差別在於隔離的單位. 單機以容器隔離, Proxmox VE 以 VM 隔離; 後者成本較高, 但各區之間的網路規則可以在 VM 外部控管.
 
@@ -27,11 +46,15 @@
 
 ### 單機起點
 
+單機起點適合一個人在自己的電腦上使用.
+
 - 作業系統用 Linux 或 macOS, 容器引擎用 Docker. 推論引擎依 M1.2 節安裝; macOS 上建議以 Ollama 原生應用程式執行推論引擎, 介面等其他元件再用 Docker (Docker Desktop 容器能否使用 Apple GPU 本輪未查證).
 - 所有服務只綁 127.0.0.1, 不開放給其他裝置 (見 M0.3 節).
 - 主機若要讓內網其他裝置連入, 代表需求已接近里程碑 2, 建議同時規劃反向代理 (M2.3 節) 與主機防火牆.
 
 ### Proxmox VE 起點
+
+Proxmox VE 是安裝在實體主機上的虛擬化平台, 裝好之後用瀏覽器就能建立與管理多台 VM. 下列是安裝前要確認的硬體條件與安裝步驟.
 
 **硬體需求** (來源: Proxmox VE wiki System Requirements):
 
@@ -39,6 +62,8 @@
 - 記憶體建議至少 2GB 給作業系統與 Proxmox VE 服務, 另加 VM 所需; 使用 ZFS 或 Ceph 時, 每 TB 已用儲存空間約需 1GB 記憶體.
 - 建議使用具斷電保護的 SSD, 不建議消費級 SSD; ZFS 與 Ceph 不相容於硬體 RAID 控制器.
 - 要把 GPU 直通給推論區 VM, CPU 與主機板須支援 IOMMU (x86 為 Intel VT-d 或 AMD-Vi), 並通常要在 BIOS 或 UEFI 中開啟.
+
+推論區 VM 需要使用顯示卡跑模型, 因此要把實體顯示卡「直通」給這台 VM. IOMMU 是 CPU 與主機板提供的硬體功能, 讓虛擬化平台能把一張實體裝置安全地交給單一 VM.
 
 **GPU 直通的前提** (來源: Proxmox VE wiki PCI Passthrough 與 Proxmox VE 文件 Qemu/KVM Virtual Machines):
 
@@ -60,9 +85,13 @@
 
 ## M0.2 內網網段與防火牆
 
+這一節決定「誰可以連到誰」. 可以想成辦公大樓的門禁: 訪客只能進大廳 (入口區), 機房 (推論區) 只有特定人員的門禁卡刷得開, 而大樓對外的大門根本不開. 網段負責把人分在不同樓層, 防火牆負責在每扇門前比對名單.
+
 **原則**: 只開放內網. 公網路由器不做任何連接埠轉發, 也不使用 Tailscale 這類穿透服務; 遠端使用者須先接入公司既有的內網. 網段至少分成三類: 使用者網段, 管理網段, 以及 VM 各信任區.
 
 ### 以 VLAN 劃分信任區
+
+VLAN 讓同一組實體網路線與交換器, 切成多個互不相通的網段, 每個信任區用一個 VLAN.
 
 Proxmox VE 的軟體定義網路 (SDN) 以「區域 (zone)」劃分網路, 區域內再建立 VNet 指派給 VM (來源: Proxmox VE 文件 Software-Defined Network):
 
@@ -80,6 +109,8 @@ Proxmox VE 的軟體定義網路 (SDN) 以「區域 (zone)」劃分網路, 區�
 建議每個信任區各用一個 VLAN, 區與區之間的路由由上游防火牆或 Proxmox VE 的 VM 防火牆控管 (推論, 信心: 中).
 
 ### Proxmox VE 防火牆的運作方式
+
+Proxmox VE 內建防火牆, 可以替主機與每台 VM 分別設定規則. 它的預設行為和直覺不同, 設定前先了解下列幾點.
 
 下列行為取自 Proxmox VE 文件 Firewall 章:
 
@@ -117,7 +148,7 @@ Proxmox VE 的軟體定義網路 (SDN) 以「區域 (zone)」劃分網路, 區�
 
 ### VM 防火牆設定範例
 
-範例依 Proxmox VE 文件 Firewall 章的語法整理, 未實機驗證. 位址與 VMID 為佔位符.
+下列兩個設定檔示範推論區的規則: 第一個在叢集層級定義「管理網段」與「推論區允許的連入來源」, 第二個套用到推論區 VM, 預設拒絕其他所有連入. 範例依 Proxmox VE 文件 Firewall 章的語法整理, 未實機驗證. 位址與 VMID 為佔位符; VMID 是 Proxmox VE 為每台 VM 編的號碼.
 
 ```
 # /etc/pve/firewall/cluster.fw
@@ -147,6 +178,8 @@ vLLM 的 `/metrics` 與推論 API 共用同一個連接埠, 所以稽核區抓�
 
 ### 管理介面: 獨立網段加雙因素驗證
 
+管理介面能建立, 刪除與還原所有 VM, 是整個環境權限最高的入口, 因此要放在獨立的管理網段, 並要求密碼以外的第二種登入證明.
+
 Proxmox VE 的 8006, SSH 22, SPICE 3128 與 VNC 主控台 5900 至 5999 連接埠都是管理用途 (來源: Proxmox VE 文件 Firewall). 這些連接埠只對管理網段開放: 把管理網段的位址放進 `management` IPSet, 再讓主機防火牆只接受這個 IPSet.
 
 管理帳號一律開啟雙因素驗證 (TFA). Proxmox VE 支援下列方式 (來源: Proxmox VE 文件 User Management):
@@ -162,7 +195,7 @@ WebAuthn 與復原金鑰的失敗上限是 100 次, 超過後所有第二因素�
 
 ## M0.3 Docker 與容器的共同設定
 
-不論單機或 VM 內, 用 Docker 執行的每個元件都套用下列四項設定.
+Docker 把每個元件和它需要的檔案包成一個容器執行, 安裝與移除都很乾淨. 但 Docker 的預設值偏向「方便連線」, 不偏向「安全」, 所以每個容器都要套用同一組設定. 不論單機或 VM 內, 用 Docker 執行的每個元件都套用下列四項設定.
 
 | 設定 | 做法 | 依據 |
 |---|---|---|
@@ -173,7 +206,7 @@ WebAuthn 與復原金鑰的失敗上限是 100 次, 超過後所有第二因素�
 
 在 Proxmox VE 上, VM 防火牆在 VM 外部執行, 不受 VM 內 Docker 改寫的封包規則影響. 這是改用 VM 劃分信任區的另一個理由 (推論, 信心: 中高).
 
-**共同範本** (依上述 Docker 文件整理, 未實機驗證):
+**共同範本** (依上述 Docker 文件整理, 未實機驗證): 第一行把 `.env` 設為只有擁有者能讀寫; 第二段啟動容器, 依序設定只綁本機的連接埠, 可寫的資料卷, 唯讀的目錄, 容器名稱與自動重啟, 最後以摘要值指定映像. 角括號內的文字要換成實際值.
 
 ```bash
 chmod 600 .env
@@ -190,6 +223,8 @@ docker run -d \
 
 ## M0.4 備份伺服器
 
+備份的價值不在「有沒有備份」, 而在「需要時能不能還原」. 可以想成消防演練: 平常演練過一次, 真的出事時才知道逃生門在哪, 要花多久.
+
 **原則**: 單機起點依 [O1](/ops/backup) 備份資料卷到 NAS 或另一台裝置. Proxmox VE 起點用 Proxmox Backup Server 排程備份整台 VM, 再加上 O1 的資料層備份. 兩者都要先還原成功一次, 才算完成.
 
 ### 安裝位置
@@ -198,7 +233,7 @@ Proxmox Backup Server 的官方建議安裝方式是 ISO 安裝程式. 官方文
 
 ### 加入 Proxmox VE 並設定加密
 
-在 Proxmox VE 的 Datacenter → Storage 加入 Proxmox Backup Server, 或用命令列 (來源: Proxmox Backup Server 文件 Proxmox VE Integration, 未實機驗證):
+在 Proxmox VE 的 Datacenter → Storage 加入 Proxmox Backup Server, 或用命令列. 下列指令依序新增備份儲存, 設定登入帳號, 設定憑證指紋 (確認連到的是正確的備份伺服器), 最後確認連線 (來源: Proxmox Backup Server 文件 Proxmox VE Integration, 未實機驗證):
 
 ```bash
 # 在 Proxmox VE 節點: 新增備份儲存
@@ -240,7 +275,7 @@ pvesm status --storage <儲存名稱>
 
 ## M0.5 驗收測試
 
-完成 M0 前, 逐項確認下列結果. 掃描指令為 Nmap 的通用用法, 未實機驗證; Nmap 預設只掃描每種協定最常見的 1,000 個連接埠, 加上 `-p-` 才會掃描 1 至 65535 (來源: Nmap 文件 Port Specification).
+驗收的方法是站在不同位置, 實際嘗試連線: 該連得到的要連得到, 不該連得到的要連不到. Nmap 是常用的開源連接埠掃描工具, 會列出一台機器開放了哪些連接埠. 完成 M0 前, 逐項確認下列結果. 掃描指令為 Nmap 的通用用法, 未實機驗證; Nmap 預設只掃描每種協定最常見的 1,000 個連接埠, 加上 `-p-` 才會掃描 1 至 65535 (來源: Nmap 文件 Port Specification).
 
 ```bash
 # 從使用者網段的另一台裝置掃描主機或入口區 VM
@@ -279,3 +314,4 @@ nmap -p 8000 <推論區 VM 位址>
 - [Docker 文件: docker image pull](https://docs.docker.com/reference/cli/docker/image/pull/)
 - [Docker 文件: Bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
 - [Nmap 文件: Port Specification and Scan Order](https://nmap.org/book/man-port-specification.html)
+- 文中的類比 (地基, 透天與分租公寓, 辦公大樓門禁, 消防演練): 整理者所寫, 無外部來源, 不應當作技術定義引用.
