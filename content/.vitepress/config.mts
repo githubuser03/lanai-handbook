@@ -16,6 +16,8 @@ export default defineConfig({
   title: '作業手冊',
   description: '文件手冊 POC',
   base,
+  // build 結果輸出到 repo 根目錄的 docs/, GitHub Pages 從 main 分支的 /docs 發布
+  outDir: '../docs',
   cleanUrls: true,
   lastUpdated: true,
 

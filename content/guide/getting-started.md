@@ -38,5 +38,5 @@ npm run docs:dev
 | 指令 | 用途 |
 |---|---|
 | `npm run docs:dev` | 本機預覽, 存檔即更新 |
-| `npm run docs:build` | 產生正式網站檔案, 輸出到 `docs/.vitepress/dist` |
+| `npm run docs:build` | 產生正式網站檔案, 輸出到 `docs/`; 開 PR 前必須執行 |
 | `npm run docs:preview` | 預覽 build 後的正式網站 |
