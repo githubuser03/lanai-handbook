@@ -223,7 +223,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart ollama
 ```
 
-**上下文長度的兩種設定方式與預設值**: `OLLAMA_CONTEXT_LENGTH` 設定整個 Ollama 服務的預設上下文長度; Modelfile 或 API 請求中的 `num_ctx` 參數只影響該模型或該次請求. 兩份官方文件對預設值的寫法不同: Context length 頁依顯示記憶體分成 4k, 32k, 256k 三級, Modelfile 頁的參數表則寫 `num_ctx` 預設 2048 (來源: Ollama 文件 Context length 與 Modelfile, 2026-10-27 擷取). 實際生效的值以 `ollama ps` 輸出的 CONTEXT 欄位為準; 同一指令的 PROCESSOR 欄位可確認模型是否有部分退回 CPU 執行 (來源: Ollama 文件 Context length). 建議上線前明確設定上下文長度, 不依賴預設值 (推論, 信心: 中高).
+**上下文長度的兩種設定方式與預設值**: `OLLAMA_CONTEXT_LENGTH` 設定整個 Ollama 服務的預設上下文長度; Modelfile 或 API 請求中的 `num_ctx` 參數只影響該模型或該次請求. 三份官方文件對預設值的寫法不同: Context length 頁依顯示記憶體分成 4k, 32k, 256k 三級; FAQ 寫預設 4096 個 token; Modelfile 頁的參數表則寫 `num_ctx` 預設 2048 (來源: Ollama 文件 Context length, FAQ 與 Modelfile, 2026-10-27 擷取). 實際生效的值以 `ollama ps` 輸出的 CONTEXT 欄位為準; 同一指令的 PROCESSOR 欄位可確認模型是否有部分退回 CPU 執行 (來源: Ollama 文件 Context length). 建議上線前明確設定上下文長度, 不依賴預設值 (推論, 信心: 中).
 
 **調校順序** (信心: 中, 屬推論): 先用預設值跑通; 只在實際需要時調整一項, 並用 [M6](/build/m6-observability)測試集與耗時記錄比較前後差異; 一次只改一項, 才知道哪個變動有效.
 
@@ -246,7 +246,7 @@ macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對
 
 Ollama 適合一個人用; 多人同時提問時, 回答會排隊. vLLM 會把同時進來的多個問題一起處理, 可以想成餐廳從一次炒一盤, 改成一鍋同時炒多份. 代價是設定較多, 也只支援 Linux.
 
-多人同時使用, 或需要 Prometheus 指標 (Prometheus 是定期收集服務運作數據的監控系統, 見 M6) 與更廣的 GPU 支援時, 推論區改用 vLLM 的 OpenAI 相容伺服器. 個人或低階硬體仍以 Ollama 或 llama.cpp 為首選 (選型判斷為本手冊的架構決定, 信心: 中高). vLLM 的安全前提是「只有閘道區連得到它」: 它的 API 金鑰只保護部分路徑, 不能當作唯一防線.
+多人同時使用, 或需要 Prometheus 指標 (Prometheus 是定期收集服務運作數據的監控系統, 見 M6) 與更廣的 GPU 支援時, 推論區改用 vLLM 的 OpenAI 相容伺服器. 個人或低階硬體仍以 Ollama 或 llama.cpp 為首選 (選型判斷為本手冊的架構決定, 信心: 中). vLLM 的安全前提是「只有閘道區連得到它」: 它的 API 金鑰只保護部分路徑, 不能當作唯一防線.
 
 ### 硬體與平台需求
 
@@ -280,15 +280,14 @@ docker run --runtime nvidia --gpus all \
 官方範例會從 Hugging Face 下載模型, 並發布到主機所有位址. 推論區改成下列寫法 (依 vLLM 文件 Using Docker, Engine Arguments, Security 與 Docker 文件 Port publishing and mapping 整理, 未實機驗證):
 
 ```bash
-set -a; . ./.env; set +a          # .env 權限 600, 內含 VLLM_API_KEY
-
+# .env 權限 600, 內容為一行 VLLM_API_KEY=<金鑰>
 docker run -d --name vllm --restart always \
   --runtime nvidia --gpus all \
   --ipc=host \
   -p <推論區 VM 的內網位址>:8000:8000 \
   -v /mnt/models:/models:ro \
   -e HF_HUB_OFFLINE=1 \
-  -e VLLM_API_KEY="$VLLM_API_KEY" \
+  --env-file ./.env \
   vllm/vllm-openai@sha256:<摘要值> \
   --model /models/<組織>/<模型>/<revision> \
   --served-model-name <對外模型名稱>
@@ -302,11 +301,11 @@ docker run -d --name vllm --restart always \
 | `-v /mnt/models:/models:ro` | 以唯讀方式掛載 M3 的模型存放區, 容器無法改動模型檔 | Docker 文件 Bind mounts; 見 M3.3 節 |
 | `--model /models/...` | `--model` 接受 Hugging Face 模型名稱或路徑; 改指向存放區內含 revision 的路徑, 不從網路下載 | vLLM 文件 Engine Arguments |
 | `HF_HUB_OFFLINE=1` | 不對 Hugging Face Hub 發出任何 HTTP 請求 | Hugging Face 文件 Environment variables |
-| `VLLM_API_KEY` | 與 `--api-key` 等效; 以環境變數傳入, 金鑰不出現在指令參數中 | vLLM 文件 Security, Quickstart |
+| `--env-file ./.env` 中的 `VLLM_API_KEY` | 與 `--api-key` 等效; 以環境變數檔傳入, 金鑰不出現在指令參數與行程清單中 | vLLM 文件 Security, Quickstart; Docker 文件 docker container run |
 | `@sha256:<摘要值>` | 以摘要值鎖定映像, 不使用官方範例的 `latest` | Docker 文件 docker image pull; 見 O2 |
 | `--served-model-name` | API 中使用的模型名稱; 未設定時沿用 `--model` 的值 | vLLM 文件 Engine Arguments |
 
-不設 `HF_TOKEN`: 推論區只讀本地存放區, 不需要 Hugging Face 金鑰 (推論, 信心: 中高). `--revision` 與 `--tokenizer-revision` 用於指定 Hub 上的版本 (來源: vLLM 文件 Engine Arguments); 改用本地路徑時, revision 已經寫在 M3 的存放路徑中.
+不設 `HF_TOKEN`: 推論區只讀本地存放區, 不需要 Hugging Face 金鑰 (推論, 信心: 中). `--revision` 與 `--tokenizer-revision` 用於指定 Hub 上的版本 (來源: vLLM 文件 Engine Arguments); 改用本地路徑時, revision 已經寫在 M3 的存放路徑中.
 
 常用的資源參數 (來源: vLLM 文件 Engine Arguments): `--gpu-memory-utilization` 預設 0.92, 是模型執行器可使用的 GPU 記憶體比例; `--max-model-len` 未指定時從模型設定推導; 多張 GPU 時以 `--tensor-parallel-size` 指定張量平行數, 預設 1. 調整原則與 M1.8 節相同: 先用預設值跑通, 一次只改一項.
 
@@ -335,7 +334,7 @@ docker run -d --name vllm --restart always \
 - 不需要 API 說明頁時, 可加 `--disable-fastapi-docs` 關閉 OpenAPI schema, Swagger UI 與 ReDoc.
 - 多節點部署時, 節點間通訊預設不安全, 官方要求放在隔離的網路.
 
-**版本**: 本手冊的研究整理以 0.11.1 為最低版本 (2025 年多個遠端執行程式碼等級的漏洞). 2026-08 公告的 GHSA-3c86-2m5g-59q7 修補版為 0.28.0 (來源: vLLM GitHub Security Advisory), 因此依目前公告, 至少要 0.28.0. vLLM 公告更新頻繁, 請訂閱 GitHub Security Advisories, 並以[版本頁](/ref/versions)與 [O3](/ops/advisories) 為準.
+**版本**: 本手冊的研究整理以 0.11.1 為最低版本 (2025 年多個遠端執行程式碼等級的漏洞). 2026-08 公告的 GHSA-3c86-2m5g-59q7 已有修補版 (版本見[版本頁](/ref/versions); 來源: vLLM GitHub Security Advisory), 依目前公告, 版本至少要到該修補版. vLLM 公告更新頻繁, 請訂閱 GitHub Security Advisories, 並以[版本頁](/ref/versions)與 [O3](/ops/advisories) 為準.
 
 ### 工具呼叫解析器與對話範本要和模型一起鎖定
 
@@ -396,14 +395,14 @@ curl http://<推論區位址>:8000/metrics
 
 「常駐」是指模型一直載入在顯示記憶體中, 隨時可以回答, 不必每次重新載入. 顯示記憶體有限, 一台機器要同時常駐多個模型時, 要先規劃記憶體怎麼分.
 
-**結論**: 同機常駐 3 個約 35B 的模型時, 先確認權重加上 KV cache 放得進顯示記憶體 (估算見 K3.4 節), 再選擇服務方式. 多併發且要穩定常駐, 建議每個模型各跑一個 vLLM 行程, 前面由 LiteLLM 分流 (M5.5 節); 低併發的小團隊可用 Ollama 或 llama-swap 依需求載入與卸載. 不建議把「單一 vLLM 伺服器同時服務多個模型」當作選項, 因為 vLLM 官方 FAQ 說明單一 OpenAI 相容伺服器不支援同時服務多個模型, 建議以多個實例加路由層處理 (來源: vLLM 文件 FAQ).
+**結論**: 同機常駐 3 個約 35B 的模型時, 先確認權重加上 KV cache 放得進顯示記憶體 (估算見 K3.4 節), 再選擇服務方式. 高並行且要穩定常駐, 建議每個模型各跑一個 vLLM 行程, 前面由 LiteLLM 分流 (M5.5 節); 低並行的小團隊可用 Ollama 或 llama-swap 依需求載入與卸載. 不建議把「單一 vLLM 伺服器同時服務多個模型」當作選項, 因為 vLLM 官方 FAQ 說明單一 OpenAI 相容伺服器不支援同時服務多個模型, 建議以多個實例加路由層處理 (來源: vLLM 文件 FAQ).
 
 | 方式 | 官方說法 | 優點 | 限制 | 適用情境 |
 |---|---|---|---|---|
-| 每個模型一個 vLLM 行程, 以 `--gpu-memory-utilization` 分配 | 該參數是「單一實例的使用上限」, 預設 0.92, 同一張卡上有其他 vLLM 實例也無妨, 例如兩個實例各設 0.5 (來源: vLLM 文件 Engine Arguments) | 模型常駐, 沒有切換延遲; 各模型可獨立重啟 | 比例須手動配置, 總和須小於 1; vLLM 論壇 (二手來源) 有回報指出 V1 引擎在同卡啟動第二個行程常因記憶體剖析失敗, 與官方說明有出入, 須實測啟動順序 | 多併發, 3 個模型都要常駐 |
+| 每個模型一個 vLLM 行程, 以 `--gpu-memory-utilization` 分配 | 該參數是「單一實例的使用上限」, 預設 0.92, 同一張卡上有其他 vLLM 實例也無妨, 例如兩個實例各設 0.5 (來源: vLLM 文件 Engine Arguments) | 模型常駐, 沒有切換延遲; 各模型可獨立重啟 | 比例須手動配置, 總和須小於 1; vLLM 論壇 (二手來源) 有回報指出 V1 引擎在同卡啟動第二個行程常因記憶體剖析失敗, 與官方說明有出入, 須實測啟動順序 | 高並行, 3 個模型都要常駐 |
 | 同上, 改用 `--kv-cache-memory-bytes` 直接指定 KV cache 大小 | 設定後會忽略 `--gpu-memory-utilization`, 且只在同一張卡, 啟動時空閒記憶體相同的前提下有效 (來源: vLLM 文件 Engine Arguments) | 避開比例配置的剖析問題 | 須自行換算每個模型需要的 KV cache (K3.4 節) | 同卡多行程啟動不穩時的替代做法 (推論, 信心: 中) |
 | NVIDIA MIG 硬體切分 | RTX PRO 6000 Blackwell Server Edition 規格表列「最多 4 個 24GB 的 MIG」; Workstation Edition 的 PNY 規格表列 4x24GB, 2x48GB, 1x96GB 的切分 (來源: NVIDIA 規格 PDF 與 PNY 規格表; NVIDIA 官網的 Workstation 頁面僅在 Max-Q 段落提到最多 4 個隔離實例, 未明確對應各版本) | 硬體層隔離, 一個行程異常不影響其他 | 切分檔位固定; 24GB 的切片放不下 FP8 的 35B 模型 (約 35GB); 3 個實例的混合檔位 (例如 48+24+24) 查無資料 | 多個小模型 (嵌入模型, 7B 級); 35B 級模型建議 2 個 48GB 的切片 |
-| Ollama 依需求載入 | `OLLAMA_MAX_LOADED_MODELS` 預設為 GPU 數量乘以 3, 記憶體足夠才會同時載入; 新模型必須完整放進顯示記憶體; `OLLAMA_KEEP_ALIVE` 預設 5 分鐘 (來源: Ollama 文件 FAQ) | 設定最簡單, 閒置時自動卸載 | 輪替時須重新載入; 併發與批次處理效率不如 vLLM (整理者判斷, 無官方數字) | 小團隊, 低併發 |
+| Ollama 依需求載入 | `OLLAMA_MAX_LOADED_MODELS` 預設為 GPU 數量乘以 3, 記憶體足夠才會同時載入; 新模型必須完整放進顯示記憶體; `OLLAMA_KEEP_ALIVE` 預設 5 分鐘 (來源: Ollama 文件 FAQ) | 設定最簡單, 閒置時自動卸載 | 輪替時須重新載入; 並行與批次處理效率不如 vLLM (整理者判斷, 無官方數字) | 小團隊, 低並行 |
 | llama-swap 依需求載入 | 預設同一時間只執行一個模型; 以群組的 `swap`, `exclusive`, `persistent` 設定可讓多個模型同時常駐; `healthCheckTimeout` 預設 120 秒, 請求會等到端點就緒 (來源: llama-swap 文件 Configuration) | 可混用 vLLM, llama.cpp 等後端 | 官方未提供切換延遲的實測數字; 冷啟動時間以健康檢查逾時上限為界 | 模型數量多於記憶體, 使用頻率不高 |
 | vLLM sleep mode | Level 1 把權重移到 CPU 記憶體並丟棄 KV cache, Level 2 兩者都丟棄; 伺服器模式須設 `VLLM_SERVER_DEV_MODE=1` 並加 `--enable-sleep-mode`, 端點為 `/sleep`, `/wake_up`, `/is_sleeping`; 官方警告這是開發用端點, 不得對使用者開放 (來源: vLLM 文件 Sleep Mode) | 不須重啟行程, 官方稱喚醒比完整重新載入快 (無秒數) | 並非為模型輪替設計, 文件未談多模型; Level 1 須有足夠的 CPU 記憶體容納權重 | 同一模型的間歇釋放, 不建議作為多模型方案 |
 

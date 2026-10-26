@@ -9,7 +9,7 @@
 
 **結論**: 模型檔是推論伺服器會載入並執行的供應鏈輸入. 下載後先檢查, 記錄雜湊值, 再放進唯讀的模型存放區; 推論伺服器只從存放區讀取, 不直接從網路下載. 掃描工具本手冊主推 ModelAudit, 但任何掃描工具都只涵蓋檔案與序列化層, 擋不住權重本身的後門, 所以來源白名單與行為測試仍不可少.
 
-**這一塊在圖上的位置**: 雲端的 Hugging Face 等模型來源, 入庫檢查主機 (ModelScan 等掃描模型檔的工具), 以及 NAS 上的 NFS 共享. **前置模組**: M0. **完成後的狀態**: 每個上線的模型都有來源, 版本與雜湊紀錄, 推論伺服器無法改動模型檔.
+**這一塊在圖上的位置**: 雲端的 Hugging Face 等模型來源, 入庫檢查主機 (ModelAudit 等掃描模型檔的工具; 架構圖標示為 ModelScan, 選擇理由見 M3.2 節), 以及 NAS 上的 NFS 共享. **前置模組**: M0. **完成後的狀態**: 每個上線的模型都有來源, 版本與雜湊紀錄, 推論伺服器無法改動模型檔.
 
 這一章處理「模型檔從哪裡來, 怎麼確認沒問題, 放在哪裡」. 可以想成餐廳的進貨流程: 食材只向登記過的供應商進貨, 到貨先在收貨區檢查與登記, 合格後才上架; 廚房只能從架上拿, 不能自己改動架上的貨. 只用一兩個知名模型的個人讀者, 照 M1.5 節的下載驗證即可; 模型變多或多人共用時, 才需要本章完整的流程.
 
@@ -38,11 +38,11 @@
 | safetensors | Hugging Face 將它定位為「相對於 pickle, 能安全儲存張量」的格式 (來源: Hugging Face 文件 Safetensors) | 首選格式; 仍要檢查同一倉庫的其他檔案 |
 | GGUF 的對話範本 | GGUF 除了張量, 還包含一組標準化的中繼資料 (來源: Hugging Face 文件 GGUF); 其中 `tokenizer.chat_template` 是 Jinja 範本 (Jinja 是 Python 常用的文字範本語言; 來源: GGUF 規格) | 範本會在推論伺服器上渲染, 入庫時要檢視內容, 並與模型一起鎖定版本 |
 | `trust_remote_code` | Transformers (Hugging Face 用來載入與執行模型的 Python 程式庫) 的 `trust_remote_code` 預設為 False; 設為 True 會在本機執行 Hub 上的程式碼, 官方建議只對信任且讀過程式碼的倉庫開啟 (來源: Transformers 文件 Auto Classes) | 不開啟; 倉庫含 `.py` 檔時列為人工審查事項 |
-| 權重本身的後門 | 惡意行為藏在權重數值中, 檔案格式完全正常 | 檔案掃描工具無法確認; 靠來源白名單與 M6 的行為測試 (推論, 信心: 中高) |
+| 權重本身的後門 | 惡意行為藏在權重數值中, 檔案格式完全正常 | 檔案掃描工具無法確認; 靠來源白名單與 M6 的行為測試 (推論, 信心: 中) |
 
-**對話範本已有實際漏洞**: llama-cpp-python (讓 Python 程式呼叫 llama.cpp 推論引擎的套件) 的 CVE-2024-34359 (GHSA-56xg-wfcc-g829) 中, 套件從 GGUF 中繼資料讀出對話範本, 再以未啟用沙箱的 Jinja2 環境渲染, 精心構造的範本即可遠端執行程式碼. 修補版為 0.2.72 以上 (來源: GitHub Security Advisory GHSA-56xg-wfcc-g829). 這個案例說明「格式安全」不等於「整個檔案安全」: GGUF 不是 pickle, 但其中的範本仍是推論引擎會執行的程式邏輯. 因應方式是使用已修補的推論引擎, 並在入庫時檢視範本內容.
+**對話範本已有實際漏洞**: llama-cpp-python (讓 Python 程式呼叫 llama.cpp 推論引擎的套件) 的 CVE-2024-34359 (GHSA-56xg-wfcc-g829) 中, 套件從 GGUF 中繼資料讀出對話範本, 再以未啟用沙箱的 Jinja2 環境渲染, 精心構造的範本即可遠端執行程式碼. 受影響與修補版本見[版本頁](/ref/versions) (來源: GitHub Security Advisory GHSA-56xg-wfcc-g829). 這個案例說明「格式安全」不等於「整個檔案安全」: GGUF 不是 pickle, 但其中的範本仍是推論引擎會執行的程式邏輯. 因應方式是使用已修補的推論引擎, 並在入庫時檢視範本內容.
 
-**`trust_remote_code=False` 也不是萬全**: 推論伺服器 vLLM (見 M1) 在 2026-08 公告的 GHSA-3c86-2m5g-59q7 指出, 0.28.0 之前的版本載入 LlavaOnevision2 架構的處理器時, 會忽略 `trust_remote_code=False`, 執行惡意模型倉庫中的處理器程式碼 (來源: vLLM GitHub Security Advisory GHSA-3c86-2m5g-59q7). 入庫時把倉庫內的 `.py` 檔一律列入人工審查, 可以補上這類推論引擎本身的缺陷 (推論, 信心: 中高). 推論引擎的版本追蹤見 M1.10 節與 [O3](/ops/advisories).
+**`trust_remote_code=False` 也不是萬全**: 推論伺服器 vLLM (見 M1) 在 2026-08 公告的 GHSA-3c86-2m5g-59q7 指出, 未修補的版本 (修補版本見[版本頁](/ref/versions)) 載入 LlavaOnevision2 架構的處理器時, 會忽略 `trust_remote_code=False`, 執行惡意模型倉庫中的處理器程式碼 (來源: vLLM GitHub Security Advisory GHSA-3c86-2m5g-59q7). 入庫時把倉庫內的 `.py` 檔一律列入人工審查, 可以補上這類推論引擎本身的缺陷 (推論, 信心: 中). 推論引擎的版本追蹤見 M1.10 節與 [O3](/ops/advisories).
 
 ## M3.2 入庫流程: 白名單, 固定版本, 掃描, 登記
 
@@ -57,6 +57,7 @@
    |  3. ModelAudit 掃描 (pickle 檔另以 picklescan 複查)
    |  4. 人工審查: .py 檔, 對話範本, 授權
    |  5. 計算 SHA-256, 寫入登記表
+   |  6. 複製到存放區, 在目的地以 sha256sum -c 再比對
    v
 [NAS: NFS 模型存放區] -- 唯讀 --> [推論區 VM]
 ```
@@ -134,6 +135,19 @@ cd <暫存目錄>
 find . -type f ! -name manifest.sha256 -exec sha256sum {} + > manifest.sha256
 ```
 
+### 第 6 步: 搬到 NAS 存放區並再比對一次
+
+前五步都在入庫主機的暫存目錄進行. 最後由入庫主機 (M3.3 節中唯一能寫入存放區的來源) 把整個暫存目錄, 連同 `manifest.sha256`, 複製到 NAS 存放區中含 revision 的路徑, 再到目的地重新比對一次雜湊值, 確認複製過程沒有改動檔案. 下列指令以入庫主機掛載存放區於 `/srv/models` 為例 (`cp` 與 `sha256sum -c` 為 GNU coreutils 通用指令, 未實機驗證):
+
+```bash
+mkdir -p /srv/models/<組織>/<模型>/<revision>
+cp -a <暫存目錄>/. /srv/models/<組織>/<模型>/<revision>/
+cd /srv/models/<組織>/<模型>/<revision>
+sha256sum -c manifest.sha256
+```
+
+`sha256sum -c` 每個檔案都顯示 OK 才算完成; 有任何 FAILED, 刪除目的地目錄後重新複製. 完成後, 推論區就能以 M1.10 節的 `--model /models/<組織>/<模型>/<revision>` 讀到這個版本.
+
 登記表沿用 M1.5 節的欄位, 再加四欄:
 
 | 欄位 | 說明 |
@@ -165,7 +179,7 @@ find . -type f ! -name manifest.sha256 -exec sha256sum {} + > manifest.sha256
 /srv/models  <推論區網段>(ro,sync,root_squash)  <入庫主機位址>(rw,sync,root_squash)
 ```
 
-`sec=sys` 不驗證客戶端身分, 因此 NFS 要放在只有推論區與入庫主機能到達的 VLAN, 並由 M0.2 節的防火牆規則限制來源 (推論, 信心: 中高).
+`sec=sys` 不驗證客戶端身分, 因此 NFS 要放在只有推論區與入庫主機能到達的 VLAN, 並由 M0.2 節的防火牆規則限制來源 (推論, 信心: 中).
 
 ### TrueNAS
 

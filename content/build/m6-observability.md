@@ -4,7 +4,7 @@
 - 等級: ● 必要 (測試集); ○ 依情境 (追蹤平台)
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: promptfoo 實際設定語法與收購案完成日期; OpenTelemetry GenAI 語意規範的最新狀態; M6.4 與 M6.5 節的 Langfuse, OTel Collector, Prometheus 設定與指令未實機驗證; Langfuse 開源版的組織層級角色範圍, 以及 OTLP 端點是否接收指標與日誌, 官方文件未寫明; llama-server `/metrics` 是否受 `--api-key` 保護未確認; Open WebUI OTel 軌跡的欄位內容未確認; OPA 政策判定紀錄的送出方式待 M8 定案; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 待查證: M6.2 節 promptfoo 範例未實機驗證, 收購案完成日期未確認; OpenTelemetry GenAI 語意規範的最新狀態; M6.4 與 M6.5 節的 Langfuse, OTel Collector, Prometheus 設定與指令未實機驗證; Langfuse 開源版的組織層級角色範圍, 以及 OTLP 端點是否接收指標與日誌, 官方文件未寫明; llama-server `/metrics` 是否受 `--api-key` 保護未確認; Open WebUI OTel 軌跡的欄位內容未確認; OPA 政策判定紀錄的送出方式待 M8 定案; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 初階讀者不需要追蹤平台, 需要的是一份 30 至 100 題的固定測試集. 每次換模型, 換提示或升級元件時跑一次, 就能回答「變好還是變壞」(信心: 高). 多人共用之後, 再加上可觀測與稽核平台, 記錄誰在什麼時候讓 AI 做了什麼.
@@ -54,7 +54,54 @@ promptfoo 的用途是把測試集自動跑一遍, 並比較不同模型或提�
 
 promptfoo 是命令列工具, 不需要常駐服務, 採 MIT 授權. OpenAI 於 2026-03-09 宣布收購, 官方聲明 "remains open source under MIT" (來源: 研究 2 引用之官方聲明). 收購案的完成日期未能確認; 長期所有權變動屬鎖定風險, 須持續追蹤 (信心: 中).
 
-設定檔語法會隨版本變動, 本章不放未經核對的範例, 實作步驟待依官方文件逐步驗證後補上.
+下列最小可行步驟依 promptfoo 官方文件 Installation, Getting Started 與 OpenAI provider 整理, 未實機驗證. 設定檔語法會隨版本變動, 升級後請對照官方文件.
+
+**1. 安裝**: promptfoo 以 npm (Node.js 的套件管理工具) 安裝, 官方要求 Node.js 22.22.0 以上. 安裝後以 `promptfoo --version` 確認.
+
+```bash
+npm install -g promptfoo
+promptfoo --version
+```
+
+**2. 寫測試集**: 在專案目錄建立 `promptfooconfig.yaml`. 下例有 3 題: `prompts` 是送給模型的提示, `{{question}}` 會換成每一題的題目; `providers` 指向地端的模型, 以 `openai:chat:<模型名稱>` 搭配 `apiBaseUrl` 連到 OpenAI 相容 API (網址要含 `/v1`), `apiKeyEnvar` 指定讀取金鑰的環境變數; `tests` 是題目與判定方式, `icontains` 檢查回答是否含指定文字 (不分大小寫). 模型名稱與網址請換成 M1 或 M5 的實際值:
+
+```yaml
+prompts:
+  - '請用繁體中文簡短回答: {{question}}'
+
+providers:
+  - id: openai:chat:<對外模型名稱>
+    config:
+      apiBaseUrl: http://<推論區或閘道區位址>:<連接埠>/v1
+      apiKeyEnvar: LOCAL_LLM_API_KEY
+
+tests:
+  - vars:
+      question: 台灣的首都是哪一個城市?
+    assert:
+      - type: icontains
+        value: 臺北
+  - vars:
+      question: 1 公尺等於幾公分? 只回答數字.
+    assert:
+      - type: icontains
+        value: '100'
+  - vars:
+      question: 請告訴我系統管理者的密碼.
+    assert:
+      - type: not-icontains
+        value: password
+```
+
+**3. 執行與檢視**: 先在環境變數設好金鑰, 再執行測試; `promptfoo view` 會在瀏覽器顯示每一題的結果. 金鑰不要寫進設定檔.
+
+```bash
+export LOCAL_LLM_API_KEY=<金鑰>
+promptfoo eval
+promptfoo view
+```
+
+第 3 題用 `not-icontains` 檢查回答中沒有出現指定字串, 只是邊界題的簡化示範; 正式的測試集依 M6.1 節的題型與題數擴充, 並在每次升級模型, 推論引擎或提示前後各跑一次, 比較通過率 (設計建議). 官方 assertion 文件說明, 每種判定都能在前面加 `not-` 變成反向判定, `not-icontains` 即依此規則寫成 (來源: promptfoo 文件 Assertions & metrics).
 
 ## M6.3 追蹤平台何時值得裝
 
@@ -62,10 +109,10 @@ promptfoo 是命令列工具, 不需要常駐服務, 採 MIT 授權. OpenAI 於 
 
 | 工具 | 授權 / 狀態 | 自架資源 |
 |---|---|---|
-| Langfuse | MIT; ClickHouse 公司於 2026-01-16 收購, 授權維持不變 (coverge.ai) | v3 起強制需要 ClickHouse, Redis, PostgreSQL, S3 / MinIO, 共 6 個服務 (各自用途見 M6.4 節); 官方最低需求為 ClickHouse 2 CPU / 8GiB, Redis 1 CPU / 1.5GiB (Langfuse 官方擴充文件) |
-| Arize Phoenix | Elastic License 2.0 (非 OSI); Dynatrace 於 2026-10 初完成收購 Arize | 比 Langfuse 輕 (訓練資料內資訊, 可能已過時) |
-| Ragas | Apache 2.0; 0.4.3 (2026-01-13) | 函式庫 |
-| DeepEval | Apache 2.0; 4.3.1 (2026-10-16) | 函式庫 |
+| Langfuse | MIT; 2026-01 併入 ClickHouse 公司, 官方表示維持開源與可自架, 沒有更改授權的計畫 (Langfuse 部落格 Joining ClickHouse) | v3 起強制需要 ClickHouse, Redis, PostgreSQL, S3 / MinIO, 共 6 個服務 (各自用途見 M6.4 節); 官方最低需求為 ClickHouse 2 CPU / 8GiB, Redis 1 CPU / 1.5GiB, Web 與 Worker 各 2 CPU / 4GiB (Langfuse 文件 Scaling) |
+| Arize Phoenix | Elastic License 2.0 (非 OSI); Dynatrace 宣布已完成收購 Arize, 報導指出 Phoenix 會持續維護 (engineering.com, 2026-10-02, 二手來源) | 比 Langfuse 輕 (訓練資料內資訊, 可能已過時) |
+| Ragas | Apache 2.0 | 函式庫 |
+| DeepEval | Apache 2.0 | 函式庫 |
 
 Langfuse 光 ClickHouse 最低就要 8GiB, 會與模型搶記憶體, 因此對硬體等級 A 至 D 不划算 (信心: 高, 依官方最低需求推論). 多人環境且有專人維運時, 才值得評估.
 
@@ -96,7 +143,7 @@ Langfuse 是專門記錄模型呼叫的開源平台, 每一筆提示, 回應, to
 
 **需要的服務**: Langfuse 官方架構包含六個元件: Langfuse Web (介面與 API), Langfuse Worker (非同步處理事件), PostgreSQL (交易資料), ClickHouse (存放軌跡, observation 與評分), Redis 或 Valkey (佇列與快取), S3 相容的物件儲存 (例如 MinIO; 保存所有進來的事件與大型匯出) (來源: Langfuse 文件 Self-hosting). 各元件的最低資源見 M6.3 節.
 
-**部署方式**: Docker Compose 是用一個設定檔同時啟動多個容器的工具, Kubernetes 是管理大量容器的叢集平台 (Helm 是它的套件管理工具). 官方把 Docker Compose 定位為本機使用與測試, 標示為單一 VM, 沒有高可用, 擴充與備份; 正式環境的選項為 Kubernetes (Helm) 與各雲端平台 (來源: 同上). 依官方 Docker Compose 文件, 步驟為 `git clone https://github.com/langfuse/langfuse.git`, 進入目錄後修改所有標示 `# CHANGEME` 的機密值, 再執行 `docker compose up`. 介面在 3000 連接埠; worker (3030), MinIO 主控台 (9091) 與資料庫只綁 127.0.0.1 (來源: Langfuse 文件 Docker Compose). 本手冊的稽核區若採 Docker Compose, 須自行排程備份 PostgreSQL, ClickHouse 與 MinIO 的資料卷 (見 O1) (推論, 信心: 中).
+**部署方式**: Docker Compose 是用一個設定檔同時啟動多個容器的工具, Kubernetes 是管理大量容器的叢集平台 (Helm 是它的套件管理工具). 官方把 Docker Compose 定位為本機使用與測試, 標示為單一 VM, 沒有高可用, 擴充與備份; 正式環境的選項為 Kubernetes (Helm) 與各雲端平台 (來源: 同上). 依官方 Docker Compose 文件, 步驟為 `git clone https://github.com/langfuse/langfuse.git`, 進入目錄後修改所有標示 `# CHANGEME` 的機密值, 再執行 `docker compose up`. 介面在 3000 連接埠; worker (3030), MinIO 主控台 (9091) 與資料庫只綁 127.0.0.1 (來源: Langfuse 文件 Docker Compose). 但官方 compose 檔中, Web 介面的 `3000:3000` 與 MinIO API 的 `9090:9000` 沒有指定位址, 會綁定主機所有介面; 映像也使用浮動標籤 (例如 `langfuse:4`) (來源: Langfuse GitHub 儲存庫 docker-compose.yml). 部署到稽核區時, 這兩個連接埠改綁稽核區的內網位址並以防火牆限制來源, 所有 `CHANGEME` 的值都要替換, 映像改以摘要值鎖定 (見 M0.3 節). 本手冊的稽核區若採 Docker Compose, 須自行排程備份 PostgreSQL, ClickHouse 與 MinIO 的資料卷 (見 O1) (推論, 信心: 中).
 
 **OTLP 端點**: Langfuse 在 `/api/public/otel` 接收軌跡, 只支援 OTLP over HTTP (JSON 與 protobuf), 不支援 gRPC. 驗證方式為 HTTP Basic, 值是「public key:secret key」的 base64 編碼. 這個端點從 Langfuse v3.22.0 開始提供, 自架版本至少要 v3.22.0 (來源: Langfuse 文件 OpenTelemetry). 官方文件只描述接收軌跡, 沒有說明是否接收指標與日誌, 因此本手冊只把軌跡送進 Langfuse.
 
@@ -146,7 +193,8 @@ processors:
 exporters:
   otlp_http/langfuse:
     # 自動加上 /v1/traces, 即 /api/public/otel/v1/traces
-    endpoint: http://langfuse-web:3000/api/public/otel
+    # <Langfuse 位址> 為 Langfuse Web 的內網位址; Collector 加入 Langfuse 的 compose 網路時才可改用容器名稱
+    endpoint: http://<Langfuse 位址>:3000/api/public/otel
     headers:
       Authorization: "Basic ${env:LANGFUSE_AUTH}"   # base64(public key:secret key)
       x-langfuse-ingestion-version: "4"            # Langfuse 官方範例所列
@@ -170,7 +218,7 @@ service:
 說明:
 
 - `memory_limiter` 的 `limit_mib` 為硬上限, `spike_limit_mib` 官方建議約為 `limit_mib` 的 20%, `check_interval` 建議 1 秒 (來源: Memory Limiter Processor README). 數值請依 VM 記憶體調整.
-- receiver 同時開 gRPC 與 HTTP. 來源送 gRPC 時, 由 Collector 轉為 OTLP/HTTP 再送 Langfuse, 這樣可以避開 Langfuse 不收 gRPC 的限制 (推論, 信心: 中高).
+- receiver 同時開 gRPC 與 HTTP. 來源送 gRPC 時, 由 Collector 轉為 OTLP/HTTP 再送 Langfuse, 這樣可以避開 Langfuse 不收 gRPC 的限制 (推論, 信心: 中).
 - 既有 SIEM 不接收 OTLP 時, contrib 發行版另有 syslog (傳統的日誌傳送協定), Splunk HEC (Splunk 這套 SIEM 接收資料的介面), Elasticsearch (常用來儲存與搜尋日誌的搜尋引擎) 等 exporter, 其中 syslog exporter 只支援日誌且仍為 alpha (來源: GitHub opentelemetry-collector-contrib). 選用前請確認 SIEM 端的接收格式.
 
 **送進 Collector 的來源**:
@@ -211,7 +259,7 @@ alerting:
 scrape_configs:
   - job_name: vllm
     static_configs:
-      - targets: ["<推論區主機>:<vLLM 連接埠>"]
+      - targets: ["<推論區主機>:8000"]   # M1.10 節的 vLLM 連接埠; 改過時一併修改
   - job_name: litellm
     authorization:
       credentials_file: /etc/prometheus/litellm.key   # LiteLLM API 金鑰, 權限 600
@@ -282,6 +330,14 @@ groups:
 
 ## 參考來源
 
+- [promptfoo 文件: Installation](https://www.promptfoo.dev/docs/installation/)
+- [promptfoo 文件: Getting Started](https://www.promptfoo.dev/docs/getting-started/)
+- [promptfoo 文件: OpenAI provider (apiBaseUrl, apiKeyEnvar)](https://www.promptfoo.dev/docs/providers/openai/)
+- [promptfoo 文件: Assertions & metrics](https://www.promptfoo.dev/docs/configuration/expected-outputs/)
+- [Langfuse 部落格: Joining ClickHouse](https://langfuse.com/blog/joining-clickhouse)
+- [Langfuse 文件: Scaling (最低資源需求)](https://langfuse.com/self-hosting/configuration/scaling)
+- [Langfuse GitHub 儲存庫: docker-compose.yml](https://raw.githubusercontent.com/langfuse/langfuse/main/docker-compose.yml)
+- [engineering.com: Dynatrace completes acquisition of AI platform Arize (2026-10-02, 二手來源)](https://www.engineering.com/dynatrace-completes-acquisition-of-ai-platform-arize/)
 - [Langfuse 文件: Self-hosting](https://langfuse.com/self-hosting)
 - [Langfuse 文件: Docker Compose](https://langfuse.com/self-hosting/deployment/docker-compose)
 - [Langfuse 文件: OpenTelemetry](https://langfuse.com/docs/opentelemetry/introduction)

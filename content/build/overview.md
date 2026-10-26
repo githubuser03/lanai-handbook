@@ -31,10 +31,10 @@
 | 里程碑 | 完成的模組 | 適用 | 建議硬體等級 | 額外占用 (推論) |
 |---|---|---|---|---|
 | 1. 能對話 (最小安全組合) | M0 至 M2 | 單人, 單機 | A 至 F | 介面約 0.5 至 1.5GB 記憶體; 磁碟約 2 至 5GB (不含模型) |
-| 2. 能查文件, 能多人用 (標準組合) | 再加 M3 至 M6 | 家庭或小團隊 2 至 10 人 | B, D, E; C 級須為中高記憶體款 | 嵌入模型約 0.6 至 1.2GB; 向量庫約 1 至 2GB; 磁碟約 10 至 30GB |
+| 2. 能查文件, 能多人用 (標準組合) | 再加 M3, M4, M6; M5 閘道與 Keycloak 依 M5.1 節的條件才加 | 家庭或小團隊 2 至 10 人 | B (12GB 以上), D, E; C 級 32GB 以上 | 嵌入模型約 0.6 至 1.2GB; 向量庫約 1 至 2GB; 磁碟約 10 至 30GB |
 | 3. 能動手做事 (進階組合) | 再加 M7 至 M9 | 多人, 多模型, 含閘道, 代理與沙箱 | F | 閘道加上它使用的 PostgreSQL 資料庫約 1 至 2GB; 磁碟約 50 至 100GB |
 
-資料來源: 研究 2 (2026-10-26), 占用值由各元件公開資料加總推算, 信心: 中. 嵌入模型一欄: EmbeddingGemma 的 Ollama 標籤頁標示 622MB; Arctic Embed 2.0 (L) 為 568M 參數 (Hugging Face 模型卡), 以每參數 2 位元組推估約 1.1GB (推論).
+資料來源: 研究 2 (2026-10-26), 占用值由各元件公開資料加總推算, 信心: 中. 嵌入模型一欄: EmbeddingGemma 的 Ollama 標籤頁標示 622MB; multilingual-e5-large-instruct 約 6 億參數 (Hugging Face 模型卡), 以每參數 2 位元組推估約 1.2GB (推論).
 
 ## 組裝順序與相依關係
 
@@ -48,7 +48,7 @@
 | M3 模型入庫與存放 | M0 | 模型變多之前, 先把來源與檢查流程固定下來 |
 | M4 檢索 (RAG) | M1, M2 | 嵌入模型跑在推論伺服器, 使用者在介面中提問 |
 | M5 模型閘道與身分驗證 | M1, M2 | 多人共用時, 介面改經閘道連模型, 帳號改由身分驗證伺服器管理 |
-| M6 可觀測, 稽核與評估 | M5 | 閘道是蒐集呼叫紀錄的集中點; 測試集從里程碑 1 就可以開始建 |
+| M6 可觀測, 稽核與評估 | M1, M2 (有 M5 時以閘道為紀錄集中點) | 測試集從里程碑 1 就可以開始建; 部署 M5 後, 閘道是蒐集呼叫紀錄的集中點 |
 | M7 工具與沙箱 | M5, M6 | 工具會改變系統狀態, 先有紀錄才開放 |
 | M8 代理與治理 | M7 | 代理只能透過工具閘道動手, 所以工具要先就位 |
 | M9 流程自動化 | M5, M7 | n8n 只經模型閘道與工具閘道對外, 不直接保存金鑰 |
@@ -77,7 +77,7 @@
 
 127.0.0.1 是電腦稱呼自己的位址; 服務只綁這個位址時, 同一台電腦以外的裝置都連不進來.
 
-- [ ] 所有服務只綁 127.0.0.1
+- [ ] 所有服務只綁 127.0.0.1, Docker Engine 為 28.0.0 以上版本 (見 M0.3 節)
 - [ ] 映像或安裝版本已記錄並鎖定
 - [ ] 介面已設管理者密碼, 並關閉公開註冊
 - [ ] 每週備份資料卷
@@ -94,7 +94,7 @@
 
 - 推論引擎, 搭配 llama-swap (需要多模型輪替時)
 - 介面: Open WebUI 或 LibreChat (兩者都是瀏覽器中的對話介面, 支援多使用者帳號)
-- 嵌入模型: EmbeddingGemma-300m 或 Snowflake Arctic Embed 2.0 (L)
+- 嵌入模型: EmbeddingGemma-300m, multilingual-e5-large-instruct 或 nomic-embed-text-v2-moe (見 M4.2 節)
 - 向量庫: 介面內建的, 或 Qdrant (獨立執行的向量資料庫服務)
 - 文件解析: Docling
 - 評估: promptfoo 測試集 (M6)
@@ -102,7 +102,7 @@
 
 **啟動順序**: 推論引擎 / llama-swap → 向量庫 → 介面 → (排程) 文件解析與匯入 → promptfoo 驗證.
 
-llama-swap 負責依請求切換要載入的模型; Docling 把 PDF 等文件轉成文字; promptfoo 用固定題目檢查升級後回答品質有沒有變差. 下圖是里程碑 2 的連線關係.
+llama-swap 負責依請求切換要載入的模型; Docling 把 PDF 等文件轉成文字; promptfoo 用固定題目檢查升級後回答品質有沒有變差. 下圖是里程碑 2 在單機上的連線關係: 所有元件以 Docker 跑在同一台主機, 只有介面經反向代理對內網開放, Qdrant 與 llama-swap 只在內部 Docker 網路中, 不對外發布連接埠. 在 Proxmox VE 上分成多台 VM 時, 連線改依 [M0.2 節](/build/m0-foundation)的對照表.
 
 ```
 [家人 / 同事裝置] --內網 HTTPS--> [主機 192.168.x.y]
@@ -120,7 +120,7 @@ llama-swap 負責依請求切換要載入的模型; Docling 把 PDF 等文件轉
 
 - [ ] 以主機防火牆限定可連入的內網網段
 - [ ] 每位使用者使用個別帳號
-- [ ] RAG 文件來源只限可信資料夾 (對應 OWASP LLM08 與 ASI06, 見 K6.4 節)
+- [ ] RAG 文件來源只限可信資料夾 (對應 OWASP LLM05, LLM09 與 ASI06, 見 K6.4 節)
 - [ ] 升級前先跑 promptfoo 測試集
 - [ ] `.env` 權限設為 600 (`.env` 是存放密碼與金鑰的設定檔, 600 表示只有檔案擁有者能讀寫)
 
@@ -196,8 +196,8 @@ llama-swap 負責依請求切換要載入的模型; Docling 把 PDF 等文件轉
 
 本頁的里程碑劃分, 組裝順序, VM 分區與硬體等級對應, 是整理者依各模組內容所做的設計與判斷 (信心標示見各表下方), 其中引用的內部研究紀錄為非公開來源, 沒有公開連結. 各元件的版本, 參數, 指令與漏洞紀錄, 來源列在對應模組章 (M0 至 M9) 的「參考來源」與[版本與漏洞頁](/ref/versions); 本頁另可查證的外部事實如下.
 
-- 嵌入模型占用: [EmbeddingGemma-300m 模型卡 (Hugging Face)](https://huggingface.co/google/embeddinggemma-300m), [EmbeddingGemma Ollama 標籤頁](https://ollama.com/library/embeddinggemma/tags) (622MB), [Snowflake Arctic Embed L v2.0 模型卡 (Hugging Face)](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0) (568M 參數, 約 1.1GB 為整理者以每參數 2 位元組推估).
+- 嵌入模型占用: [EmbeddingGemma-300m 模型卡 (Hugging Face)](https://huggingface.co/google/embeddinggemma-300m), [EmbeddingGemma Ollama 標籤頁](https://ollama.com/library/embeddinggemma/tags) (622MB), [multilingual-e5-large-instruct 模型卡 (Hugging Face)](https://huggingface.co/intfloat/multilingual-e5-large-instruct) (約 6 億參數, 約 1.2GB 為整理者以每參數 2 位元組推估).
 - 「只綁 127.0.0.1」: [Docker 文件: Port publishing and mapping](https://docs.docker.com/engine/network/port-publishing/) 說明發布容器連接埠後服務對外部開放, 加上 127.0.0.1 才限制為主機本機存取.
-- 檢核表中的 OWASP LLM08 與 ASI06, 對應見 K6.4 節的「參考來源」.
+- 檢核表中的 OWASP LLM05, LLM09 與 ASI06, 對應見 K6.4 節的「參考來源」.
 - 文中的類比 (蓋房子, 共用圖書室, 顧問與助理): 整理者所寫, 無外部來源, 不應當作技術定義引用.
 - 尚無公開來源: 各里程碑的記憶體與磁碟占用 (除嵌入模型外) 為整理者推估, Langfuse 記憶體需求見 M6, VM 與 LXC 隔離強度比較為整理者判斷 (推論, 信心: 中), 實機驗證前請視為推估值.
