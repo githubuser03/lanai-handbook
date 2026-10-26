@@ -15,10 +15,10 @@ LAN-AI 取自 LAN + AI, 意思是讓 AI 留在內網.
 | [架構地圖](https://githubuser03.github.io/lanai-handbook/start/map) | 最終要組出的系統, 每一塊由哪個模組組裝 | 知道自己需要哪幾塊 |
 | 第一部 底層知識 (K1 至 K6) | 模型, 量化, 硬體, 授權, 工具呼叫, 安全 | 看懂圖上每個方塊在做什麼 |
 | 第二部 模組化組裝 (M0 至 M9) | 由下往上, 每章組裝一個模組, 附驗收測試 | 一步一步把系統架起來 |
-| 第三部 應用範例 (P1 至 P3, E1 至 E4) | 個人與企業的常見用途 | 知道組好的系統怎麼用 |
+| 第三部 應用範例 (P1 至 P3, E1 至 E5) | 個人與企業的常見用途 | 知道組好的系統怎麼用 |
 | 第四部 維運 (O1 至 O3) | 備份, 版本鎖定, 安全公告 | 讓系統長期安全運作 |
 
-學習路線: 個人讀者走 K1 至 K3, M0 至 M2 (需要時加 M4), 再看範例 P1 至 P3; 企業讀者走 K1 至 K6, M0 至 M6, 有人每週維運時再加 M7 至 M9, 再看範例 E1 至 E4. 決策者先讀[一頁決策摘要](https://githubuser03.github.io/lanai-handbook/decide/summary)與[該不該自架決策樹](https://githubuser03.github.io/lanai-handbook/decide/should-self-host).
+學習路線: 個人讀者走 K1 至 K3, M0 至 M2 (需要時加 M4), 再看範例 P1 至 P3; 企業讀者走 K1 至 K6, M0 至 M6, 有人每週維運時再加 M7 至 M9, 再看範例 E1 至 E5. 決策者先讀[一頁決策摘要](https://githubuser03.github.io/lanai-handbook/decide/summary)與[該不該自架決策樹](https://githubuser03.github.io/lanai-handbook/decide/should-self-host).
 
 ## 最終目標架構
 
