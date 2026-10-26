@@ -19,6 +19,11 @@ export default defineConfig({
   // build 結果輸出到 repo 根目錄的 docs/, GitHub Pages 從 main 分支的 /docs 發布
   outDir: '../docs',
   cleanUrls: true,
+
+  // 網站首頁直接顯示第 1 章 (網址 / 對應 intro/01-usage.md), 不另做封面頁
+  rewrites: {
+    'intro/01-usage.md': 'index.md'
+  },
   lastUpdated: true,
 
   // 程式碼上色: 低飽和的 GitHub 配色
@@ -29,7 +34,7 @@ export default defineConfig({
   themeConfig: {
     // 上方導覽列
     nav: [
-      { text: '從這裡開始', link: '/intro/01-usage' },
+      { text: '從這裡開始', link: '/' },
       { text: '分層圖', link: '/intro/03-layers' },
       { text: '參考資料', link: '/ref/versions' }
     ],
@@ -39,7 +44,7 @@ export default defineConfig({
       {
         text: '一、入門概念',
         items: [
-          { text: '1. 使用說明與自我檢測', link: '/intro/01-usage' },
+          { text: '1. 使用說明與自我檢測', link: '/' },
           { text: '2. 人工智慧的基本概念', link: '/intro/02-basics' },
           { text: '3. 地端 AI 分層與預設組合', link: '/intro/03-layers' }
         ]
