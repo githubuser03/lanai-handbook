@@ -208,6 +208,39 @@
       "verified_on": "2026-10-26",
       "expires_after_days": 30,
       "status": "已核對官方部落格與規格頁; 規格變更紀錄載明前一版為 2025-11-25"
+    },
+    {
+      "component": "gVisor (runsc)",
+      "version": "20261019.0",
+      "date": "2026-10-22",
+      "source_name": "releasealert.dev 彙整的 google/gvisor releases (二手來源; 官方 release 頁本輪擷取失敗)",
+      "source_url": "https://releasealert.dev/github/google/gvisor",
+      "source_type": "secondary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "gVisor 以日期為版本號, 約每週發布; 前一個穩定版為 20261012.0 (2026-10-16)"
+    },
+    {
+      "component": "Podman",
+      "version": "v6.1.4",
+      "date": "2026-10-12",
+      "source_name": "Podman GitHub Releases",
+      "source_url": "https://github.com/podman-container-tools/podman/releases/tag/v6.1.4",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "已核對官方 release 頁; 同日另發布 5.8.9 維護版. 儲存庫網址 github.com/containers/podman 現由 podman-container-tools/podman 提供"
+    },
+    {
+      "component": "SOPS",
+      "version": "v3.13.3",
+      "date": "2026-07-23",
+      "source_name": "SOPS GitHub Releases",
+      "source_url": "https://github.com/getsops/sops/releases",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "已核對官方 releases 頁, 標示為 Latest"
     }
   ],
   "litellm_cves": [
@@ -322,8 +355,8 @@
     {
       "component": "Langflow",
       "cve": "CVE-2026-0768",
-      "summary": "CVSS 9.8 (v3.0, ZDI), validate 端點程式碼注入, 未驗證即以 root 執行程式碼; NVD 列 1.4.2 受影響. 不在 CISA KEV 目錄 (版本 2026.10.23). 「自 2026-08-29 起觀測到持續利用」引自 VulnCheck, 來源待補",
-      "source_name": "NVD (ZDI 通報編號 ZDI-26-034); 利用情形引自 VulnCheck (未核對)",
+      "summary": "CVSS 9.8 (v3.0, ZDI), validate 端點程式碼注入, 未驗證即以 root 執行程式碼; NVD 列 1.4.2 受影響. 不在 CISA KEV 目錄 (版本 2026.10.23). VulnCheck 的誘捕感測器 (Canary) 自 2026-08-29 至 08-30 起觀測到利用嘗試, VulnCheck 本身的公告為 LinkedIn 貼文, 此處引用 CSA 研究筆記與 Security Affairs 的轉述 (二手來源)",
+      "source_name": "NVD (ZDI 通報編號 ZDI-26-034); 利用情形見 CSA 研究筆記 (2026-09-04) 與 Security Affairs",
       "source_url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2026-0768",
       "source_type": "primary",
       "verified_on": "2026-10-26",
@@ -373,6 +406,16 @@
       "verified_on": "2026-10-26",
       "expires_after_days": 30,
       "status": ""
+    },
+    {
+      "component": "llama.cpp (GGUF 解析)",
+      "cve": "CVE-2025-53630",
+      "summary": "GGUF 解析器 gguf_init_from_file_impl 的整數溢位, 可造成堆積越界讀寫; 經過設計的 GGUF 模型檔即可觸發, 官方附概念驗證檔; 嚴重度 High; commit 26a48ad 修補, 2025-07-10 公告. 同類問題另見 Cisco Talos 2024 年通報的 CVE-2024-21825 (TALOS-2024-1912)",
+      "source_name": "llama.cpp GitHub Security Advisory GHSA-vgg9-87g3-85w8",
+      "source_url": "https://github.com/ggml-org/llama.cpp/security/advisories/GHSA-vgg9-87g3-85w8",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30
     }
   ]
 }

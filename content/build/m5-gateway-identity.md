@@ -3,8 +3,8 @@
 ::: info 本章屬性
 - 等級: ○ 依情境, 符合條件才讀
 - 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: llama-swap 授權 (訓練資料內資訊, 可能已過時); 另有一個 LiteLLM 漏洞據報預定於 2026-10-27 公開 (原引的 SOCRadar 文章未見此說法, 來源待補), 本章發布前須重新查證; M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令未實機驗證; Keycloak 的 Google Hosted Domain 欄位是否在登入時強制檢查網域, 須在測試環境驗證; Google 身分提供者的回呼網址格式來自社群論壇 (二手來源), 以主控台顯示為準; Open WebUI 的 `AIOHTTP_CLIENT_SSL_CERT_FILE` 是否涵蓋 OIDC 請求未確認; Langfuse `AUTH_KEYCLOAK_ISSUER` 的值為依 OIDC 慣例的推論; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 資料基準日: 2026-10-27
+- 待查證: LiteLLM 官方事故報告提到一個預定於 2026-10-27 公開的漏洞, 截至 2026-10-27 查詢尚未見對應的 GHSA 或 CVE, 須再查證; M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令未實機驗證; Keycloak 的 Google Hosted Domain 欄位是否在登入時強制檢查網域, 須在測試環境驗證; Google 身分提供者的回呼網址格式來自社群論壇 (二手來源), 以主控台顯示為準; Open WebUI 的 `AIOHTTP_CLIENT_SSL_CERT_FILE` 是否涵蓋 OIDC 請求未確認; Langfuse `AUTH_KEYCLOAK_ISSUER` 的值為依 OIDC 慣例的推論; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 單機單人不需要閘道. 只有多模型輪替而沒有多人治理需求時, 用 llama-swap 就夠. LiteLLM 有納入評估, 但不列為預設, 原因是一年內兩度成為供應鏈入侵的入口, 且集中保存上游金鑰 (信心: 高). 符合 M5.1 節的條件時, 閘道放在獨立的閘道區, 成為唯一保存 API 金鑰的地方; 帳號則交給身分驗證伺服器統一管理.
@@ -50,7 +50,7 @@ Ollama, llama-server 與 LM Studio 都已提供與 OpenAI 相容的 API, 介面�
 
 一張顯示卡的記憶體通常只夠放一個模型. 想輪流使用對話模型與嵌入模型時, 需要一個程式依請求自動卸下目前的模型, 換上需要的模型. 可以想成只有一個爐口的廚房, 由同一位廚師依點單換鍋.
 
-llama-swap 是 Go 撰寫的單一執行檔, 以 YAML 設定, 依請求中的 model 欄位自動啟停 llama-server 或 vLLM. 它相容 OpenAI 與 Anthropic API, 並支援 API 金鑰. 2026 年持續發版, Go 模組在 2026-08-24 仍有更新 (來源: libraries.io 與多篇設定教學彙整; 授權為 MIT 屬訓練資料內資訊, 可能已過時, 請以官方儲存庫核對).
+llama-swap 是 Go 撰寫的單一執行檔, 以 YAML 設定, 依請求中的 model 欄位自動啟停 llama-server 或 vLLM. 它相容 OpenAI 與 Anthropic API, 並支援 API 金鑰. 專案自述為「在自己的機器上執行多個生成式 AI 模型, 並依需求即時切換」, 授權為 MIT (來源: llama-swap GitHub 儲存庫, 2026-10-27 核對). 2026 年持續發版, Go 模組在 2026-08-24 仍有更新 (來源: libraries.io 與多篇設定教學彙整, 二手來源).
 
 適用情境是一張顯示卡要輪流載入對話模型與嵌入模型, 也就是硬體等級 B, D, E (信心: 中高). 它只做模型切換, 不做多租戶治理, 因此風險等級低於完整閘道.
 
@@ -60,7 +60,7 @@ LiteLLM 是常見的開源模型閘道, 能統一接地端與雲端模型, 並�
 
 ### 現況
 
-LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權, SSO 等功能屬企業版 (來源: Maxim AI 與 TechJack Solutions 的比較文). Socket 的 PyPI 頁面顯示 litellm 1.107.0 的週下載量為 22,948,819 次.
+LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權. 管理介面的 SSO 屬企業版功能: 官方文件寫明 SSO 需要企業版授權, 但自 v1.76.0 起, 5 位使用者以內可免費使用 (來源: LiteLLM 文件 Admin UI SSO, 2026-10-27 核對). Socket 的 PyPI 頁面顯示 litellm 1.107.0 的週下載量為 22,948,819 次.
 
 ### 2026 年兩次供應鏈事件
 
@@ -68,10 +68,12 @@ LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權, SSO 等�
 
 | 日期 | 事件 | 來源 |
 |---|---|---|
-| 2026-03-24 | TeamPCP 先入侵 LiteLLM CI/CD 中未鎖定版本的 Trivy 掃描工具, 竊取 PyPI 發布權杖, 再發布含後門的 1.82.7 與 1.82.8 | Snyk |
+| 2026-03-24 | PyPI 上的 1.82.7 與 1.82.8 含竊取憑證的惡意程式, 上架約 40 分鐘後遭 PyPI 隔離; 官方研判入口很可能是 CI/CD 掃描流程中的 Trivy 相依套件, 攻擊者繞過官方 CI/CD 直接發布到 PyPI. Snyk 的分析指出, 攻擊者 (TeamPCP) 先入侵未鎖定版本的 Trivy, 再竊取 PyPI 發布權杖 | LiteLLM 官方部落格 (2026-03-24), Snyk |
 | 2026-10-21 | 官方事故報告指出發布流程遭入侵, 攻擊者將惡意 v1.107.0 推送到 Docker registry 與 PyPI; 惡意 wheel 於 UTC 11:39 至 13:23 在 PyPI 上架; v1.107.0, latest, main-latest, main-stable 標籤都曾指向惡意映像; 惡意程式放在 Python 啟動檔 (cook.pth, sitecustomize.py), 只要 Python 啟動就會執行 | LiteLLM 官方事故報告, Wiz, Help Net Security |
 
-官方建議鎖定 `litellm==1.106.2`, 或 2026-10-21 之前發布的明確版本 (SOCRadar 轉述). 官方事故報告指出, 發布權限曾暫時放寬, 攻擊者取得開發者的 GitHub CLI 憑證後修改發布流程, 入口點官方表示尚未確認. 官方說明企業版私有發行未受影響.
+2026-03 事件的官方建議是把所有存在受影響系統上的憑證視為已外洩並輪替, 移除惡意的 `litellm_init.pth`, 並鎖定已知安全的版本 (例如 1.82.6 或更早); 官方之後以新的 CI/CD 流程發布乾淨的 1.83.0 (來源: LiteLLM 官方部落格 2026-03-24). 2026-10 事件的官方建議是鎖定 `litellm==1.106.2` 或更早發布的明確版本, 從頭重建映像與虛擬環境, 並輪替所有金鑰 (來源: LiteLLM 官方事故報告 2026-10-21).
+
+2026-10 事件的入口, 官方在 2026-10-23 的攻擊鏈報告中說明: LiteLLM Agent Platform 的 master key 於 2026-05-27 被提交到公開儲存庫, 之後沒有撤銷; 攻擊者於 2026-10-10 用這把金鑰呼叫 Agent Platform 的 API, 再一路取得開發者的 GitHub 憑證並修改發布流程. 官方表示已完成對攻擊者行為的調查, 改善措施另行公布 (來源: LiteLLM 官方部落格 The attack chain behind the v1.107.0 LiteLLM release). 官方說明企業版私有發行未受影響. 這起事件的起點是一把沒有撤銷的金鑰, 說明 O3 的「外洩後立即輪替」比任何單一防護更關鍵 (推論, 信心: 中高).
 
 2026 年的 CVE 紀錄見[元件版本與安全公告頁](/ref/versions). 其中 CVE-2026-42208 為未驗證即可利用的 SQL 注入 (1.81.16 至 1.83.6, 修補於 1.83.7), 來源為 LiteLLM 官方部落格與 Bishop Fox.
 
@@ -90,7 +92,7 @@ LiteLLM 的問題不在程式碼品質, 而在它是集中保存金鑰的高價�
 
 | 方案 | 授權 | 定位 | 評語 |
 |---|---|---|---|
-| llama-swap | MIT (待核對) | 模型切換 | 地端多模型首選 |
+| llama-swap | MIT | 模型切換 | 地端多模型首選 |
 | Bifrost (Maxim AI) | Apache 2.0 | Go 閘道, 含虛擬金鑰, MCP 閘道, 語意快取 | 效能數字皆為廠商自測; SSO 與叢集屬企業版; 安全紀錄較短, 資料不足 |
 | Envoy AI Gateway, Kong AI Gateway, Apache APISIX | Apache 2.0 | 企業 API 管理延伸 | 須先會維運 Envoy 或 Kong, 對手冊讀者過重 |
 
@@ -431,4 +433,11 @@ curl -sS -m 5 -H 'Authorization: Bearer <vLLM API 金鑰>' http://<推論區主�
 - [LiteLLM 文件: Reliability](https://docs.litellm.ai/docs/proxy/reliability.md)
 - [LiteLLM 文件: Tag Based Routing](https://docs.litellm.ai/docs/proxy/tag_routing)
 - [LiteLLM 文件: Fallback Management](https://docs.litellm.ai/docs/proxy/fallback_management.md)
+- [LiteLLM 文件: Admin UI SSO (企業版授權, 5 位使用者以內免費)](https://docs.litellm.ai/docs/proxy/admin_ui_sso)
+- [LiteLLM 官方部落格: Security Update, Suspected Supply Chain Incident (2026-03-24)](https://docs.litellm.ai/blog/security-update-march-2026)
+- [LiteLLM 官方部落格: Contained, Oct 21 2026 LiteLLM release v1.107.0 Compromised](https://docs.litellm.ai/blog/security-incident-oct-21-2026)
+- [LiteLLM 官方部落格: The attack chain behind the v1.107.0 LiteLLM release (2026-10-23)](https://docs.litellm.ai/blog/security-incident-oct-21-2026-attack-chain)
+- [Snyk: Poisoned security scanner backdooring LiteLLM](https://snyk.io/blog/poisoned-security-scanner-backdooring-litellm/)
+- [SOCRadar: New LiteLLM supply chain attack hits PyPI and Docker (二手來源)](https://socradar.io/blog/litellm-supply-chain-attack-pypi-docker/)
+- [llama-swap GitHub 儲存庫 (用途, MIT 授權)](https://github.com/mostlygeek/llama-swap)
 - 文中的類比 (公司總機, 員工證門禁, 單一爐口的廚房): 整理者所寫, 無外部來源, 不應當作技術定義引用.

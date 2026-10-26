@@ -3,8 +3,8 @@
 ::: info 本章屬性
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: K6.3 的沙箱與機密管理工具版本 (gVisor, Podman, SOPS 等) 為訓練資料內資訊, 可能已過時; gVisor 的效能負擔與 Podman, Vault 的相關說明來源待補; OWASP LLM Top 10 2026 的條目編號與名稱引自二手來源, 官方頁面本輪僅確認發布日; 「研究 1」「研究 2」為內部研究紀錄, 非公開來源; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 資料基準日: 2026-10-27
+- 待查證: OWASP LLM Top 10 2026 官方 PDF 的版次頁仍寫「發布日期待定」, 發布日以官方網頁標示的 2026-08-03 為準; gVisor 最新版本號取自二手彙整 (見元件版本頁); 「研究 1」「研究 2」為內部研究紀錄, 非公開來源; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 地端 AI 最有效的安全措施有四項: 不對網際網路開放, 鎖定版本, 縮小權限, 能還原. 這四項成本低, 且能涵蓋 2026 年已知的主要攻擊途徑.
@@ -39,7 +39,7 @@
 
 **不要**用連接埠轉發把服務直接開到網際網路. SentinelLABS (SentinelOne) 與 Censys 在 293 天的掃描中觀察到 130 個國家共 175,108 台暴露的 Ollama 主機 (來源: SentinelLABS 研究報告); 2026 年 n8n 於 Shadowserver 2026-02-05 的統計中仍有 24,607 台易受攻擊 (來源: SC Media); Langflow 的 CVE-2026-33017 與 CVE-2026-0770 都已列入 CISA KEV (來源: BleepingComputer 報導; 另見 [K5](/know/k5-tools-agents)). 這幾件事屬於同一類問題.
 
-上述存取控制工具的版本未於本輪驗證, 屬訓練資料內資訊, 可能已過時; 分級為研究 2 的推論 (信心: 中高).
+本節不寫各工具的版本號; 上表的分級為研究 2 的推論 (信心: 中高).
 
 ## K6.2 供應鏈: 版本鎖定與映像摘要值
 
@@ -61,15 +61,17 @@
 
 沙箱可以想成讓外包人員在玻璃隔間裡工作: 外面看得到他在做什麼, 但他碰不到隔間外的東西. 讓模型執行程式碼時, 程式碼可能來自模型讀到的不可信內容, 因此要放進隔間. 隔間的牆越厚, 越難突破, 但進出也越麻煩. 「容器逃逸」指程式突破容器的隔離, 碰到主機本身; 以非 root 使用者執行, 可以降低逃逸後能做的事.
 
-以下分級為依產業慣例的推論 (信心: 中), gVisor, Firecracker, Podman, Docker rootless 的版本與效能未於本輪驗證. 各工具的功能描述來源見本章參考來源.
+以下分級為依產業慣例的推論 (信心: 中). 表中的工具都位在「容器」與「主機」之間: Docker 與 Podman 是建立和管理容器的工具, rootless 是讓它們不需要 root 權限的執行方式; gVisor 是夾在容器與主機核心之間的隔離層, 取代一般的容器執行環境 (runc), 以 runsc 執行容器. 各工具的版本號見[元件版本與安全公告頁](/ref/versions), 功能描述來源見本章參考來源.
 
 | 層級 | 做法 | 適用 |
 |---|---|---|
 | 最低 | 一般容器 + 非 root 使用者 (`--user`) + `--network none` + 唯讀根檔案系統 (`--read-only`) + 記憶體與 CPU 上限 (`--memory`, `--cpus`) (來源: Docker 文件 docker run 與 none network driver) | 所有讀者, 成本接近零 |
-| 中階 | Podman 或 Docker rootless (Docker 文件稱 rootless 模式讓 daemon 與容器以非特權使用者執行; Podman README 稱可由一般使用者執行且無常駐管理 daemon) | 降低容器逃逸後的權限 |
-| 進階 | gVisor (runsc) 提供系統呼叫層隔離: 以使用者空間的應用程式核心攔截系統呼叫, 代價是部分系統呼叫尚未實作, 且每次系統呼叫的負擔較高 (來源: gVisor 文件) | 多人環境 |
+| 中階 | Podman 或 Docker rootless. Podman 是與 Docker 同類的容器管理工具, 用法接近, README 稱它可由一般使用者執行, 且沒有常駐的管理 daemon (背景服務); Docker 文件稱 rootless 模式讓 daemon 與容器都以非特權使用者執行 | 降低容器逃逸後的權限 |
+| 進階 | gVisor (runsc) 提供系統呼叫層隔離: 容器發出的系統呼叫先由 gVisor 在使用者空間實作的核心 (Sentry) 處理, 不直接交給主機核心; 代價是部分系統呼叫尚未實作, 且每次系統呼叫的負擔較高 (來源: gVisor 文件) | 多人環境 |
 
-Firecracker 微型虛擬機使用 Linux KVM 建立 microVM (來源: Firecracker GitHub README); 維運成本高, 不建議手冊讀者使用 (整理者判斷).
+gVisor 的效能負擔集中在特定工作. 官方效能指南指出: 負擔主要影響大量呼叫系統的應用, 每次呼叫做的事越少, 負擔占比越高; 網路與大量小型檔案操作也有負擔; 純 CPU 運算不受影響, 因為 gVisor 不模擬 CPU 指令, 因此資料處理與機器學習類工作的負擔很小. 指南也建議多數情況使用 Systrap 平台以取得較佳效能 (來源: gVisor Performance Guide). 對本手冊的用途, 沙箱裡跑的是模型產生的短程式, 不是推論本身, 效能負擔通常可以接受 (推論, 信心: 中).
+
+Firecracker 是另一種做法: 不共用主機核心, 而是替每個工作負載開一台微型虛擬機 (microVM); 它使用 Linux KVM 建立 microVM (來源: Firecracker GitHub README). 維運成本高, 不建議手冊讀者使用 (整理者判斷).
 
 **原則**: 只要讓模型執行程式碼, 就必須放進沙箱.
 
@@ -79,10 +81,10 @@ Firecracker 微型虛擬機使用 Linux KVM 建立 microVM (來源: Firecracker 
 
 - `.env` 檔 (權限 600, 不進版本控制) 足以應付多數讀者 (整理者建議).
 - Docker Compose secrets 是下一階: 機密以檔案形式掛載到容器的 `/run/secrets/`, 避免放在環境變數中 (來源: Docker 文件 Compose secrets).
-- SOPS 適合用 Git 管理設定的人: 它是加密檔案的編輯工具, 支援 YAML, JSON, ENV 等格式 (來源: SOPS GitHub README; 與 Git 搭配的用法屬整理者建議).
-- HashiCorp Vault 或 OpenBao 對手冊讀者過度 (整理者判斷); OpenBao 為開源的機密管理系統 (來源: OpenBao GitHub README), Vault 的說明來源待補.
+- SOPS 適合用 Git 管理設定的人. 它是放在設定檔與版本控制之間的命令列工具: 把設定檔中的機密欄位加密後再存進 Git, 使用時再解密. README 稱它為加密檔案的編輯器, 支援 YAML, JSON, ENV, INI 與二進位格式, 金鑰可用 age, PGP 或雲端 KMS (來源: SOPS GitHub README; 與 Git 搭配的用法屬整理者建議).
+- HashiCorp Vault 與 OpenBao 是獨立運作的機密管理伺服器: 機密集中存在伺服器上, 應用程式需要時再向它索取. 官方文件稱 Vault 是以身分為基礎的機密與加密管理系統, 可動態產生憑證, 並為每個機密設定租期, 到期後撤銷 (來源: HashiCorp Vault 文件 What is Vault, v1.15.x). OpenBao 自述為管理, 儲存與分發機密, 憑證與金鑰的軟體, 授權為 MPL-2.0 (來源: OpenBao GitHub README); 它是 HashiCorp 將 Vault 改為 Business Source License 後, 社群從最後一個開源版本 (1.14 分支) 分出來的專案 (來源: The New Stack 2023-12-15 報導, 二手來源). 兩者都要另外架設, 備份與維運一台伺服器, 對手冊讀者過度 (整理者判斷).
 
-真正重要的是金鑰外洩後能快速輪替. LiteLLM 2026-10 事故報告建議從頭重建映像與環境, 並輪替代理資料庫中的供應商金鑰, master key, 虛擬金鑰與資料庫密碼 (來源: LiteLLM 官方事故報告); 「隔離, 重建, 輪替」是整理者歸納的處理順序, 2026-03 事件的官方建議來源待補.
+真正重要的是金鑰外洩後能快速輪替. LiteLLM 2026-10 事故報告建議從頭重建映像與環境, 並輪替代理資料庫中的供應商金鑰, master key, 虛擬金鑰與資料庫密碼 (來源: LiteLLM 官方事故報告). 2026-03 事件的官方建議則是把受影響系統上的憑證全部視為已外洩並輪替, 並鎖定已知安全的版本 (來源: LiteLLM 官方部落格 2026-03-24). 「隔離, 重建, 輪替」是整理者綜合兩次建議歸納的處理順序.
 
 ## K6.4 基線檢核表與 OWASP 2026 對照
 
@@ -92,7 +94,7 @@ Firecracker 微型虛擬機使用 Linux KVM 建立 microVM (來源: Firecracker 
 
 OWASP (Open Worldwide Application Security Project) 定期整理各類應用的十大風險清單, 業界常用來檢查設計是否漏掉常見風險. 下表把清單中的條目對應到本手冊的做法.
 
-OWASP Top 10 for LLM Applications 2026 於 2026-08-03 發布 (來源: OWASP GenAI Security Project 官方頁面); 下表的條目編號與名稱引自 Imperva 與 Cloud Security Alliance 轉載的文章 (二手來源), 官方頁面本輪擷取的文字未列出各條目. OWASP Top 10 for Agentic Applications 2026 於 2025-12-09 發布 (來源: OWASP 官方頁面), ASI 條目名稱引自 Giskard 的整理 (二手來源). 另有一份 OWASP GenAI 的《State of Agentic AI Security and Governance》v2.01 於 2026-06-01 發布 (來源: letsdatascience.com 報導, 二手來源); 該文件與 Agentic Top 10 的更新關係待核對.
+OWASP Top 10 for LLM Applications 2026 於 2026-08-03 發布 (來源: OWASP GenAI Security Project 官方頁面). 下表的條目編號與名稱已用官方頁面提供下載的 PDF 核對: LLM01 提示注入, LLM02 敏感資訊揭露, LLM03 過度代理, LLM04 供應鏈, LLM05 資料與模型投毒, LLM06 無限制資源消耗, LLM07 錯誤資訊, LLM08 隱藏情境暴露, LLM09 向量與嵌入弱點, LLM10 不當輸出處理 (2026-10-27 核對). OWASP Top 10 for Agentic Applications 2026 於 2025-12-09 發布 (來源: OWASP 官方頁面), ASI 條目名稱引自 Giskard 的整理 (二手來源). 另有一份 OWASP GenAI 的《State of Agentic AI Security and Governance》v2.01 於 2026-06-01 發布 (來源: letsdatascience.com 報導, 二手來源); 該文件與 Agentic Top 10 的更新關係待核對.
 
 | 風險 | 本手冊的對應做法 |
 |---|---|
@@ -109,9 +111,9 @@ OWASP Top 10 for LLM Applications 2026 於 2026-08-03 發布 (來源: OWASP GenA
 分類器護欄不建議當作唯一防線, 理由有兩點:
 
 1. 字元層級手法可繞過偵測. Hackett 等人 (Mindgard 與 Lancaster University, arXiv 2504.11168) 測試 6 套偵測系統, 「Emoji Smuggling」對受測的提示注入與越獄偵測器都達到 100% 攻擊成功率; 該研究測的是第一代 Meta Prompt Guard, 未測 Prompt Guard 2.
-2. Llama Guard 4 有 120 億參數, 權重為 BF16 (來源: Meta 模型卡與 Hugging Face 模型卡); 依參數量 x 2 位元組推估約需 24GB (算術推論), 超出硬體等級 A 至 D 的能力.
+2. Llama Guard 4 是 Meta 發布的安全分類模型, 用來判斷對話的輸入或輸出是否屬於不安全類別. 它有 120 億參數, 權重為 BF16 (來源: Meta 模型卡與 Hugging Face 模型卡); 依參數量 x 2 位元組推估約需 24GB (算術推論), 超出硬體等級 A 至 D 的能力.
 
-地端單人環境的主要威脅是間接提示注入, 即模型讀取的文件或網頁內夾帶指令. 比護欄更有效的做法是縮小工具權限, 要求人工確認, 並把程式碼執行放進沙箱 (信心: 中). 多人對外服務時, 才值得加 Prompt Guard 2 22M 這類輕量分類器 (22M 參數, 基於 DeBERTa-xsmall, 上下文 512 token; 來源: Hugging Face 模型卡), 且僅當作「多一層」. LLM Guard (Protect AI) 儲存庫已於 2026-07-09 封存 (來源: GitHub 儲存庫), 不建議新導入.
+地端單人環境的主要威脅是間接提示注入, 即模型讀取的文件或網頁內夾帶指令. 比護欄更有效的做法是縮小工具權限, 要求人工確認, 並把程式碼執行放進沙箱 (信心: 中). 多人對外服務時, 才值得加 Prompt Guard 2 22M 這類輕量分類器. Prompt Guard 2 是 Meta 發布, 專門偵測提示注入與越獄企圖的小模型, 放在使用者輸入進入主模型之前 (22M 參數, 基於 DeBERTa-xsmall, 上下文 512 token; 來源: Hugging Face 模型卡), 且僅當作「多一層」. LLM Guard 是 Protect AI 的開源輸入輸出檢查工具組, 儲存庫已於 2026-07-09 封存 (來源: GitHub 儲存庫), 不建議新導入.
 
 ## 參考來源
 
@@ -134,15 +136,20 @@ OWASP Top 10 for LLM Applications 2026 於 2026-08-03 發布 (來源: OWASP GenA
 - [Docker 文件: Use secrets in Compose](https://docs.docker.com/compose/how-tos/use-secrets/)
 - [Podman GitHub 儲存庫](https://github.com/containers/podman)
 - [gVisor 文件](https://gvisor.dev/docs/)
+- [gVisor 文件: Performance Guide (效能負擔來源, Systrap 建議)](https://gvisor.dev/docs/architecture_guide/performance/)
 - [Firecracker GitHub 儲存庫](https://github.com/firecracker-microvm/firecracker)
 - [SOPS GitHub 儲存庫](https://github.com/getsops/sops)
 - [OpenBao GitHub 儲存庫](https://github.com/openbao/openbao)
+- [HashiCorp Vault 文件: What is Vault (v1.15.x)](https://developer.hashicorp.com/vault/docs/v1.15.x/what-is-vault)
+- [The New Stack: Meet OpenBao, an open source fork of HashiCorp Vault (2023-12-15, 二手來源)](https://thenewstack.io/meet-openbao-an-open-source-fork-of-hashicorp-vault/)
+- [LiteLLM 官方部落格: Security Update, Suspected Supply Chain Incident (2026-03-24)](https://docs.litellm.ai/blog/security-update-march-2026)
 
 OWASP 對照與護欄模型:
 
-- [OWASP GenAI Security Project: OWASP GenAI LLM Top 10 2026](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/)
-- [Imperva: OWASP LLM Top 10 2026, What Changed and Why (二手來源, 條目名稱)](https://www.imperva.com/blog/owasp-llm-top-10-2026-what-changed/)
-- [Cloud Security Alliance: The OWASP Top 10 for LLM Applications 2026 (二手來源, 條目名稱)](https://cloudsecurityalliance.org/blog/2026/10/21/the-owasp-top-10-for-llm-applications-2026-what-changed-and-why-it-matters)
+- [OWASP GenAI Security Project: OWASP GenAI LLM Top 10 2026 (發布日)](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/)
+- [OWASP GenAI LLM Top 10 2026 官方 PDF (條目編號與名稱)](https://genai.owasp.org/download/56857/?tmstv=1785822482)
+- [Imperva: OWASP LLM Top 10 2026, What Changed and Why (二手來源, 改版說明)](https://www.imperva.com/blog/owasp-llm-top-10-2026-what-changed/)
+- [Cloud Security Alliance: The OWASP Top 10 for LLM Applications 2026 (二手來源, 改版說明)](https://cloudsecurityalliance.org/blog/2026/10/21/the-owasp-top-10-for-llm-applications-2026-what-changed-and-why-it-matters)
 - [OWASP GenAI Security Project: Top 10 for Agentic Applications for 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/)
 - [Giskard: OWASP Top 10 for Agentic Applications 2026 (二手來源, ASI 條目名稱)](https://www.giskard.ai/knowledge/owasp-top-10-for-agentic-application-2026)
 - [letsdatascience.com: OWASP releases agentic AI security report v2.01 (二手來源)](https://letsdatascience.com/news/owasp-releases-agentic-ai-security-report-v201-b6926a1d)
