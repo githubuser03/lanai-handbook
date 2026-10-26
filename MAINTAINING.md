@@ -12,17 +12,21 @@ GitHub Pages 從 `main` 分支的 `/docs` 資料夾發布. 所有修改都在其
 content/                    # 手冊原始檔 (要修改的地方)
 ├── .vitepress/config.mts   # 網站設定 (左側選單, 搜尋, 標題)
 ├── decide/                 # 決策參考頁
-├── intro/ select/ deploy/  # 各群組的章節
-├── apply/ train/ ops/
+├── start/                  # 使用說明 (網站首頁) 與架構地圖
+├── know/                   # 第一部 底層知識 (K1 至 K6)
+├── build/                  # 第二部 模組化組裝 (組裝總覽, M0 至 M9)
+├── examples/               # 第三部 應用範例
+├── ops/                    # 第四部 維運 (O1 至 O3)
+├── train/                  # 延伸主題: 訓練微調 (T1 至 T3)
 ├── ref/                    # 參考資料頁 (版本, 授權, 價格, 術語)
 │   └── data/components.json  # 版本與 CVE 的資料來源
 └── public/                 # 圖片等靜態檔案
 docs/                       # build 後的網站檔案 (自動產生, 勿手動修改)
-scripts/                    # 資料產生與檢查腳本 (npm run data, npm run check)
+scripts/                    # 資料產生, 檢查與架構圖腳本 (npm run data, check, diagram)
 STYLE.md                    # 寫作規範
 ```
 
-網站首頁 (`/`) 對應第 1 章 `content/intro/01-usage.md`, 設定在 `config.mts` 的 `rewrites`.
+網站首頁 (`/`) 對應「使用說明」 `content/start/usage.md`, 設定在 `config.mts` 的 `rewrites`.
 
 ## 修改流程
 
