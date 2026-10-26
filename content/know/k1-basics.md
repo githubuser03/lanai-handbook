@@ -31,7 +31,7 @@
 
 參數量直接決定權重檔的大小. 電腦存一個數字時, 可以選擇存得精細或粗略, 稱為精度. 以 16 位元精度存放時, 每個參數占 2 位元組 (byte, 電腦儲存容量的基本單位), 因此 80 億參數約 16GB (80 億乘以 2 位元組). 同一個數字存得粗一點, 檔案就會變小, 這個做法稱為量化 (quantization), 估算方法見 [K2](/know/k2-quantization). 參數量越大, 能力通常越好, 但需要的記憶體與運算也越多 (信心: 高, 屬一般經驗).
 
-權重本身不是可讀的資料庫, 無法像查表一樣找出「某一筆知識存在哪裡」(信心: 中高, 屬一般理解). 這點會影響 K1.7 節的隱私判斷.
+權重本身不是可讀的資料庫, 無法像查表一樣找出「某一筆知識存在哪裡」(信心: 中, 屬一般理解). 這點會影響 K1.7 節的隱私判斷.
 
 **在架構圖上的位置**: VM 推論區載入的模型檔, 以及 NAS 上的 NFS 模型存放區 (見 [M3](/build/m3-model-intake)).
 
@@ -60,7 +60,7 @@ Tokenizer 的存放方式依檔案格式 (模型檔的包裝方式) 不同:
 | Hugging Face 格式 (safetensors) | 獨立檔案, 常見為 `tokenizer.json` 與 `tokenizer_config.json`, 和 `model-*.safetensors` 權重檔放在同一個模型庫 | Hugging Face 模型庫檔案列表 (以 openai/gpt-oss-20b 為例) |
 | GGUF | 和權重包在同一個檔案, 以 `tokenizer.ggml.model`, `tokenizer.ggml.tokens` 等中介資料存放; 對話範本也在檔內 (`tokenizer.chat_template`) | GGUF 規格文件 |
 
-簡單說, safetensors 是「權重和 Tokenizer 分開放的資料夾」, GGUF 是「全部包成一個檔案」. 常見的 Ollama 與 llama.cpp 使用 GGUF 格式 (推論, 信心: 中高; 各引擎支援的格式見 [M1](/build/m1-inference)).
+兩者的差別在於: safetensors 是「權重和 Tokenizer 分開放的資料夾」, GGUF 是「全部包成一個檔案」. 常見的 Ollama 與 llama.cpp 使用 GGUF 格式 (推論, 信心: 中; 各引擎支援的格式見 [M1](/build/m1-inference)).
 
 Tokenizer 必須和權重相符. Transformers (Hugging Face 用來載入與執行模型的 Python 程式庫) 的文件提到, 類別設定不相符時會產生錯誤的 token 編號 (來源: Transformers 文件 Tokenizers). 對話範本 (chat template) 是規定「使用者說的話」和「模型說的話」各用什麼標記包起來的固定格式, 也存放在 Tokenizer 設定中; vLLM 要求模型的 Tokenizer 設定內含對話範本, 否則對話請求會失敗, 須以 `--chat-template` 另外指定 (來源: vLLM 文件 Online serving). 因此, 自行轉檔或量化的模型, 要確認 Tokenizer 與對話範本隨權重一起正確轉出.
 
@@ -97,7 +97,7 @@ Tokenizer 通常不必直接操作; 推論伺服器會自動處理. 需要留意
 | llama.cpp (llama-server) | 輕量, 參數可以細調, 低階硬體也能跑 | 以 C/C++ 撰寫的輕量 HTTP 伺服器, 在 GPU 與 CPU 執行 F16 與量化模型, 提供 OpenAI 相容的 chat completions, responses 與 embeddings 路徑, 支援多使用者平行解碼與 continuous batching (llama.cpp server README) | 個人或低階硬體, 想精細控制參數 |
 | vLLM | 為多人同時使用設計, 單位時間能服務的量大 | 以 PagedAttention 管理注意力運算的記憶體, 持續批次處理請求, 官方標榜高吞吐量 (單位時間處理的請求量); 支援 NVIDIA, AMD GPU 與多種 CPU (vLLM 文件首頁) | 企業或多人並行 |
 
-「定位」與「本手冊建議的用途」兩欄依架構決定整理 (信心: 中高, 屬整理者判斷). 安裝與加固步驟見 [M1](/build/m1-inference).
+「定位」與「本手冊建議的用途」兩欄依架構決定整理 (信心: 中, 屬整理者判斷). 安裝與加固步驟見 [M1](/build/m1-inference).
 
 **在架構圖上的位置**: VM 推論區的 vLLM (個人或低階硬體用 Ollama 或 llama.cpp), 只接受閘道區連線.
 
@@ -118,7 +118,7 @@ Tokenizer 通常不必直接操作; 推論伺服器會自動處理. 需要留意
 兩點限制要先知道:
 
 - **建庫與查詢必須用同一個嵌入模型** (來源: Ollama 文件 Embeddings). 不同模型畫的「意思地圖」不同, 換了模型, 舊的座標就對不上, 所以更換嵌入模型就要重建整個向量庫, 見 [M4](/build/m4-retrieval).
-- **嵌入模型通常比對話模型小很多**, 可以和對話模型放在同一台推論伺服器 (推論, 信心: 中高; 大小比較見 M4.2 節).
+- **嵌入模型通常比對話模型小很多**, 可以和對話模型放在同一台推論伺服器 (推論, 信心: 中; 大小比較見 M4.2 節).
 
 **在架構圖上的位置**: 推論區的嵌入模型, 入口區的 Docling (文件解析) 與 Qdrant (向量庫), 組裝見 [M4](/build/m4-retrieval).
 
@@ -132,7 +132,7 @@ Tokenizer 通常不必直接操作; 推論伺服器會自動處理. 需要留意
 | 微調 (fine-tuning) | 以少量資料調整既有模型, 權重會改變 | LoRA (一種只訓練一小部分附加參數的省資源微調做法) 的論文指出, 相較於以 Adam 完整微調 GPT-3 175B, LoRA 可把可訓練參數減少 10,000 倍, GPU 記憶體需求減為三分之一 (Hu 等人 2021 年論文) | 少數讀者, 有固定格式或領域用語需求時 |
 | 預訓練 (pretraining) | 從零開始以大量文字訓練出權重 | Meta 公布 Llama 3.1 系列約使用 15 兆 token 的公開資料, 三個尺寸合計約 3,930 萬 H100 GPU 小時 (一張 H100 GPU 運算一小時算 1 GPU 小時), 其中 8B 模型約 146 萬 GPU 小時 (Llama 3.1 模型卡) | 極少數組織 |
 
-多數需求用提示 (把需求寫清楚交給模型) 與檢索 (K1.5 節) 即可解決, 仍不足時才考慮微調 (信心: 中高). 判斷流程見 [T1](/train/t1-decide).
+多數需求用提示 (把需求寫清楚交給模型) 與檢索 (K1.5 節) 即可解決, 仍不足時才考慮微調 (信心: 中). 判斷流程見 [T1](/train/t1-decide).
 
 **在架構圖上的位置**: 架構圖只涵蓋推論. 微調與預訓練不在圖上; 微調後的權重仍要經過模型入庫流程 (M3) 才能上線.
 

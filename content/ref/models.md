@@ -7,7 +7,7 @@
 - 待查證: 各等級的模型落點為依 K2 公式估算的權重大小, 未實測; 等級 E, F 的門檻沿用 K3.1 節 (整理者設計); Gemma 4 E4B 與 12B 的模型 ID 未在模型卡上確認; 各模型的繁體中文能力除 TAIDE 與 Breeze 2 外均未見官方評測; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
-**結論**: 挑模型先看記憶體放不放得下, 再看授權, 最後才看能力. 8 至 12GB 顯示記憶體可從 8B 級模型開始; 16GB 可用到約 12B 級; 24B 至 32B 級要更大的記憶體. 需要繁體中文表現時, TAIDE 與聯發創新基地的 Breeze 2 是以繁體中文資料訓練的選項, 但授權各有條件; 國際模型的模型卡多半沒有繁體中文評測, 導入前請用自己的題目實測.
+**結論**: 挑模型先看記憶體放不放得下, 再看授權, 最後才看能力. 8 至 12GB 顯示記憶體可從 8B 級模型開始; 16GB 放約 14B 級餘裕較大 (與 K3.1 節一致); 24B 至 32B 級要 24GB 以上, 其中 30B 級在 24GB 時上下文須壓低. 需要繁體中文表現時, TAIDE 與聯發創新基地的 Breeze 2 是以繁體中文資料訓練的選項, 但授權各有條件; 國際模型的模型卡多半沒有繁體中文評測, 導入前請用自己的題目實測.
 
 ::: tip 本頁常見名詞
 | 詞 | 意思 |
@@ -41,12 +41,12 @@
 | E | 同上 | Gemma 4 26B A4B (見 [Gemma 4 模型卡](https://huggingface.co/google/gemma-4-31B-it)) | 25.2B, 每 token 啟用 3.8B (MoE) | 15.4GB | Apache 2.0 |
 | E | 同上 | [ibm-granite/granite-4.0-h-small](https://huggingface.co/ibm-granite/granite-4.0-h-small) | 32B, 每 token 啟用 9B (MoE) | 19.6GB | Apache 2.0 |
 | E | 同上 | [google/gemma-4-31B-it](https://huggingface.co/google/gemma-4-31B-it) | 30.7B | 18.8GB | Apache 2.0 |
-| E | 同上 | [nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16) | 30B, 每 token 啟用 3.5B (MoE) | 18.4GB | NVIDIA Open Model License |
+| E | 同上 | [nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16) | 30B, 每 token 啟用 3.5B (MoE) | 18.4GB | NVIDIA Nemotron Open Model License |
 | F | 48GB 以上或多卡; 此模型須 80GB | gpt-oss-120b (見 [gpt-oss-20b 模型卡](https://huggingface.co/openai/gpt-oss-20b)) | 117B, 每 token 啟用 5.1B (MoE) | 模型卡稱可放進單張 80GB GPU | Apache 2.0 |
 
-資料來源: 參數量, 授權與記憶體說明取自各模型的 Hugging Face 模型卡 (2026-10-27 擷取); 4 位元權重為整理者依上述算式推算. 等級與模型的對應為整理者推論 (信心: 中), 與 [K3.1 節](/know/k3-hardware)的估算一致: B 級放 8B 級餘裕較大, D 級放約 14B 級餘裕較大, 約 30B 以上通常放不下 16GB.
+資料來源: 參數量, 授權與記憶體說明取自各模型的 Hugging Face 模型卡 (2026-10-27 擷取); 4 位元權重為整理者依上述算式推算. 等級與模型的對應為整理者推論 (信心: 中), 與 [K3.1 節](/know/k3-hardware)的估算一致: B 級放 8B 級餘裕較大, D 級放約 14B 級餘裕較大, 約 30B 以上通常放不下 16GB. E 級中約 30B 至 32B 級的模型 (權重約 18.4 至 19.6GB) 在 24GB 時已接近或超過 K2 建議的八成上限 (約 19.2GB), 上下文須壓低, 或改用 32GB 以上的配置.
 
-由上表可見, 每升一個等級, 可選的模型大約大一倍. 等級 F 除了跑更大的模型, 也可以同時常駐數個等級 E 的模型, 並服務多人同時使用 (見 [K3.1 節](/know/k3-hardware), 推論). 實際挑選時要再看三件事:
+由上表可見, 每升一個等級, 可選的模型大約大一倍. 等級 F 在 48GB 時可讓一個約 30B 至 35B 級的模型保留充足的上下文並服務多人; 同時常駐多個這類模型, 或跑約 70B 級, 需要 64GB 至 96GB 以上 (見 [K3.1 節](/know/k3-hardware)與 K3.4 節, 推論). 實際挑選時要再看三件事:
 
 - **授權**: Llama, Gemma (TAIDE 沿用), NVIDIA 的自訂授權各有條件, 對外提供服務前請依 [K4](/know/k4-licenses) 與[授權速查](/ref/licenses)檢查. Apache 2.0 與 MIT 的限制最少.
 - **MoE 的取捨**: MoE 模型每次只啟用一小部分參數, 產生文字較快, 但權重仍要全部放進記憶體, 容量以總參數計 (見 [K3.4 節](/know/k3-hardware)).

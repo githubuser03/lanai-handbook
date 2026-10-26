@@ -4,7 +4,7 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: TAIDE 授權條款全文 (Hugging Face 頁面須登入同意後才能閱讀, 本輪未讀); Gemma 4 授權檔原文 (本輪依 Google 開源部落格與 Gemma 條款頁的指引, 未直接讀授權檔); NVIDIA Open Model License 與 Mistral AI Research License 的要點為整理者依授權全文歸納, 非逐條對照; 模型範例已更換, 授權標示須對照各模型的 Hugging Face 頁面; 量化或轉檔版本是否沿用原模型授權為推論; 本章不構成法律意見; 文中的類比為整理者所寫, 不代表技術或法律上完全等同
+- 待查證: TAIDE 授權條款要點改依國研院 TAIDE 網站公布的條款全文整理, 見[授權速查](/ref/licenses); Gemma 4 授權檔原文 (本輪依 Google 開源部落格與 Gemma 條款頁的指引, 未直接讀授權檔); NVIDIA Open Model License, NVIDIA Nemotron Open Model License 與 Mistral AI Research License 的要點為整理者依授權全文歸納, 非逐條對照; 模型範例已更換, 授權標示須對照各模型的 Hugging Face 頁面; 量化或轉檔版本是否沿用原模型授權為推論; 本章不構成法律意見; 文中的類比為整理者所寫, 不代表技術或法律上完全等同
 :::
 
 **結論**: 模型與軟體的授權各自獨立, 要分開檢查. 模型授權分兩類: Apache 2.0, MIT 這類通用開源授權, 以及 Llama, Gemma (Gemma 4 以前), NVIDIA Nemotron, Mistral Large, TAIDE 這類自訂授權; 後者常附使用政策, 標示, 規模門檻或用途限制. 軟體則要分清楚 OSI 開源與「原始碼公開」: n8n (流程自動化平台), Open WebUI (對話介面), Dify (AI 應用開發平台) 的原始碼都看得到, 但授權對使用方式設有限制. 個人與內部使用通常不受影響, 一旦對外提供服務, 最嚴格的條款決定能做什麼 (信心: 中). 每個模型入庫時就把授權記下來 (見 [M3](/build/m3-model-intake)), 之後才查得到.
@@ -36,9 +36,10 @@
 |---|---|---|
 | Apache 2.0 | Mistral-7B-Instruct-v0.3, gpt-oss-20b, Gemma 4 | 散布時附授權副本, 修改過的檔案須標示, 保留 NOTICE 檔; 授權含專利授權, 對該作品提起專利訴訟者的專利授權終止 (來源: Apache License 2.0 第 3, 4 條) |
 | MIT | 常見於軟體, 模型較少 | 所有副本須保留著作權聲明與授權聲明; 不提供任何擔保 (來源: OSI 的 MIT 授權全文) |
-| Llama 4 Community License | Llama 4 系列 | 前一個月月活躍使用者超過 7 億須另向 Meta 申請授權; 散布時須明顯標示「Built with Llama」; 以 Llama 建立或改良並散布的模型, 名稱開頭須加「Llama」; Acceptable Use Policy 納入合約 (來源: Llama 4 Community License, 2025-04-05 生效) |
+| Llama 4 Community License | Llama 4 系列 | 以 Llama 4 版本發布日為準, 發布日前一個月的月活躍使用者超過 7 億者須另向 Meta 申請授權 (一次性判定); 散布時須明顯標示「Built with Llama」; 以 Llama 建立或改良並散布的模型, 名稱開頭須加「Llama」; Acceptable Use Policy 納入合約 (來源: Llama 4 Community License, 2025-04-05 生效) |
 | Gemma Terms of Use | Gemma 4 以前的 Gemma 模型, EmbeddingGemma | 不得用於 Prohibited Use Policy 列出的用途; 散布時須把使用限制寫入下游合約, 附條款副本與 Notice 檔; Google 保留遠端或以其他方式限制違規使用的權利 (來源: Gemma Terms of Use, 2026-04-01 修訂) |
 | NVIDIA Open Model License | NVIDIA-Nemotron-Nano-9B-v2 | 授予永久, 全球, 非專屬, 免費, 免權利金的使用, 修改, 散布與銷售授權; 散布時附授權副本, 並在 Notice 檔寫明「Licensed by NVIDIA Corporation under the NVIDIA Open Model License」; 繞過模型內的安全護欄 (guardrail) 又未採取相當的替代護欄時, 授權自動終止; 對該模型或衍生模型提起著作權或專利侵權訴訟者, 該模型的授權終止; 條文未設使用者數或營收門檻; NVIDIA 可更新條款, 使用者須遵守新版或停止使用 (來源: NVIDIA Open Model License, 2025-10-24 版) |
+| NVIDIA Nemotron Open Model License | NVIDIA-Nemotron-3-Nano-30B-A3B | 與上一列是不同條款. 授予永久, 全球, 非專屬, 免費, 免權利金且不可撤銷的授權, 條文寫明可商用; 作品附有 NOTICE 檔時, 散布衍生作品須寫明「Licensed by NVIDIA Corporation under the NVIDIA Nemotron Model License」並附授權副本; 對該作品或其輸出提起專利或著作權侵權訴訟者, 授權自提訴日終止; 條文中沒有「繞過護欄即終止」的條款; NVIDIA 不主張對輸出內容的權利 (來源: NVIDIA Nemotron Open Model License, 2025-12-15 版) |
 | Mistral AI Research License | Mistral-Large-Instruct-2411 | 使用範圍限於 Research Purposes, 即個人, 科學或學術研究, 且為非營利, 非商業; 條文明列公司員工或外包人員的日常工作使用, 任何以營收為目的的活動 (含測試與 PoC), 以及商業單位提供的託管服務, 都不屬於研究用途; 其他用途須另向 Mistral AI 申請授權, 由其自行決定是否核發 (來源: Mistral AI Research License MRL-0.1 第 3.2 條與定義) |
 | 其他自訂授權 | TAIDE | 條文各不相同, 須逐份閱讀; TAIDE 模型頁面標示「(Gemma 版次)-TAIDE 模型授權條款」, 須登入並同意條款才能下載 (來源: TAIDE Hugging Face 模型頁) |
 
@@ -52,7 +53,7 @@ Gemma 是授權會變動的例子. Google 開源部落格說明 Gemma 4 是 Gemm
 
 下載模型和下載軟體一樣, 要先看來源. 同一款軟體可以從官網下載, 也可能出現在來路不明的下載站; 模型也是如此, 而且模型檔在某些格式下, 載入時就會執行程式.
 
-同一個模型可能有官方發布, 社群轉檔, 社群量化等多個版本. 信任程度由高到低大致是: 官方組織帳號發布的原始權重, 知名發布者的轉檔或量化版本, 來源不明的上傳 (信心: 中高, 屬一般經驗).
+同一個模型可能有官方發布, 社群轉檔, 社群量化等多個版本. 信任程度由高到低大致是: 官方組織帳號發布的原始權重, 知名發布者的轉檔或量化版本, 來源不明的上傳 (信心: 中, 屬一般經驗).
 
 判斷來源時可以看三件事:
 
@@ -70,20 +71,20 @@ Gemma 是授權會變動的例子. Google 開源部落格說明 Gemma 4 是 Gemm
 
 OSI (Open Source Initiative) 的開源定義要求授權不得歧視任何人或團體, 也不得限制在特定領域使用; 授權也不得限制任何人販售或贈送軟體 (來源: The Open Source Definition 第 1, 5, 6 條). 只要授權對使用方式或對象設限, 即使原始碼公開, 也不屬於 OSI 開源. 本手冊對這類專案稱「原始碼公開」(source-available), 不稱「開源」.
 
-判斷方式: 讀授權檔, 找有沒有「僅限內部使用」, 「不得營運多租戶服務」, 「超過多少使用者須保留品牌」這類使用限制. 有任一項, 就歸為原始碼公開 (信心: 中高).
+判斷方式: 讀授權檔, 找有沒有「僅限內部使用」, 「不得營運多租戶服務」, 「超過多少使用者須保留品牌」這類使用限制. 有任一項, 就歸為原始碼公開 (信心: 中).
 
 | 元件 | 角色 | 授權性質 | 主要限制 |
 |---|---|---|---|
 | n8n | 流程自動化平台, 串接排程, API 與模型 (見 M9) | 原始碼公開 (Sustainable Use License; 檔名含 `.ee.` 的原始碼另屬 n8n Enterprise License) | 只能用於自己的內部業務, 非商業或個人用途; 只能以免費且非商業的方式散布. 官方自述「開源授權不能限制使用方式, 因此我們不稱自己為開源」 |
-| Open WebUI | 使用者登入後與模型對話的網頁介面 (見 M2) | 原始碼公開 (BSD-3 加品牌條款, v0.6.6 起) | 任一 30 天內使用者超過 50 人時, 不得修改, 移除或遮蔽「Open WebUI」品牌; 例外為取得企業授權或書面許可. 官方說明此授權未經 OSI 認可 |
+| Open WebUI | 使用者登入後與模型對話的網頁介面 (見 M2) | 原始碼公開 (BSD-3 加品牌條款, v0.6.6 起) | 任一 30 天內使用者超過 50 人時, 不得修改, 移除或遮蔽「Open WebUI」品牌; 例外為取得允許變更品牌的企業授權, 或以「實質貢獻者」身分取得事先書面許可 (官方說明僅限特例, 逐案決定). 官方說明此授權未經 OSI 認可 |
 | Dify | 以視覺化流程組合模型, 知識庫與工具的 AI 應用開發平台 | 原始碼公開 (以 Apache 2.0 修改, 授權名稱為 Dify Open Source License) | 未經書面授權不得以原始碼營運多租戶環境 (一個 workspace 為一個租戶); 使用前端時不得移除或修改主控台與應用程式中的 LOGO 與著作權資訊 |
 | LM Studio | 個人電腦上的桌面應用程式, 可下載模型並在本機對話 | 閉源 (專有軟體) | 軟體屬公司所有, 授權不是出售, 禁止反向工程; 2025 年 7 月起在家與工作使用都免費, 不必填表申請; 部分功能可能收費 |
 
 來源: n8n 文件 Sustainable Use License 與 Community license; Open WebUI 文件 License; Dify 儲存庫 LICENSE; LM Studio 部落格 (2025-07-08) 與 App Terms of Use (2026-08-23 版).
 
-Dify 的授權名稱含「Open Source」, 但條文對使用方式設限, 依 OSI 定義屬原始碼公開 (推論, 信心: 中高). 這也說明判讀時要看條文, 不看名稱.
+Dify 的授權名稱含「Open Source」, 但條文對使用方式設限, 依 OSI 定義屬原始碼公開 (推論, 信心: 中). 這也說明判讀時要看條文, 不看名稱.
 
-n8n 官方 FAQ 對「內部業務」的界線有具體說明: 顧問在自己的 n8n 執行個體上替客戶建立並執行工作流程, 可以收費, 客戶取得的是結果而不是 n8n 的存取權; 讓客戶在自己架設的 n8n 上自行建立工作流程, 則不在社群授權範圍內 (來源: n8n 文件 License FAQ). 本手冊的 M9 只把 n8n 用於內部自動化, 不受此限制 (信心: 中高).
+n8n 官方 FAQ 對「內部業務」的界線有具體說明: 顧問在自己的 n8n 執行個體上替客戶建立並執行工作流程, 可以收費, 客戶取得的是結果而不是 n8n 的存取權; 讓客戶在自己架設的 n8n 上自行建立工作流程, 則不在社群授權範圍內 (來源: n8n 文件 License FAQ). 本手冊的 M9 只把 n8n 用於內部自動化, 不受此限制 (信心: 中).
 
 **對應架構圖**: 入口區的 Open WebUI 與自動化區的 n8n 屬原始碼公開; 其他元件的歸類見[授權速查](/ref/licenses).
 
@@ -138,6 +139,7 @@ AGPL 值得單獨留意. AGPL v3 第 13 條要求: 修改過的程式若讓使�
 - [Gemma Terms of Use](https://ai.google.dev/gemma/terms)
 - [Google Open Source Blog: Gemma 4: Expanding the Gemmaverse with Apache 2.0](https://opensource.googleblog.com/2026/03/gemma-4-expanding-the-gemmaverse-with-apache-20.html)
 - [NVIDIA Open Model License Agreement](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/)
+- [NVIDIA Nemotron Open Model License (2025-12-15 版)](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-nemotron-open-model-license/)
 - [Mistral AI Research License (MRL-0.1)](https://mistral.ai/static/licenses/MRL-0.1.md)
 - [Hugging Face: mistralai/Mistral-7B-Instruct-v0.3](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3)
 - [Hugging Face: mistralai/Mistral-Large-Instruct-2411](https://huggingface.co/mistralai/Mistral-Large-Instruct-2411)

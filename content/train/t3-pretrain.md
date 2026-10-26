@@ -4,7 +4,7 @@
 - 等級: ◇ 選讀
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-27
-- 待查證: Llama 3.1 的 token 數與 GPU 時數取自 Hugging Face 上轉載的模型卡 (二手來源), Meta 官方頁面本輪未擷取; OLMo 系列各版本的 token 數本輪未查到官方數字; nanoGPT 的指令未實機驗證; 「多數讀者不需要預訓練」為整理者判斷; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 待查證: OLMo 系列各版本的 token 數本輪未查到官方數字; nanoGPT 的指令未實機驗證; 「多數讀者不需要預訓練」為整理者判斷; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 從零預訓練一個實用的語言模型, 需要數兆個 token 的資料與數百萬 GPU 小時的運算, 超出個人與一般企業的能力範圍. 以公開數字為例, Llama 3.1 用了約 15 兆個 token 預訓練, 其中 8B 模型就用了 146 萬個 H100 GPU 小時. 讀者若要讓模型學會自己的格式與規則, 應先用檢索 ([M4](/build/m4-retrieval)) 或微調 ([T2](/train/t2-finetune)). 預訓練只適合當作學習題材, 用教學用的小型專案了解模型如何訓練.
@@ -27,13 +27,13 @@
 
 | 模型 | 預訓練資料量 | 運算量 | 來源 |
 |---|---|---|---|
-| Llama 3.1 (8B, 70B, 405B) | 約 15 兆個 token, 資料截至 2023 年 12 月 | 三種大小合計 3,930 萬 H100-80GB GPU 小時; 8B 為 146 萬, 70B 為 700 萬, 405B 為 3,084 萬 | Llama 3.1 模型卡 (Hugging Face 轉載) |
+| Llama 3.1 (8B, 70B, 405B) | 約 15 兆個 token, 資料截至 2023 年 12 月 | 三種大小合計 3,930 萬 H100-80GB GPU 小時; 8B 為 146 萬, 70B 為 700 萬, 405B 為 3,084 萬 | Llama 3.1 模型卡 (Meta 官方 llama-models 儲存庫) |
 | Gemma 3 | 27B 為 14 兆, 12B 為 12 兆, 4B 為 4 兆, 1B 為 2 兆, 270M 為 6 兆個 token | 以 TPUv4p, TPUv5p 與 TPUv5e 訓練, 未揭露時數 | Gemma 3 模型卡 |
 | GPT-2 (124M) 的教學重現 | OpenWebText 語料 | 單一 8 張 A100 40GB 的節點約 4 天 | nanoGPT README |
 
 以 Llama 3.1 8B 為例, 146 萬 GPU 小時若只用 8 張同級 GPU, 約需 182,500 小時, 也就是約 21 年 (計算值: 1,460,000 ÷ 8 ÷ 24 ÷ 365). 相對地, [T1.3](/train/t1-decide) 引用的 Unsloth 文件標示, 用 QLoRA 微調同一等級的 8B 模型, 最低只需約 6GB 的顯示記憶體. 兩者的差距, 是本章建議多數讀者不要預訓練的主要理由 (推論, 信心: 高).
 
-GPT-2 124M 只有 1.24 億個參數, 約是 8B 模型的六十四分之一, 即使如此, 重現一次仍需 8 張資料中心級 GPU 跑約 4 天 (來源: nanoGPT README). 這類小模型適合學習, 不適合實際工作 (推論, 信心: 中高).
+GPT-2 124M 只有 1.24 億個參數, 約是 8B 模型的六十四分之一, 即使如此, 重現一次仍需 8 張資料中心級 GPU 跑約 4 天 (來源: nanoGPT README). 這類小模型適合學習, 不適合實際工作 (推論, 信心: 中).
 
 ## T3.2 資料蒐集, 授權與去重
 
@@ -68,7 +68,7 @@ README 同時說明, 這個儲存庫已經很舊並停止維護, 只是保留供
 
 ## 參考來源
 
-- **Llama 3.1 的預訓練 token 數, 資料截止日, GPU 時數**: [Hugging Face: unsloth/Llama-3.1-8B (轉載 Meta 的 Llama 3.1 模型卡, 二手來源)](https://huggingface.co/unsloth/Llama-3.1-8B)
+- **Llama 3.1 的預訓練 token 數, 資料截止日, GPU 時數**: [Llama 3.1 模型卡 (meta-llama/llama-models)](https://github.com/meta-llama/llama-models/blob/main/models/llama3_1/MODEL_CARD.md)
 - **Gemma 3 各尺寸的訓練 token 數, 訓練硬體, 資料過濾**: [Hugging Face 模型卡: google/gemma-3-270m](https://huggingface.co/google/gemma-3-270m)
 - **nanoGPT 的自述, 授權, GPT-2 重現的硬體與時間, 莎士比亞範例, 停止維護的說明**: [nanoGPT GitHub 儲存庫](https://github.com/karpathy/nanoGPT)
 - **FineWeb2 的語言數, 授權, 去重**: [FineWeb2 GitHub 儲存庫](https://github.com/huggingface/fineweb-2), [Hugging Face 資料集: HuggingFaceFW/fineweb-2](https://huggingface.co/datasets/HuggingFaceFW/fineweb-2)

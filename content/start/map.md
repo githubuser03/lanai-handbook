@@ -21,18 +21,18 @@
 
 下表把圖上的方塊對應到第二部的模組 (M0 至 M9). 「先讀的底層知識」指第一部建議先讀的章節 (K1 至 K6); 等級欄的 ● 是必要, ○ 是依情境, ◇ 是進階或選讀.
 
-| 圖上的方塊 | 組裝模組 | 先讀的底層知識 | 等級 |
-|---|---|---|---|
-| Proxmox VE, VM 分區, 備份伺服器 | [M0 基礎環境](/build/m0-foundation) | K6 | ● |
-| vLLM (或 Ollama, llama.cpp) | [M1 推論伺服器](/build/m1-inference) | K1, K2, K3 | ● |
-| Open WebUI, Nginx 或 Caddy | [M2 使用者介面與反向代理](/build/m2-ui-proxy) | K6 | ● |
-| ModelAudit, NFS 模型存放區, Hugging Face | [M3 模型入庫與存放](/build/m3-model-intake) | K1, K4 | ○ |
-| Docling, Qdrant, 嵌入模型 | [M4 檢索 (RAG)](/build/m4-retrieval) | K1 | ○ |
-| LiteLLM, Keycloak, 雲端 API | [M5 模型閘道與身分驗證](/build/m5-gateway-identity) | K6 | ○ |
-| Langfuse, OTel, Prometheus, 既有 SIEM | [M6 可觀測, 稽核與評估](/build/m6-observability) | K5 | ○ |
-| MCP gateway, MCP 伺服器, Docker + gVisor | [M7 工具與沙箱](/build/m7-tools-sandbox) | K5, K6 | ◇ |
-| LangGraph, OPA, 隔離模型 | [M8 代理與治理](/build/m8-agent-governance) | K5, K6 | ◇ |
-| n8n | [M9 流程自動化](/build/m9-automation) | K5 | ○ |
+| 圖上的方塊 | 負責什麼 | 組裝模組 | 先讀的底層知識 | 等級 |
+|---|---|---|---|---|
+| Proxmox VE, VM 分區, 備份伺服器 | Proxmox VE 在一台實體主機上切出多台虛擬機 (VM), 依用途分區; 備份伺服器 (Proxmox Backup Server) 存放 VM 備份 | [M0 基礎環境](/build/m0-foundation) | K6 | ● |
+| vLLM (或 Ollama, llama.cpp) | 推論伺服器: 載入模型並提供 API 讓其他程式呼叫 | [M1 推論伺服器](/build/m1-inference) | K1, K2, K3 | ● |
+| Open WebUI, Nginx 或 Caddy | Open WebUI 是瀏覽器裡的對話介面; Nginx 或 Caddy 是反向代理, 負責 HTTPS 並把請求轉給介面 | [M2 使用者介面與反向代理](/build/m2-ui-proxy) | K6 | ● |
+| ModelAudit, NFS 模型存放區, Hugging Face | Hugging Face 是模型下載平台; ModelAudit 在入庫前掃描模型檔; NFS 存放區是以網路共享的模型資料夾 | [M3 模型入庫與存放](/build/m3-model-intake) | K1, K4 | ○ |
+| Docling, Qdrant, 嵌入模型 | Docling 把 PDF 等文件轉成文字; 嵌入模型把文字轉成向量; Qdrant 是存放並比對向量的資料庫 | [M4 檢索 (RAG)](/build/m4-retrieval) | K1 | ○ |
+| LiteLLM, Keycloak, 雲端 API | LiteLLM 是集中管理金鑰, 配額與路由的模型閘道; Keycloak 提供統一登入 (SSO); 雲端 API 是選用的外部模型 | [M5 模型閘道與身分驗證](/build/m5-gateway-identity) | K6 | ○ |
+| Langfuse, OTel, Prometheus, 既有 SIEM | Langfuse 記錄每次模型呼叫; OTel 是傳送紀錄的開放標準; Prometheus 收集數值指標; SIEM 是既有的資安事件監控平台 | [M6 可觀測, 稽核與評估](/build/m6-observability) | K5 | ○ |
+| MCP gateway, MCP 伺服器, Docker + gVisor | MCP 伺服器提供個別工具; MCP gateway 集中管控工具呼叫; Docker 加 gVisor 是隔離執行程式碼的沙箱 | [M7 工具與沙箱](/build/m7-tools-sandbox) | K5, K6 | ◇ |
+| LangGraph, OPA, 隔離模型 | LangGraph 是撰寫代理流程的程式庫; OPA 是依政策判斷動作是否允許的引擎; 隔離模型只處理不可信的外部內容 | [M8 代理與治理](/build/m8-agent-governance) | K5, K6 | ◇ |
+| n8n | 串接排程, 系統與 API 的流程自動化平台 | [M9 流程自動化](/build/m9-automation) | K5 | ○ |
 
 ## 三個里程碑
 
@@ -41,7 +41,7 @@
 | 里程碑 | 完成的模組 | 適合 | 對應組合 |
 |---|---|---|---|
 | 1. 能對話 | M0 至 M2 | 單人, 單機 | 最小安全組合 |
-| 2. 能查文件, 能多人用 | 再加 M3 至 M6 | 家庭或 2 至 10 人小團隊 | 標準組合 |
+| 2. 能查文件, 能多人用 | 再加 M3, M4, M6; M5 (含 Keycloak) 符合 M5.1 節的條件才加 | 家庭或 2 至 10 人小團隊 | 標準組合 |
 | 3. 能動手做事 | 再加 M7 至 M9 | 多人共用, 有人每週維運 | 進階組合 (整張圖) |
 
 每個里程碑都是可以獨立使用的系統, 不必等全部組完. 各里程碑的檢核表見[組裝總覽](/build/overview). 用這些模組能解決哪些問題, 見[應用範例](/examples/).
@@ -56,22 +56,22 @@
 | 使用者介面層 | 必要 | Open WebUI, LibreChat, AnythingLLM 擇一 (信心: 高) |
 | 身分與存取 / 網路層 | 必要 | 最小做法是只綁 localhost 或只開放內網, 不必上 SSO (信心: 高) |
 | 備份與更新層 | 必要 | 地端最常遺漏的必要層 (信心: 高) |
-| 機密管理層 | 必要, 最低限度 | `.env` 檔加權限 600 即可; Vault 或 OpenBao 對多數讀者過度 (信心: 中高, 屬推論) |
+| 機密管理層 | 必要, 最低限度 | `.env` 檔加權限 600 即可; Vault 或 OpenBao 對多數讀者過度 (信心: 中, 屬推論) |
 | 檢索層 (RAG) | 依情境 | 有「問自己文件」的需求才加 (信心: 高) |
-| 模型切換層 | 依情境 | 需要多個模型輪流佔用顯示記憶體時才加 llama-swap (信心: 中高) |
+| 模型切換層 | 依情境 | 需要多個模型輪流佔用顯示記憶體時才加 llama-swap (信心: 中) |
 | 閘道與路由層 | 依情境, 多人 | 符合 M5.1 節三項條件中的任兩項 (多人個別金鑰與配額, 混用雲端與地端, 多應用統一入口) 才加 (信心: 高) |
-| 可觀測性與評估層 | 評估必要, 追蹤依情境 | 一份回歸測試集是必要的; Langfuse 這類追蹤平台依情境 (信心: 中高) |
-| 編排與代理層 | 依情境 | 多數讀者用固定工作流程即可 (信心: 中高) |
-| 工具協定層 (MCP) | 依情境, 進階 | 需要跨客戶端重用工具時才加 (信心: 中高) |
+| 可觀測性與評估層 | 評估必要, 追蹤依情境 | 一份回歸測試集是必要的; Langfuse 這類追蹤平台依情境 (信心: 中) |
+| 編排與代理層 | 依情境 | 多數讀者用固定工作流程即可 (信心: 中) |
+| 工具協定層 (MCP) | 依情境, 進階 | 需要跨客戶端重用工具時才加 (信心: 中) |
 | 沙箱層 | 依情境 | 只要讓模型執行程式碼就變成必要 (信心: 高) |
 | 護欄層 | 不建議單獨加 | 地端單人情境成本效益低, 權限設計比護欄模型更有效 (信心: 中) |
-| Kubernetes | 不建議 | 單機無法發揮排程與高可用的價值 (信心: 中高, 屬推論) |
+| Kubernetes | 不建議 | 單機無法發揮排程與高可用的價值 (信心: 中, 屬推論) |
 
 資料來源: 研究 2《地端 AI 完整架構權衡研究》(2026-10-26), 分級與信心水準為該研究的整理判斷. 研究 2 為內部研究紀錄, 非公開來源; 可由公開資料佐證的部分見頁尾「參考來源」.
 
 ## 「少而精」的判斷原則
 
-2026 年的主要風險不在模型, 而在推論伺服器之上的中介層, 也就是介於使用者與模型之間的各種服務. 閘道 (LiteLLM), 低程式碼平台 (用拖拉方塊組流程, 只需少量程式的工具, 例如 Langflow, n8n, Flowise) 與 MCP 實作都出現過已有實際利用紀錄的漏洞 (信心: 高, 依據為 CISA KEV, VulnCheck 與各廠商通報; 逐項來源見頁尾「參考來源」, 細節見 M5, M7, M9). 這類服務的共同點是同時保存金鑰, 又能執行程式碼, 因此一旦入侵成功, 影響範圍大於單一應用程式.
+2026 年的主要風險不在模型, 而在推論伺服器之上的中介層, 也就是介於使用者與模型之間的各種服務 (推論, 信心: 中). 閘道 (LiteLLM), 低程式碼平台 (用拖拉方塊組流程, 只需少量程式的工具, 例如 Langflow, n8n, Flowise) 與 MCP 實作都出現過已有實際利用紀錄的漏洞 (信心: 高, 依據為 CISA KEV, VulnCheck 與各廠商通報; 逐項來源見頁尾「參考來源」, 細節見 M5, M7, M9). 這類服務的共同點是同時保存金鑰, 又能執行程式碼, 因此一旦入侵成功, 影響範圍大於單一應用程式.
 
 本手冊據此採用三條取捨原則:
 
