@@ -303,15 +303,15 @@ model_list:
       model: <雲端供應商的模型名稱>
       api_key: os.environ/CLOUD_API_KEY
 
-router_settings:
-  # local-chat 重試用盡仍失敗時, 改送 cloud-chat
-  fallbacks: [{"local-chat": ["cloud-chat"]}]
-
 litellm_settings:
   num_retries: 3
   request_timeout: 10
+  # local-chat 重試用盡仍失敗時, 改送 cloud-chat
+  fallbacks: [{"local-chat": ["cloud-chat"]}]
   cooldown_time: 30
 ```
+
+`fallbacks`, `num_retries`, `request_timeout` 與 `cooldown_time` 都放在 `litellm_settings` 之下, 與 LiteLLM 文件 Reliability 的設定範例一致.
 
 ### 路由與備援的行為
 

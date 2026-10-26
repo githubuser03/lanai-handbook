@@ -300,7 +300,7 @@ agent_tools := {
 
 agent_ok if input.tool in agent_tools[input.agent_id]
 
-# 原本的 base_ok 增加一個條件
+# 取代 M8.2 節原本的 base_ok; 同名規則寫兩次會變成「任一成立即可」, 白名單就失效
 base_ok if {
 	tiers[input.tool]
 	agent_ok
