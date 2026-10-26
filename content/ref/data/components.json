@@ -377,7 +377,7 @@
     {
       "component": "MCP Inspector",
       "cve": "CVE-2025-49596",
-      "summary": "CVSS v4.0 9.4, 0.14.1 以前缺乏驗證, 可啟動 MCP 指令; 0.14.1 修補. 見[第 13.3 節](/build/m7-tools-sandbox)",
+      "summary": "CVSS v4.0 9.4, 0.14.1 以前缺乏驗證, 可啟動 MCP 指令; 0.14.1 修補. 見 [M7.1 節](/build/m7-tools-sandbox)",
       "source_name": "GitHub Security Advisory GHSA-7f8r-222p-6f5g, NVD",
       "source_url": "https://github.com/modelcontextprotocol/inspector/security/advisories/GHSA-7f8r-222p-6f5g",
       "source_type": "primary",
@@ -388,7 +388,7 @@
     {
       "component": "mcp-remote",
       "cve": "CVE-2025-6514",
-      "summary": "CVSS v3.1 9.6 (JFrog 為 CNA), 連線至不受信任的 MCP 伺服器時, 授權端點回應中的網址可造成作業系統命令注入. 見[第 13.3 節](/build/m7-tools-sandbox)",
+      "summary": "CVSS v3.1 9.6 (JFrog 為 CNA), 連線至不受信任的 MCP 伺服器時, 授權端點回應中的網址可造成作業系統命令注入. 見 [M7.1 節](/build/m7-tools-sandbox)",
       "source_name": "NVD (CNA: JFrog)",
       "source_url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2025-6514",
       "source_type": "primary",
