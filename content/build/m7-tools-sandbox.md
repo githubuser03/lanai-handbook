@@ -65,7 +65,7 @@ ToolHive 採 Apache 2.0 授權, 提供命令列工具, 桌面版, Kubernetes ope
 | 傳輸方式 | `--transport streamable-http`; 預設是 stdio | thv run 參考, Run MCP servers 指南 |
 | 監聽位址 | `--host` 預設 `127.0.0.1`; 要讓閘道區連入, 才改成工具區的內網位址, 並以 `--proxy-port` 固定連接埠 | thv run 參考 |
 | 身分驗證 | `--oidc-issuer` 設定即啟用權杖驗證; 加 `--oidc-audience` 限定只接受發給這個伺服器的權杖. Keycloak 可作為 OIDC 提供者 (見 M5.4 節). `--oidc-insecure-allow-http` 只限測試 | Authentication 指南, thv run 參考 |
-| 授權 | `--authz-config` 指定 Cedar 政策檔; 沒有政策允許的請求一律拒絕, deny 規則優先於 permit, 被拒絕的請求回應 403 | Authentication 指南, Cedar 概念頁 |
+| 授權 | `--authz-config` 指定 Cedar 政策檔; 沒有政策允許的請求一律拒絕, deny 規則優先於 permit, 拒絕時回應 403 | Authentication 指南, Cedar 概念頁 |
 | 工具白名單 | Cedar 政策只 permit 指定工具; `tools/list` 的回應會依政策過濾, 使用者只看得到能呼叫的工具. 另可用 `--tools` 直接過濾伺服器提供的工具 | Cedar 概念頁, thv run 參考 |
 | 網路隔離 | 預設啟用 (`--isolate-network`), 但內建的 `network` 設定檔允許所有對外 HTTP 與 HTTPS; 須以 `--permission-profile` 指定只允許特定主機與連接埠的設定檔. 隔離只涵蓋 HTTP 與 HTTPS | Network isolation 指南 |
 | 稽核紀錄 | `--enable-audit` 以預設設定啟用; `--audit-config` 指定設定檔 | thv run 參考 |
@@ -146,7 +146,7 @@ LiteLLM 只負責轉送與授權, 不會把 MCP 伺服器放進隔離容器; MCP
 
 ## M7.3 架設程式碼沙箱 (Docker + gVisor)
 
-讓模型執行程式碼時, 程式碼一律在 VM 工具區內, 以 gVisor 的 `runsc` 執行環境啟動一次性容器. gVisor 提供系統呼叫層的隔離, 在 K6.3 節的沙箱分級中屬於進階層級.
+讓模型執行程式碼時, 程式碼一律在 VM 工具區內, 以 gVisor 的 `runsc` 執行環境啟動用完即刪的容器. gVisor 提供系統呼叫層的隔離, 在 K6.3 節的沙箱分級中屬於進階層級.
 
 ### 安裝 gVisor
 
@@ -280,13 +280,13 @@ docker run -d \
 
 ## M7.5 驗收測試
 
-下列測試全部通過後, 才讓介面與代理使用工具 (測試項目為整理者建議, 未實機驗證).
+下列測試全部通過後, 才讓介面與代理使用工具 (測試清單為整理者建議, 未實機驗證).
 
 **工具閘道**
 
 - [ ] 以未授權的身分呼叫白名單外的工具, 得到拒絕 (ToolHive 為 403), 並在稽核紀錄中查得到這次拒絕.
 - [ ] 以一般使用者身分執行 `tools/list`, 只看到 Cedar 政策允許的工具.
-- [ ] 不帶權杖或帶過期權杖的請求被拒絕.
+- [ ] 不帶權杖或帶過期權杖的請求, 閘道一律拒絕.
 - [ ] 以 LiteLLM 兼任時, 沒有設定 `object_permission.mcp_servers` 的金鑰無法使用任何 MCP 伺服器.
 - [ ] MCP 伺服器容器嘗試連線網路設定檔以外的主機, 連線失敗.
 - [ ] 每次工具呼叫都能在稽核區 (OTel Collector 或 SIEM) 查到呼叫者, 工具名稱與時間.
@@ -296,8 +296,8 @@ docker run -d \
 - [ ] 沙箱內執行對外連線 (例如 HTTP 請求或 DNS 查詢), 連線失敗.
 - [ ] 寫入 `/` 或 `/work` 失敗; 寫入 `/tmp` 成功, 容器結束後檔案消失.
 - [ ] 程式以 root 身分檢查 (例如 `id`), 顯示非 root.
-- [ ] 無窮迴圈在時限到時被終止, 容器被刪除.
-- [ ] 大量 fork 被 `--pids-limit` 擋下; 大量配置記憶體被 `--memory` 擋下, 主機不受影響.
+- [ ] 無窮迴圈到達時限即終止, 容器隨即刪除.
+- [ ] `--pids-limit` 能擋下大量 fork, `--memory` 能擋下大量配置記憶體, 主機不受影響.
 - [ ] `docker ps -a` 在執行結束後看不到殘留的沙箱容器.
 
 **工具描述變更**
