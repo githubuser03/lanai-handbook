@@ -7,7 +7,7 @@
 - 待查證: 本章所有指令依官方文件整理, 尚未在實機執行; llama.cpp 與 LM Studio 的操作步驟本輪未核對, 僅列定位; 標示「推論」的段落未有官方文件依據
 :::
 
-**結論**: 初階讀者以 Ollama 完成第一次對話最快: 安裝, 執行一行指令, 即可開始. 完成後再依[第 9 章](/deploy/09-architectures)加上介面. 本章也整理上線前常被略過的五件事: GPU 驅動確認, 模型下載驗證, 離線安裝, 日誌, 以及參數調校.
+**結論**: 初階讀者以 Ollama 完成第一次對話最快: 安裝, 執行一行指令, 即可開始. 完成後再依[第 9 章](/deploy/09-architectures)加上介面. 本章也整理上線前常遺漏的五項工作: GPU 驅動確認, 模型下載驗證, 離線安裝, 日誌, 以及參數調校.
 
 ## 8.1 Ollama, llama.cpp 與 LM Studio 的選擇
 
@@ -69,7 +69,7 @@ curl http://localhost:11434/api/generate -d '{"model": "<模型名稱>", "prompt
 
 ## 8.4 GPU 驅動確認
 
-沒有確認驅動, 模型會悄悄退回 CPU 執行, 速度差距很大, 又不容易察覺 (信心: 高, 屬一般經驗).
+未確認驅動時, 模型可能自動改用 CPU 執行, 速度差距很大, 且不易察覺 (信心: 高, 屬一般經驗).
 
 | 平台 | 條件 | 確認方式 |
 |---|---|---|
@@ -82,7 +82,7 @@ curl http://localhost:11434/api/generate -d '{"model": "<模型名稱>", "prompt
 
 **排除方式** (來源: Ollama 文件 Troubleshooting 與 GPU support):
 
-1. 用容器執行時, 先測試 `docker run --gpus all ubuntu nvidia-smi`. 這個測試失敗, Ollama 也看不到 NVIDIA 顯示卡.
+1. 用容器執行時, 先測試 `docker run --gpus all ubuntu nvidia-smi`. 測試失敗時, Ollama 也看不到 NVIDIA 顯示卡.
 2. Linux 在休眠喚醒後找不到 GPU 時, 官方提供的暫時解法是重新載入驅動模組: `sudo rmmod nvidia_uvm && sudo modprobe nvidia_uvm`.
 3. 設定 `OLLAMA_DEBUG=1` 後, GPU 偵測期間會輸出額外資訊.
 4. 多張顯示卡時, 以 `CUDA_VISIBLE_DEVICES` 指定使用的卡; 官方建議用 UUID 而非數字編號, UUID 可用 `nvidia-smi -L` 查詢.
@@ -155,7 +155,7 @@ sudo usermod -a -G ollama $(whoami)
 
 ## 8.7 日誌
 
-出問題時, 日誌是第一個要看的地方. 位置如下 (來源: Ollama 文件 Troubleshooting):
+發生問題時, 應先查看日誌. 位置如下 (來源: Ollama 文件 Troubleshooting):
 
 | 環境 | 查看方式 |
 |---|---|
@@ -167,7 +167,7 @@ sudo usermod -a -G ollama $(whoami)
 
 **維運建議** (信心: 中, 屬一般經驗):
 
-- 記錄日誌的保留期間與磁碟占用, 避免日誌塞滿磁碟.
+- 記錄日誌的保留期間與磁碟占用, 避免日誌占滿磁碟空間.
 - 先確認日誌是否含有對話內容, 再決定存取權限與保留天數 (本輪未驗證 Ollama 與介面的日誌內容).
 - 每週檢查時順便掃一次錯誤訊息, 特別是 GPU 偵測失敗與記憶體不足.
 - 需要更多資訊時才開啟 `OLLAMA_DEBUG=1`, 事後關閉.
@@ -205,7 +205,7 @@ macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對
 |---|---|---|
 | 載入失敗或速度極慢 | 記憶體不足, 模型退回 CPU | 換較小的模型或量化, 或降低上下文 (第 5 章); 確認 GPU (8.4 節) |
 | 下載中斷 | 網路不穩 | 重新執行 `ollama pull`; Hugging Face 中斷留下的 `.incomplete` 檔可用 `hf cache prune` 清除 |
-| 連接埠被占用 | 11434 已有其他程式 | Linux 可用 `ss -ltnp` 查詢占用的程式 (通用指令, 未驗證) |
+| 連接埠衝突 | 11434 已有其他程式占用 | Linux 可用 `ss -ltnp` 查詢占用的程式 (通用指令, 未驗證) |
 | 回應 503 | 排隊已滿 | 檢視 `OLLAMA_MAX_QUEUE` 與使用人數 |
 | 模型目錄權限錯誤 | `ollama` 使用者無權限 | `sudo chown -R ollama:ollama <directory>` |
 | 休眠後改用 CPU | NVIDIA 驅動模組狀態異常 | 見 8.4 節 |

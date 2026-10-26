@@ -33,7 +33,7 @@ MCP (Model Context Protocol) 最新規格是 2026-07-28 版, 核心改為無狀�
 | 自己撰寫的單一應用, 工具不超過 3 至 5 個, 只有一個客戶端 | 直接用函式呼叫 |
 | 同一組工具要給多個客戶端共用 (Open WebUI, IDE, 桌面助理) | 使用 MCP |
 | 要使用信譽良好的現成伺服器 | 使用 MCP, 並依 13.3 審核 |
-| 低階硬體的初階讀者 | 不建議作為入門步驟 |
+| 低階硬體的初階讀者 | 不建議列為入門步驟 |
 
 不建議初階讀者的理由有三: 小模型多輪工具呼叫可靠度低; 每個 MCP 伺服器都是以使用者權限執行的程式; 一般函式呼叫就能完成同樣的事 (信心: 中高). 手冊範例須標註所依據的 MCP 規格版本.
 
@@ -71,14 +71,14 @@ MCP (Model Context Protocol) 最新規格是 2026-07-28 版, 核心改為無狀�
 
 ### 低程式碼平台
 
-Langflow, n8n, Flowise 這類平台設計上就會執行使用者提供的程式碼, 預設以高權限執行, 又保存所有憑證, 因此 2026 年已知被利用的漏洞最多.
+Langflow, n8n, Flowise 這類平台設計上就會執行使用者提供的程式碼, 預設以高權限執行, 又保存所有憑證, 因此 2026 年已有實際利用紀錄的漏洞最多.
 
 | 平台 | 授權 | 2026 年重大紀錄 (來源) |
 |---|---|---|
-| Langflow | MIT | CISA KEV 多筆 (如 CVE-2026-33017, Sysdig 觀測到公告後 20 小時內即被利用); VulnCheck 統計 2026 年已有第 12 個被利用的 Langflow CVE |
+| Langflow | MIT | CISA KEV 多筆 (如 CVE-2026-33017, Sysdig 觀測到公告後 20 小時內即出現利用行為); VulnCheck 統計 2026 年已有第 12 個出現利用紀錄的 Langflow CVE |
 | n8n | Sustainable Use License, 官方文件明言非 OSI 開源 | CVE-2025-68613 (CVSS 9.9) 於 2026-03-11 列入 KEV; CVE-2026-21858 (CVSS 10.0, 未驗證) 於 2026-01-09 列入 VulnCheck KEV |
 | Flowise | Apache 2.0 (企業目錄另計, 未驗證) | CVE-2025-71333 未驗證路徑穿越寫檔導致 RCE, 官方容器以 root 執行 (VulnCheck, 2026-08) |
-| Dify | Dify Open Source License (非 OSI) | 2026 年多為中度漏洞, 未見被利用紀錄 (guard0 TrustVector, 2026-07) |
+| Dify | Dify Open Source License (非 OSI) | 2026 年多為中度漏洞, 未見利用紀錄 (guard0 TrustVector, 2026-07) |
 
 KEV 清單取自彙整站, 資料頁應改連 CISA 原始來源.
 
