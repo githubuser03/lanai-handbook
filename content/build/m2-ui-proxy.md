@@ -232,13 +232,13 @@ rate_limit {
 在內網另一台裝置執行:
 
 ```bash
-# 直接連 Open WebUI 的連接埠, 預期連線被拒或逾時
+# 直接連 Open WebUI 的連接埠, 預期連線遭拒或逾時
 curl -sS -m 5 http://192.168.10.5:3000/
 # 經反向代理, 預期取得頁面 (200 或轉址)
 curl -sS -o /dev/null -w "%{http_code}\n" --cacert root.crt https://ai.example.internal/
 ```
 
-**3. 不在允許網段的裝置應被拒絕**
+**3. 不在允許網段的裝置應遭拒絕**
 
 從允許網段以外的裝置連線 (或暫時把測試裝置移出 `allow` 清單). 預期 Nginx 回應 403, Caddy 直接中斷連線.
 

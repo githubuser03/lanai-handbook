@@ -204,7 +204,7 @@ JWT_EXPIRES_IN=8h
 1. 在 Keycloak 的 **Identity Providers** 選擇 **Google**, 複製畫面上的 **Redirect URI**. 格式為 `https://sso.example.internal/realms/company/broker/google/endpoint` (二手來源: Keycloak 社群論壇; 以主控台顯示的值為準).
 2. 在 Google Cloud Console 的 APIs & Services 建立 OAuth 同意畫面, 再到 **Credentials** 點 **CREATE CREDENTIALS**, 選 **OAuth Client ID**, 應用程式類型選 **Web application**, 把上一步的網址填入 **Authorized redirect URIs**. Keycloak 官方步驟中, 同意畫面的使用者類型寫為 External; Google Workspace 組織是否改選其他類型, 本輪未查證.
 3. 把 Google 提供的 Client ID 與 Client secret 貼回 Keycloak.
-4. Keycloak 文件說明, 要限制只有 Google Workspace 組織成員可登入時, 在 **Hosted Domain** 欄位填入公司網域. Keycloak 是否會在登入時驗證 Google 回傳的網域, 官方文件沒有寫明; 上線前須在測試環境以非公司帳號實際登入一次, 確認會被拒絕.
+4. Keycloak 文件說明, 要限制只有 Google Workspace 組織成員可登入時, 在 **Hosted Domain** 欄位填入公司網域. Keycloak 是否會在登入時驗證 Google 回傳的網域, 官方文件沒有寫明; 上線前須在測試環境以非公司帳號實際登入一次, 確認登入遭拒.
 
 採用 Google 登入前, 有兩個網路條件要先確認:
 
@@ -287,7 +287,7 @@ done
 vLLM 官方安全文件列出, 即使設定了 `--api-key`, 仍有多個端點不需金鑰, 包括 `/invocations` (與 `/v1` 相同的推論功能), `/pause` 與 `/metrics` (來源: vLLM 文件 Security). 因此真正的防線是網路隔離, 驗收時要從入口區確認完全連不上:
 
 ```bash
-# 在入口區 VM 執行, 預期連線逾時或被拒
+# 在入口區 VM 執行, 預期連線逾時或遭拒
 curl -sS -m 5 http://<推論區主機>:<vLLM 連接埠>/v1/models
 curl -sS -m 5 http://<推論區主機>:<vLLM 連接埠>/health
 # 在閘道區 VM 執行, 預期成功
