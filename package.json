@@ -5,7 +5,10 @@
   "scripts": {
     "docs:dev": "vitepress dev content",
     "docs:build": "vitepress build content",
-    "docs:preview": "vitepress preview content"
+    "docs:preview": "vitepress preview content",
+    "data": "node scripts/gen-data.mjs",
+    "check": "node scripts/check.mjs",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "vitepress": "^1.6.4"

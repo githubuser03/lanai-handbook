@@ -6,6 +6,8 @@
 
 ## 版本表
 
+<!-- data:versions:start -->
+
 | 元件 | 版本 | 日期 | 來源 | 狀態 |
 |---|---|---|---|---|
 | Ollama | v0.40.10 | 2026-10-26 查證 | 研究 1 | 待核對官方 releases |
@@ -28,7 +30,11 @@
 | Ragas | 0.4.3 | 2026-01-13 | 研究 2 | 二手來源稱此後未再發版 |
 | MCP 規格 | 2026-07-28 版 | 2026-07-28 | MCP 官方部落格 | 前一版為 2025-11-25 |
 
+<!-- data:versions:end -->
+
 ## LiteLLM 2026 年 CVE 紀錄
+
+<!-- data:litellm_cves:start -->
 
 | CVE | 類型 | 影響版本 / 修補 | 來源 | 來源性質 |
 |---|---|---|---|---|
@@ -40,9 +46,13 @@
 | CVE-2026-84377 | SSRF, 上游供應商金鑰外洩, CVSS 6.5 | 2026-09-30 公告 | safeguard.sh | 資安廠商部落格 (非第一手), 待以 GHSA 或 NVD 查證 |
 | CVE-2026-114612 | 加密情境重用導致提權為 proxy_admin, CVSS 9.9 | 1.87.0 至 1.104.0-rc.1 | dev.to/cvereports | **二手來源; 本輪查證未找到第一手來源, 暫不採信, 請勿引用, 待以 GHSA 或 NVD 查證** |
 
+<!-- data:litellm_cves:end -->
+
 另據 SOCRadar, 有一個 LiteLLM 漏洞預定於 2026-10-27 公開, 已在保密中的企業版修補.
 
 ## 其他元件的重點 CVE
+
+<!-- data:other_cves:start -->
 
 | 元件 | CVE | 說明 | 來源 |
 |---|---|---|---|
@@ -51,6 +61,8 @@
 | Langflow | CVE-2026-0768 | CVSS 9.8, 未驗證即以 root 執行程式碼, 自 2026-08-29 起觀測到持續利用 | VulnCheck |
 | n8n | CVE-2026-21858 | CVSS 10.0, 未驗證, 1.121.0 修補 | VulnCheck |
 | MCP 相關 | CVE-2025-49596, CVE-2025-6514 等 | 見[第 13.3 節](/apply/13-workflow-agent-mcp) | The Hacker News, JFrog |
+
+<!-- data:other_cves:end -->
 
 Langflow 與 n8n 的完整 KEV 清單取自彙整站 senserva.com, 應改連 CISA 原始來源後再引用.
 

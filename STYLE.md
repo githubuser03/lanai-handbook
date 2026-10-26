@@ -37,3 +37,15 @@
 
 - 外部連結必須來自實際查證過的頁面, 不憑記憶拼湊.
 - 無法確認有效時, 改寫「網站名稱 + 建議搜尋關鍵字」.
+
+## 維護資料頁
+
+版本號, CVE 這類變動快的資料, 統一存在 `content/ref/data/components.json`, 由腳本產生 `content/ref/versions.md` 內的三張表 (標記 `<!-- data:... -->` 之間的內容請勿手改).
+
+- 修改流程: 編輯 `components.json` → `npm run data` 產生表格 → `npm run check` 檢查 → 提交.
+- 欄位: `component`, `version` 或 `cve`, `summary`, `affected`, `date`, `source_name`, `source_url`, `source_type`, `verified_on`, `expires_after_days`, `status`.
+- `source_type`: `primary` 為官方或第一手來源 (專案官方頁面, 官方公告, GHSA, NVD, CISA); `secondary` 為資安廠商, 媒體, 彙整站; `internal` 為手冊整理前的內部研究紀錄.
+- `source_url` 必須來自實際查證過的頁面; 查不到時留空 (`null`), 不憑記憶補.
+- `verified_on` 為最後一次以來源核對的日期; 超過 `expires_after_days` 天視為過期, 須重新核對後更新日期.
+- `npm run check` 會檢查: 欄位是否完整, 資料是否過期, 是否缺 `source_url`, 非第一手來源的比例, 版本頁是否與資料檔一致, 內文是否出現全形標點, 各頁狀態標示是否合規.
+- 提交前檢查: 執行 `npm install` 會自動啟用 `.githooks/pre-commit`; 該檢查中資料過期只警告, 其餘錯誤會擋下提交. 確定要略過時使用 `git commit --no-verify`.

@@ -91,7 +91,7 @@ curl http://localhost:11434/api/generate -d '{"model": "<模型名稱>", "prompt
 
 模型檔是第三方提供的大型二進位資料, 下載後應確認「檔案完整」與「來源可信」兩件事, 兩者不同 (信心: 高).
 
-| 驗證項目 | 做法 |
+| 驗證事項 | 做法 |
 |---|---|
 | 來源可信 | 只從官方組織帳號或知名發布者下載; 確認授權 (見[授權速查](/ref/licenses)); 優先 safetensors 或 GGUF, 避免來源不明的 pickle 檔 |
 | 版本可追溯 | 下載時指定 revision (commit hash), 不使用會變動的 main |

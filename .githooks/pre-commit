@@ -1,0 +1,4 @@
+#!/bin/sh
+# 提交前檢查資料頁與文字規範. 啟用方式: npm install (會自動設定), 或手動 git config core.hooksPath .githooks
+# 檢查失敗時可修正後重新提交; 確定要略過時使用 git commit --no-verify
+node scripts/check.mjs --hook

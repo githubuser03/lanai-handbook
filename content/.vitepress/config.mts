@@ -51,7 +51,7 @@ export default defineConfig({
         ]
       },
       {
-        text: '決策參考 (給評估者)',
+        text: '決策參考',
         items: [
           { text: '一頁決策摘要', link: '/decide/summary' },
           { text: '該不該自架決策樹', link: '/decide/should-self-host' },
