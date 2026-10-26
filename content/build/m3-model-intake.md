@@ -9,7 +9,7 @@
 
 **結論**: 模型檔是推論伺服器會載入並執行的供應鏈輸入. 下載後先檢查, 記錄雜湊值, 再放進唯讀的模型存放區; 推論伺服器只從存放區讀取, 不直接從網路下載. 掃描工具本手冊主推 ModelAudit, 但任何掃描工具都只涵蓋檔案與序列化層, 擋不住權重本身的後門, 所以來源白名單與行為測試仍不可少.
 
-**這一塊在圖上的位置**: 雲端的 Hugging Face 等模型來源, 入庫檢查主機 (ModelScan 等), 以及 NAS 上的 NFS 共享. **前置模組**: M0. **完成後的狀態**: 每個上線的模型都有來源, 版本與雜湊紀錄, 推論伺服器無法改動模型檔.
+**這一塊在圖上的位置**: 雲端的 Hugging Face 等模型來源, 入庫檢查主機 (ModelScan 等掃描模型檔的工具), 以及 NAS 上的 NFS 共享. **前置模組**: M0. **完成後的狀態**: 每個上線的模型都有來源, 版本與雜湊紀錄, 推論伺服器無法改動模型檔.
 
 這一章處理「模型檔從哪裡來, 怎麼確認沒問題, 放在哪裡」. 可以想成餐廳的進貨流程: 食材只向登記過的供應商進貨, 到貨先在收貨區檢查與登記, 合格後才上架; 廚房只能從架上拿, 不能自己改動架上的貨. 只用一兩個知名模型的個人讀者, 照 M1.5 節的下載驗證即可; 模型變多或多人共用時, 才需要本章完整的流程.
 
@@ -36,13 +36,13 @@
 |---|---|---|
 | pickle 格式 (`.bin`, `.pt`, `.pth`, `.pkl` 等) | Python 官方文件指出 pickle 不安全, 可以構造在反序列化時執行任意程式碼的資料 (來源: Python 文件 pickle) | 優先選 safetensors 或 GGUF; 必須用 pickle 時, 入庫前掃描並人工確認 |
 | safetensors | Hugging Face 將它定位為「相對於 pickle, 能安全儲存張量」的格式 (來源: Hugging Face 文件 Safetensors) | 首選格式; 仍要檢查同一倉庫的其他檔案 |
-| GGUF 的對話範本 | GGUF 除了張量, 還包含一組標準化的中繼資料 (來源: Hugging Face 文件 GGUF); 其中 `tokenizer.chat_template` 是 Jinja 範本 (來源: GGUF 規格) | 範本會在推論伺服器上渲染, 入庫時要檢視內容, 並與模型一起鎖定版本 |
-| `trust_remote_code` | Transformers 的 `trust_remote_code` 預設為 False; 設為 True 會在本機執行 Hub 上的程式碼, 官方建議只對信任且讀過程式碼的倉庫開啟 (來源: Transformers 文件 Auto Classes) | 不開啟; 倉庫含 `.py` 檔時列為人工審查事項 |
+| GGUF 的對話範本 | GGUF 除了張量, 還包含一組標準化的中繼資料 (來源: Hugging Face 文件 GGUF); 其中 `tokenizer.chat_template` 是 Jinja 範本 (Jinja 是 Python 常用的文字範本語言; 來源: GGUF 規格) | 範本會在推論伺服器上渲染, 入庫時要檢視內容, 並與模型一起鎖定版本 |
+| `trust_remote_code` | Transformers (Hugging Face 用來載入與執行模型的 Python 程式庫) 的 `trust_remote_code` 預設為 False; 設為 True 會在本機執行 Hub 上的程式碼, 官方建議只對信任且讀過程式碼的倉庫開啟 (來源: Transformers 文件 Auto Classes) | 不開啟; 倉庫含 `.py` 檔時列為人工審查事項 |
 | 權重本身的後門 | 惡意行為藏在權重數值中, 檔案格式完全正常 | 檔案掃描工具無法確認; 靠來源白名單與 M6 的行為測試 (推論, 信心: 中高) |
 
-**對話範本已有實際漏洞**: llama-cpp-python 的 CVE-2024-34359 (GHSA-56xg-wfcc-g829) 中, 套件從 GGUF 中繼資料讀出對話範本, 再以未啟用沙箱的 Jinja2 環境渲染, 精心構造的範本即可遠端執行程式碼. 修補版為 0.2.72 以上 (來源: GitHub Security Advisory GHSA-56xg-wfcc-g829). 這個案例說明「格式安全」不等於「整個檔案安全」: GGUF 不是 pickle, 但其中的範本仍是推論引擎會執行的程式邏輯. 因應方式是使用已修補的推論引擎, 並在入庫時檢視範本內容.
+**對話範本已有實際漏洞**: llama-cpp-python (讓 Python 程式呼叫 llama.cpp 推論引擎的套件) 的 CVE-2024-34359 (GHSA-56xg-wfcc-g829) 中, 套件從 GGUF 中繼資料讀出對話範本, 再以未啟用沙箱的 Jinja2 環境渲染, 精心構造的範本即可遠端執行程式碼. 修補版為 0.2.72 以上 (來源: GitHub Security Advisory GHSA-56xg-wfcc-g829). 這個案例說明「格式安全」不等於「整個檔案安全」: GGUF 不是 pickle, 但其中的範本仍是推論引擎會執行的程式邏輯. 因應方式是使用已修補的推論引擎, 並在入庫時檢視範本內容.
 
-**`trust_remote_code=False` 也不是萬全**: vLLM 在 2026-08 公告的 GHSA-3c86-2m5g-59q7 指出, 0.28.0 之前的版本載入 LlavaOnevision2 架構的處理器時, 會忽略 `trust_remote_code=False`, 執行惡意模型倉庫中的處理器程式碼 (來源: vLLM GitHub Security Advisory GHSA-3c86-2m5g-59q7). 入庫時把倉庫內的 `.py` 檔一律列入人工審查, 可以補上這類推論引擎本身的缺陷 (推論, 信心: 中高). 推論引擎的版本追蹤見 M1.10 節與 [O3](/ops/advisories).
+**`trust_remote_code=False` 也不是萬全**: 推論伺服器 vLLM (見 M1) 在 2026-08 公告的 GHSA-3c86-2m5g-59q7 指出, 0.28.0 之前的版本載入 LlavaOnevision2 架構的處理器時, 會忽略 `trust_remote_code=False`, 執行惡意模型倉庫中的處理器程式碼 (來源: vLLM GitHub Security Advisory GHSA-3c86-2m5g-59q7). 入庫時把倉庫內的 `.py` 檔一律列入人工審查, 可以補上這類推論引擎本身的缺陷 (推論, 信心: 中高). 推論引擎的版本追蹤見 M1.10 節與 [O3](/ops/advisories).
 
 ## M3.2 入庫流程: 白名單, 固定版本, 掃描, 登記
 
@@ -64,7 +64,7 @@
 ### 第 1, 2 步: 來源白名單, 固定版本下載與校驗
 
 - 白名單只列模型原始發布者的官方組織帳號, 以及團隊已審查過的少數知名轉檔者. 白名單本身納入版本控制, 增刪都留紀錄 (推論, 信心: 中).
-- 下載時一律指定 revision (commit hash), 不使用會變動的 main. 指令與 M1.5 節相同, 差別是改存到暫存目錄 (來源: Hugging Face 文件 CLI guide; 未實機驗證). 第一行下載指定版本, 第二行比對校驗碼:
+- 下載時一律指定 revision (commit hash), 不使用會變動的 main. 指令與 M1.5 節相同, 差別是改存到暫存目錄 (來源: Hugging Face 文件 CLI guide; 未實機驗證). `hf` 是 Hugging Face 官方的命令列工具, 負責下載與驗證模型檔. 第一行下載指定版本, 第二行比對校驗碼:
 
 ```bash
 hf download <組織/模型庫> --revision <commit hash> --local-dir <暫存目錄>
@@ -79,7 +79,7 @@ hf cache verify <組織/模型庫> --local-dir <暫存目錄> --fail-on-missing-
 
 ### 第 3 步: 掃描工具的選擇
 
-掃描工具會打開模型檔, 檢查裡面有沒有可疑的程式碼或寫法, 作用類似防毒軟體, 但專門針對模型檔. 四個常見工具的現況如下. 涵蓋範圍為各專案自述, 未經第三方評測; 最近發布日取自 PyPI 專案資料 (2026-10-26 查詢).
+掃描工具會打開模型檔, 檢查裡面有沒有可疑的程式碼或寫法, 作用類似防毒軟體, 但專門針對模型檔. 四個常見工具的現況如下. 涵蓋範圍為各專案自述, 未經第三方評測; 最近發布日取自 PyPI (Python 套件的官方發布平台) 專案資料 (2026-10-26 查詢).
 
 | 工具 | 維護者與授權 | 涵蓋範圍 (依各自官方說明) | 最近發布 |
 |---|---|---|---|
@@ -92,7 +92,7 @@ hf cache verify <組織/模型庫> --local-dir <暫存目錄> --fail-on-missing-
 
 1. 它是四者中唯一同時涵蓋 safetensors, GGUF 與 pickle 的工具, 與 M1.5 節「優先 safetensors 或 GGUF」的建議一致.
 2. 它列有 Jinja2 範本的檢查, 對應 M3.1 節的對話範本風險; 但官方文件未明寫是否檢查 GGUF 內嵌的範本, 第 4 步的人工審查不能省.
-3. 它可輸出 SARIF 與 JSON, 結束碼可直接當作入庫關卡.
+3. 它可輸出 SARIF (資安掃描結果的標準交換格式) 與 JSON, 結束碼可直接當作入庫關卡.
 
 架構圖上標的 ModelScan 仍可使用, 適合以 pickle, H5 與 SavedModel 為主的環境. pickle 檔建議再以 picklescan 或 Fickling 複查一次, 兩個工具的判斷方式不同, 可互相補足 (推論, 信心: 中).
 
@@ -127,7 +127,7 @@ ModelAudit 的結束碼依 promptfoo 文件 ModelAudit; picklescan 的結束碼�
 
 ### 第 5 步: 雜湊值與登記表
 
-雜湊值像檔案的指紋: 檔案只要被改動一點, 指紋就會不同. 以 SHA-256 為每個檔案產生清單, 和模型檔一起存放; 推論區之後可以用同一份清單重新比對 (`sha256sum` 為 GNU coreutils 通用指令, 未實機驗證):
+雜湊值像檔案的指紋: 檔案只要被改動一點, 指紋就會不同. 以 SHA-256 為每個檔案產生清單, 和模型檔一起存放; 推論區之後可以用同一份清單重新比對 (`sha256sum` 為 GNU coreutils 通用指令, coreutils 是 Linux 內建的基本指令集; 未實機驗證):
 
 ```bash
 cd <暫存目錄>
@@ -155,7 +155,7 @@ find . -type f ! -name manifest.sha256 -exec sha256sum {} + > manifest.sha256
 
 - 預設拒絕任何會改變檔案系統的請求, 也就是 `ro` 是預設值; 要寫入須明確寫 `rw`.
 - `root_squash` 是預設值, 會把客戶端 uid 0 的請求對應到匿名使用者.
-- `sec=` 的預設是 `sys`, 不提供密碼學層級的保護; 需要時可改用 `krb5`, `krb5i` 或 `krb5p`.
+- `sec=` 的預設是 `sys`, 不提供密碼學層級的保護; 需要時可改用 `krb5`, `krb5i` 或 `krb5p`, 也就是以 Kerberos (集中式網路身分驗證協定) 驗證的選項.
 - 修改 `/etc/exports` 後執行 `exportfs -ra` 套用.
 
 範例 (未實機驗證; 網段為佔位符). 這一行設定把 `/srv/models` 分享出去: 推論區網段唯讀, 入庫主機可寫:
@@ -169,7 +169,7 @@ find . -type f ! -name manifest.sha256 -exec sha256sum {} + > manifest.sha256
 
 ### TrueNAS
 
-TrueNAS 的 NFS 共享設定中, Advanced Options 的 Read-Only 會禁止寫入; Authorized Networks 與 Authorized Hosts 可把存取限定在指定網段或主機, 留空則允許所有網路 (來源: TrueNAS 文件 Adding NFS Shares, 開發版文件頁). 推論區使用的共享請勾選 Read-Only, 並只授權推論區網段. 入庫主機的寫入路徑如何設定, 請依所用 TrueNAS 版本的官方文件規劃 (本輪未核對).
+TrueNAS 是常見的 NAS 作業系統, 以網頁介面設定共享. TrueNAS 的 NFS 共享設定中, Advanced Options 的 Read-Only 會禁止寫入; Authorized Networks 與 Authorized Hosts 可把存取限定在指定網段或主機, 留空則允許所有網路 (來源: TrueNAS 文件 Adding NFS Shares, 開發版文件頁). 推論區使用的共享請勾選 Read-Only, 並只授權推論區網段. 入庫主機的寫入路徑如何設定, 請依所用 TrueNAS 版本的官方文件規劃 (本輪未核對).
 
 ### 推論區的掛載方式
 

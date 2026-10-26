@@ -9,7 +9,7 @@
 
 **結論**: 初階讀者不需要追蹤平台, 需要的是一份 30 至 100 題的固定測試集. 每次換模型, 換提示或升級元件時跑一次, 就能回答「變好還是變壞」(信心: 高). 多人共用之後, 再加上可觀測與稽核平台, 記錄誰在什麼時候讓 AI 做了什麼.
 
-**這一塊在圖上的位置**: VM 稽核區的 Langfuse, OTel Collector, Prometheus, 以及既有 SIEM. **前置模組**: M5. **完成後的狀態**: 每次換模型或升級都能用測試集比較結果; 每次模型與工具呼叫都留下紀錄.
+**這一塊在圖上的位置**: VM 稽核區的 Langfuse (記錄每次模型呼叫軌跡的平台), OTel Collector, Prometheus, 以及既有 SIEM. **前置模組**: M5. **完成後的狀態**: 每次換模型或升級都能用測試集比較結果; 每次模型與工具呼叫都留下紀錄.
 
 本章分兩層. 第一層是測試集: 一份固定的考卷, 每次換模型或改設定都考一次, 用分數判斷系統變好或變壞. 第二層是可觀測與稽核: 多人共用後, 系統要留下紀錄, 事後才能查出誰在什麼時候問了什麼, 模型回了什麼, 花了多久. 可以想成行車紀錄器加上儀表板, 平常看儀表板知道車況, 出事時調紀錄器還原經過.
 
@@ -58,11 +58,11 @@ promptfoo 是命令列工具, 不需要常駐服務, 採 MIT 授權. OpenAI 於 
 
 ## M6.3 追蹤平台何時值得裝
 
-追蹤平台會記下每一次模型呼叫的細節, 方便除錯與稽核, 但本身也要吃不少記憶體與維運時間. 下表列出常見工具的授權與資源需求, 供判斷是否值得投入.
+追蹤平台會記下每一次模型呼叫的細節, 方便除錯與稽核, 但本身也要吃不少記憶體與維運時間. 下表列出常見工具的授權與資源需求, 供判斷是否值得投入. Langfuse 與 Arize Phoenix 是記錄並檢視模型呼叫軌跡的追蹤平台, 要另外架設服務; Ragas 與 DeepEval 是以程式替模型回答評分的評估函式庫, 裝在執行測試的電腦上即可.
 
 | 工具 | 授權 / 狀態 | 自架資源 |
 |---|---|---|
-| Langfuse | MIT; ClickHouse 公司於 2026-01-16 收購, 授權維持不變 (coverge.ai) | v3 起強制需要 ClickHouse, Redis, PostgreSQL, S3 / MinIO, 共 6 個服務; 官方最低需求為 ClickHouse 2 CPU / 8GiB, Redis 1 CPU / 1.5GiB (Langfuse 官方擴充文件) |
+| Langfuse | MIT; ClickHouse 公司於 2026-01-16 收購, 授權維持不變 (coverge.ai) | v3 起強制需要 ClickHouse, Redis, PostgreSQL, S3 / MinIO, 共 6 個服務 (各自用途見 M6.4 節); 官方最低需求為 ClickHouse 2 CPU / 8GiB, Redis 1 CPU / 1.5GiB (Langfuse 官方擴充文件) |
 | Arize Phoenix | Elastic License 2.0 (非 OSI); Dynatrace 於 2026-10 初完成收購 Arize | 比 Langfuse 輕 (訓練資料內資訊, 可能已過時) |
 | Ragas | Apache 2.0; 0.4.3 (2026-01-13) | 函式庫 |
 | DeepEval | Apache 2.0; 4.3.1 (2026-10-16) | 函式庫 |
@@ -73,7 +73,7 @@ Langfuse 光 ClickHouse 最低就要 8GiB, 會與模型搶記憶體, 因此對�
 
 多人共用後, 需要一套能回答「發生了什麼事」的紀錄系統. 本節的做法是讓各服務把紀錄送到同一個收集點, 再分送到兩個地方: 一份給 Langfuse 看模型呼叫的細節, 一份給公司既有的 SIEM 做資安稽核. 服務的健康狀態則由 Prometheus 定期抓取, 異常時發出警示.
 
-三個元件分工不同: Langfuse 存放每次模型呼叫的軌跡 (提示, 回應, token 數, 延遲, 代理每一步), OpenTelemetry Collector 負責收集紀錄並分送到 Langfuse 與既有 SIEM, Prometheus 與 Grafana 處理服務指標與警示. 本節設定依官方文件整理, 未實機驗證.
+送出紀錄的來源包括模型閘道 LiteLLM (M5), 對話介面 Open WebUI (M2) 與代理服務 (M8). 三個元件分工不同: Langfuse 存放每次模型呼叫的軌跡 (提示, 回應, token 數, 延遲, 代理每一步), OpenTelemetry Collector 負責收集紀錄並分送到 Langfuse 與既有 SIEM, Prometheus 與 Grafana 處理服務指標與警示. 本節設定依官方文件整理, 未實機驗證.
 
 ```
 [LiteLLM / Open WebUI / 代理服務]
@@ -94,15 +94,15 @@ Langfuse 光 ClickHouse 最低就要 8GiB, 會與模型搶記憶體, 因此對�
 
 Langfuse 是專門記錄模型呼叫的開源平台, 每一筆提示, 回應, token 數與耗時都能在介面上逐筆查看.
 
-**需要的服務**: Langfuse 官方架構包含六個元件: Langfuse Web (介面與 API), Langfuse Worker (非同步處理事件), PostgreSQL (交易資料), ClickHouse (存放軌跡, observation 與評分), Redis 或 Valkey (佇列與快取), S3 相容的物件儲存 (保存所有進來的事件與大型匯出) (來源: Langfuse 文件 Self-hosting). 各元件的最低資源見 M6.3 節.
+**需要的服務**: Langfuse 官方架構包含六個元件: Langfuse Web (介面與 API), Langfuse Worker (非同步處理事件), PostgreSQL (交易資料), ClickHouse (存放軌跡, observation 與評分), Redis 或 Valkey (佇列與快取), S3 相容的物件儲存 (例如 MinIO; 保存所有進來的事件與大型匯出) (來源: Langfuse 文件 Self-hosting). 各元件的最低資源見 M6.3 節.
 
-**部署方式**: 官方把 Docker Compose 定位為本機使用與測試, 標示為單一 VM, 沒有高可用, 擴充與備份; 正式環境的選項為 Kubernetes (Helm) 與各雲端平台 (來源: 同上). 依官方 Docker Compose 文件, 步驟為 `git clone https://github.com/langfuse/langfuse.git`, 進入目錄後修改所有標示 `# CHANGEME` 的機密值, 再執行 `docker compose up`. 介面在 3000 連接埠; worker (3030), MinIO 主控台 (9091) 與資料庫只綁 127.0.0.1 (來源: Langfuse 文件 Docker Compose). 本手冊的稽核區若採 Docker Compose, 須自行排程備份 PostgreSQL, ClickHouse 與 MinIO 的資料卷 (見 O1) (推論, 信心: 中).
+**部署方式**: Docker Compose 是用一個設定檔同時啟動多個容器的工具, Kubernetes 是管理大量容器的叢集平台 (Helm 是它的套件管理工具). 官方把 Docker Compose 定位為本機使用與測試, 標示為單一 VM, 沒有高可用, 擴充與備份; 正式環境的選項為 Kubernetes (Helm) 與各雲端平台 (來源: 同上). 依官方 Docker Compose 文件, 步驟為 `git clone https://github.com/langfuse/langfuse.git`, 進入目錄後修改所有標示 `# CHANGEME` 的機密值, 再執行 `docker compose up`. 介面在 3000 連接埠; worker (3030), MinIO 主控台 (9091) 與資料庫只綁 127.0.0.1 (來源: Langfuse 文件 Docker Compose). 本手冊的稽核區若採 Docker Compose, 須自行排程備份 PostgreSQL, ClickHouse 與 MinIO 的資料卷 (見 O1) (推論, 信心: 中).
 
 **OTLP 端點**: Langfuse 在 `/api/public/otel` 接收軌跡, 只支援 OTLP over HTTP (JSON 與 protobuf), 不支援 gRPC. 驗證方式為 HTTP Basic, 值是「public key:secret key」的 base64 編碼. 這個端點從 Langfuse v3.22.0 開始提供, 自架版本至少要 v3.22.0 (來源: Langfuse 文件 OpenTelemetry). 官方文件只描述接收軌跡, 沒有說明是否接收指標與日誌, 因此本手冊只把軌跡送進 Langfuse.
 
 **存取權限**: Langfuse 存放完整的提示與回應, 敏感程度等同對話資料庫 (推論, 信心: 高). 建議如下:
 
-- 以 `AUTH_DISABLE_SIGNUP=true` 關閉自行註冊, 並以 Keycloak 單一登入 (見 M5.4 節).
+- 以 `AUTH_DISABLE_SIGNUP=true` 關閉自行註冊, 並以 Keycloak (集中管理帳號與登入的身分驗證伺服器) 單一登入 (見 M5.4 節).
 - 角色分為 Owner, Admin, Member, Viewer, None. 官方文件標示, 自架環境的專案層級角色屬於企業版 (Enterprise Edition) (來源: Langfuse 文件 RBAC). 只用開源版時, 權限只能以組織層級控管, 應只把需要看軌跡的人加入組織 (推論, 信心: 中).
 - 3000 連接埠只對管理者網段開放, 不對一般使用者網段開放.
 
@@ -171,13 +171,13 @@ service:
 
 - `memory_limiter` 的 `limit_mib` 為硬上限, `spike_limit_mib` 官方建議約為 `limit_mib` 的 20%, `check_interval` 建議 1 秒 (來源: Memory Limiter Processor README). 數值請依 VM 記憶體調整.
 - receiver 同時開 gRPC 與 HTTP. 來源送 gRPC 時, 由 Collector 轉為 OTLP/HTTP 再送 Langfuse, 這樣可以避開 Langfuse 不收 gRPC 的限制 (推論, 信心: 中高).
-- 既有 SIEM 不接收 OTLP 時, contrib 發行版另有 syslog, Splunk HEC, Elasticsearch 等 exporter, 其中 syslog exporter 只支援日誌且仍為 alpha (來源: GitHub opentelemetry-collector-contrib). 選用前請確認 SIEM 端的接收格式.
+- 既有 SIEM 不接收 OTLP 時, contrib 發行版另有 syslog (傳統的日誌傳送協定), Splunk HEC (Splunk 這套 SIEM 接收資料的介面), Elasticsearch (常用來儲存與搜尋日誌的搜尋引擎) 等 exporter, 其中 syslog exporter 只支援日誌且仍為 alpha (來源: GitHub opentelemetry-collector-contrib). 選用前請確認 SIEM 端的接收格式.
 
 **送進 Collector 的來源**:
 
 - **LiteLLM**: 以環境變數 `LITELLM_OTEL_V2=true`, `OTEL_EXPORTER="otlp_http"`, `OTEL_ENDPOINT="http://<Collector>:4318"` 開啟 (來源: LiteLLM 文件 OpenTelemetry v2). LiteLLM 也有直接送 Langfuse 的 `langfuse_otel` callback, 但經 Collector 才能同一份資料同時送 SIEM (推論).
 - **Open WebUI**: `ENABLE_OTEL` 與 `ENABLE_OTEL_TRACES` 預設為 `False`; `OTEL_EXPORTER_OTLP_ENDPOINT` 預設為 `http://localhost:4317` (來源: Open WebUI 文件 Environment Variable Configuration). 改指向 Collector 即可. Open WebUI 送出的軌跡包含哪些欄位, 本輪未確認.
-- **政策判定 (OPA)**: 由 M8 的代理服務送出; 格式與送出方式待 M8 定案.
+- **政策判定 (OPA)**: OPA 是判定代理動作能否執行的政策引擎, 紀錄由 M8 的代理服務送出; 格式與送出方式待 M8 定案.
 
 ### Prometheus 與 Grafana
 
@@ -244,7 +244,7 @@ groups:
           summary: "vLLM 排隊請求持續超過 10 個"
 ```
 
-規則格式依 Prometheus 官方的 alerting rules 範例 (groups, alert, expr, for, labels, annotations). 修改後先以 `promtool check rules <檔案>` 檢查語法, 再對 Prometheus 行程送出 `SIGHUP` 重新載入; 只有全部規則檔格式正確時才會套用 (來源: Prometheus 文件 Recording rules). Prometheus 本身不發通知, 由 Alertmanager 依 `receivers` 設定送出, 可用的整合包括 `email_configs` 與 `webhook_configs` 等; Alertmanager 設定檔可用 `amtool check-config` 檢查 (來源: Prometheus 文件 Alerting rules, Alertmanager configuration).
+規則格式依 Prometheus 官方的 alerting rules 範例 (groups, alert, expr, for, labels, annotations). 修改後先以 Prometheus 附帶的檢查工具 `promtool check rules <檔案>` 檢查語法, 再對 Prometheus 行程送出 `SIGHUP` 重新載入; 只有全部規則檔格式正確時才會套用 (來源: Prometheus 文件 Recording rules). Prometheus 本身不發通知, 由 Alertmanager 依 `receivers` 設定送出, 可用的整合包括 `email_configs` 與 `webhook_configs` 等; Alertmanager 設定檔可用它附帶的命令列工具 `amtool check-config` 檢查 (來源: Prometheus 文件 Alerting rules, Alertmanager configuration).
 
 **Grafana**: 以 Prometheus 為資料來源建立儀表板 (來源: Grafana 文件 Prometheus data source). 建議至少放四張圖: 執行中與排隊中的請求數, 第一個 token 的延遲, 端到端延遲, 每秒生成 token 數 (推論, 信心: 中).
 

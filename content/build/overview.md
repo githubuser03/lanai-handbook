@@ -32,7 +32,7 @@
 |---|---|---|---|---|
 | 1. 能對話 (最小安全組合) | M0 至 M2 | 單人, 單機 | A 至 F | 介面約 0.5 至 1.5GB 記憶體; 磁碟約 2 至 5GB (不含模型) |
 | 2. 能查文件, 能多人用 (標準組合) | 再加 M3 至 M6 | 家庭或小團隊 2 至 10 人 | B, D, E; C 級須為中高記憶體款 | 嵌入模型約 0.6 至 1.2GB; 向量庫約 1 至 2GB; 磁碟約 10 至 30GB |
-| 3. 能動手做事 (進階組合) | 再加 M7 至 M9 | 多人, 多模型, 含閘道, 代理與沙箱 | F | 閘道加 PostgreSQL 約 1 至 2GB; 磁碟約 50 至 100GB |
+| 3. 能動手做事 (進階組合) | 再加 M7 至 M9 | 多人, 多模型, 含閘道, 代理與沙箱 | F | 閘道加上它使用的 PostgreSQL 資料庫約 1 至 2GB; 磁碟約 50 至 100GB |
 
 資料來源: 研究 2 (2026-10-26), 占用值由各元件公開資料加總推算, 信心: 中. 嵌入模型一欄: EmbeddingGemma 的 Ollama 標籤頁標示 622MB; Arctic Embed 2.0 (L) 為 568M 參數 (Hugging Face 模型卡), 以每參數 2 位元組推估約 1.1GB (推論).
 
@@ -57,7 +57,7 @@
 
 里程碑 1 的目標是讓一個人在自己的電腦上和模型對話, 對話內容不離開這台電腦. 這是最小, 也最容易維護的組合.
 
-**元件**: 推論伺服器 (llama.cpp 或 Ollama, 見 M1), 加上一個介面 (見 M2). 等級 A 與 C 建議用 AnythingLLM 桌面版, 其他等級用 Open WebUI 單一容器. 不加閘道, 代理框架與 MCP.
+**元件**: 推論伺服器 (llama.cpp 或 Ollama, 見 M1), 加上一個介面 (見 M2). 等級 A 與 C 建議用 AnythingLLM 桌面版 (在單機上對話與查文件的桌面應用程式), 其他等級用 Open WebUI (在瀏覽器中使用的對話介面) 單一容器. 不加閘道, 代理框架與 MCP.
 
 **啟動順序**: 推論引擎 → 介面.
 
@@ -93,9 +93,9 @@
 **元件**:
 
 - 推論引擎, 搭配 llama-swap (需要多模型輪替時)
-- 介面: Open WebUI 或 LibreChat
+- 介面: Open WebUI 或 LibreChat (兩者都是瀏覽器中的對話介面, 支援多使用者帳號)
 - 嵌入模型: EmbeddingGemma-300m 或 Snowflake Arctic Embed 2.0 (L)
-- 向量庫: 介面內建的, 或 Qdrant
+- 向量庫: 介面內建的, 或 Qdrant (獨立執行的向量資料庫服務)
 - 文件解析: Docling
 - 評估: promptfoo 測試集 (M6)
 - 網路: 只限內網 (辦公室或機房的區域網路)
@@ -132,16 +132,16 @@ llama-swap 負責依請求切換要載入的模型; Docling 把 PDF 等文件轉
 
 **元件**: 標準組合全部, 加上:
 
-- 推論伺服器: vLLM (多人同時使用時, 吞吐量明顯高於 llama.cpp 與 Ollama)
-- 閘道: LiteLLM 或 Bifrost 擇一, 以映像摘要值 (digest) 鎖定版本
-- 反向代理: Nginx 或 Caddy, 只接受內網連線
-- 身分驗證 (可選): Keycloak, 以 OIDC 提供單一登入
-- 代理: LangGraph 程式庫, 嵌入自己撰寫的服務; 搭配 OPA 政策引擎
+- 推論伺服器: vLLM (以 GPU 為主, 能同時處理多個請求的推論伺服器; 多人同時使用時, 吞吐量明顯高於 llama.cpp 與 Ollama)
+- 閘道: LiteLLM 或 Bifrost 擇一 (兩者都是模型閘道, 統一轉送模型請求並管理金鑰與用量), 以映像摘要值 (digest) 鎖定版本
+- 反向代理: Nginx 或 Caddy (兩者都是網頁伺服器, 在這裡負責接收連線, 處理 HTTPS 並轉給後面的服務), 只接受內網連線
+- 身分驗證 (可選): Keycloak (集中管理帳號與登入的身分驗證伺服器), 以 OIDC (單一登入常用的標準協定) 提供單一登入
+- 代理: LangGraph 程式庫 (把代理的各個步驟串成流程並保存狀態), 嵌入自己撰寫的服務; 搭配 OPA 政策引擎 (依固定規則判定每個動作能不能執行)
 - 隔離模型: 自建程式加本地模型, 專門讀取不可信內容, 不給任何工具
-- 工具閘道: MCP gateway (ToolHive 等), 加上少量已審核, 已容器化的 MCP 伺服器
-- 程式碼沙箱: Docker 加 gVisor
-- 模型入庫檢查 (ModelAudit 等) 與 NFS 唯讀的模型存放區
-- 可選: n8n (規則固定的流程自動化), Langfuse (另備至少 12GB 記憶體給 ClickHouse 與 Redis 等), OTel Collector, Prometheus 與 Grafana, Prompt Guard 2 22M
+- 工具閘道: MCP gateway (ToolHive 等; 統一執行, 管理 MCP 伺服器並控管哪些工具能被呼叫), 加上少量已審核, 已容器化的 MCP 伺服器
+- 程式碼沙箱: Docker 加 gVisor (在容器與主機核心之間多加一層隔離)
+- 模型入庫檢查 (ModelAudit 等掃描模型檔的工具) 與 NFS (讓多台主機透過網路共用 NAS 上檔案的協定) 唯讀的模型存放區
+- 可選: n8n (規則固定的流程自動化), Langfuse (記錄每次模型呼叫的過程與結果, 供追查與評估; 另備至少 12GB 記憶體給它使用的 ClickHouse 與 Redis 等資料庫), OTel Collector (收集各服務的紀錄與指標並轉送), Prometheus (定期收集數值指標) 與 Grafana (把指標畫成儀表板), Prompt Guard 2 22M (偵測提示注入的小型分類模型)
 
 **啟動順序**: PostgreSQL / Redis → 推論伺服器 / llama-swap → 閘道 → 向量庫 → OPA → MCP gateway 與 MCP 伺服器 (容器) → 代理服務 → n8n → Keycloak → 介面 → 反向代理 → 可觀測性.
 
@@ -159,14 +159,14 @@ llama-swap 負責依請求切換要載入的模型; Docling 把 PDF 等文件轉
 | 閘道區 | LiteLLM, MCP gateway | 唯一保存 API 金鑰, 唯一能對外連線的區 |
 | 工具區 | MCP 伺服器, 程式碼沙箱 | 沙箱無網路; MCP 伺服器只能連指定系統 |
 | 推論區 | vLLM (GPU 直通) | 只接受閘道區連線 |
-| 稽核區 | Langfuse, OTel Collector, Prometheus | 只接收紀錄, 轉送既有 SIEM |
+| 稽核區 | Langfuse, OTel Collector, Prometheus | 只接收紀錄, 轉送既有 SIEM (集中分析資安紀錄的系統) |
 | 自動化區 | n8n | 只能連閘道區 (LiteLLM, MCP gateway) |
 
 資料來源: 分區方式整理自 2026-10 的藍隊代理架構模擬與研究 2, 屬推論, 信心: 中. 實際部署前請以自己的網段與防火牆規則驗證.
 
 **里程碑 3 檢核表 (在里程碑 2 之上, 另加)**:
 
-- [ ] 閘道與 MCP 映像以摘要值鎖定, 並訂閱 GitHub Security Advisories
+- [ ] 閘道與 MCP 映像以摘要值鎖定, 並訂閱 GitHub Security Advisories (GitHub 上發布漏洞公告的資料庫)
 - [ ] 閘道管理端點只限管理者 IP
 - [ ] 每位使用者或每個應用各一把虛擬金鑰, 並設用量上限
 - [ ] 代理的寫入與刪除動作需要人工確認

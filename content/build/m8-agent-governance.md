@@ -32,8 +32,8 @@
 LangGraph 負責代理的流程控制: 每一步做什麼, 下一步走哪裡, 哪裡要停下來等人核准. 它有開源函式庫與商業平台兩種用法, 本節說明為何選函式庫.
 
 - 程式庫採 MIT 授權, 可完全地端執行, 無商業限制.
-- LangGraph Platform 已改名為 LangSmith Deployment. 依 LangChain 官方 CLI 文件, `langgraph up` 啟動的 Agent Server 在正式環境需要授權金鑰.
-- 因此本手冊建議把 LangGraph 當函式庫, 嵌入自己的 FastAPI 或腳本 (信心: 高).
+- LangGraph Platform 是 LangChain 公司代管與部署代理的商業平台, 已改名為 LangSmith Deployment. 依 LangChain 官方 CLI 文件, `langgraph up` 啟動的 Agent Server 在正式環境需要授權金鑰.
+- 因此本手冊建議把 LangGraph 當函式庫, 嵌入自己的 FastAPI (以 Python 撰寫 API 服務的框架) 或腳本 (信心: 高).
 - 需要理解狀態圖, 檢查點與節點等概念, 對初階讀者偏陡 (信心: 中, 屬推論).
 
 
@@ -124,7 +124,7 @@ touches_critical_asset if {
 - **決策值互斥**: 三條 `decision` 規則以不同等級為條件, 同一個輸入只會有一條成立.
 - **對外連線白名單**: 需要時可比照 `critical_assets` 的寫法加一份允許的網域清單, 對帶有網址參數的工具檢查.
 
-政策檔以 Git 管理, 變更須經審查; 每條規則都寫單元測試. OPA 以 `opa test` 執行測試, 測試規則的名稱以 `test_` 開頭, 並以 `with input as` 指定輸入 (來源: OPA Policy Testing 文件). 例如:
+政策檔以 Git (追蹤檔案修改紀錄的版本控制工具) 管理, 變更須經審查; 每條規則都寫單元測試. OPA 以 `opa test` 執行測試, 測試規則的名稱以 `test_` 開頭, 並以 `with input as` 指定輸入 (來源: OPA Policy Testing 文件). 例如:
 
 ```rego
 package agent.tools_test
@@ -146,7 +146,7 @@ opa test . -v
 
 ### 決策紀錄
 
-每次判定都應留下紀錄. OPA 的決策紀錄 (decision logs) 包含 `decision_id`, 查詢的政策路徑, `input`, `result` 與時間戳記 (來源: OPA Decision Logs 文件). 最簡單的設定是輸出到主控台, 由容器日誌經 OTel Collector 轉送到稽核區與既有 SIEM (見 M6):
+每次判定都應留下紀錄. OPA 的決策紀錄 (decision logs) 包含 `decision_id`, 查詢的政策路徑, `input`, `result` 與時間戳記 (來源: OPA Decision Logs 文件). 最簡單的設定是輸出到主控台, 由容器日誌經 OTel Collector (稽核區收集並分送紀錄的程式) 轉送到稽核區與既有 SIEM (集中分析資安紀錄的系統) (見 M6):
 
 ```yaml
 decision_logs:
@@ -159,7 +159,7 @@ decision_logs:
 
 log, 郵件與外部情資可能夾帶給模型的指令. 讓有工具權限的模型直接讀這些內容, 等於讓陌生人直接對擁有鑰匙的人下指令. 雙 LLM 模式把工作拆開: 一個沒有任何工具的模型負責閱讀與摘要, 只能交出固定格式的結果; 另一個模型依這些結果規劃下一步, 卻從不直接讀原文. 可以想成郵件室先拆信並填寫制式登記表, 主管只看登記表做決定.
 
-讀取 log, 郵件, 外部情資等不可信內容的工作, 交給一個沒有任何工具的隔離模型; 原理見 K5.6 節. 隔離模型由自建程式加本地模型組成, 放在 VM 隔離區, 只能連 LiteLLM, 不持有任何工具憑證 (見[組裝總覽](/build/overview)的部署分區).
+讀取 log, 郵件, 外部情資等不可信內容的工作, 交給一個沒有任何工具的隔離模型; 原理見 K5.6 節. 隔離模型由自建程式加本地模型組成, 放在 VM 隔離區, 只能連模型閘道 LiteLLM, 不持有任何工具憑證 (見[組裝總覽](/build/overview)的部署分區).
 
 ### 實作要點
 
@@ -212,7 +212,7 @@ log, 郵件與外部情資可能夾帶給模型的指令. 讓有工具權限的�
 
 ### 以 LangGraph 的 interrupt 實作人工核准
 
-LangGraph 的 `interrupt()` 會在呼叫處暫停圖的執行, 並透過 checkpointer 保存狀態; 傳給 `interrupt()` 的值會回傳給呼叫端, 圖會一直等到恢復執行. 恢復時以相同的 `thread_id` 再次呼叫, 並傳入 `Command(resume=...)`, 傳入的值即成為 `interrupt()` 的回傳值 (來源: LangGraph Interrupts 文件). 下列程式片段依官方範例改寫, 未實機驗證:
+LangGraph 的 `interrupt()` 會在呼叫處暫停圖的執行, 並透過 checkpointer (LangGraph 保存流程狀態的元件) 保存狀態; 傳給 `interrupt()` 的值會回傳給呼叫端, 圖會一直等到恢復執行. 恢復時以相同的 `thread_id` 再次呼叫, 並傳入 `Command(resume=...)`, 傳入的值即成為 `interrupt()` 的回傳值 (來源: LangGraph Interrupts 文件). 下列程式片段依官方範例改寫, 未實機驗證:
 
 ```python
 from langgraph.types import interrupt, Command
@@ -244,7 +244,7 @@ graph.invoke(Command(resume=True), config)
 
 - **恢復時整個節點從頭執行**: `interrupt()` 之前的程式碼會再跑一次, 因此有副作用的動作 (例如呼叫工具) 應放在 `interrupt()` 之後, 或確保可重複執行而不產生不同結果.
 - **不要用籠統的 try/except 包住 `interrupt()`**: 否則會攔截到暫停機制使用的例外, 應只攔截特定例外類型.
-- **正式環境使用資料庫型的 checkpointer**: 官方建議正式環境使用以資料庫保存狀態的 checkpointer, 範例中的 `InMemorySaver` 只適合測試.
+- **正式環境使用資料庫型的 checkpointer**: 官方建議正式環境使用以資料庫保存狀態的 checkpointer, 範例中的 `InMemorySaver` 把狀態存在記憶體, 服務重啟即消失, 只適合測試.
 
 核准介面可以是 ticket 系統, 聊天機器人或簡單的網頁; 重點是核准紀錄 (誰, 何時, 核准了哪個 `thread_id` 的哪個動作) 與 OPA 的 `decision_id` 一起保存, 稽核時才能串起來 (推論, 信心: 中高).
 
@@ -269,7 +269,7 @@ graph.invoke(Command(resume=True), config)
 
 ## M8.5 多代理: 同時執行與協作
 
-**結論**: 本手冊的架構可以同時執行多個代理, 但建議分兩步走: 先做「多個獨立代理各跑各的」, 再做「固定流程的協作」, 不建議讓代理之間自由對話. 原因是每多一個代理, 就多一條可能傳遞注入內容的路徑, 且同時進行的請求會共用同一組 GPU. 基礎元件 (LiteLLM 虛擬金鑰, OPA, MCP gateway, Langfuse) 都已就位, 要補的是每個代理的身分, 代理之間的信任邊界, 以及跨執行的共用配額.
+**結論**: 本手冊的架構可以同時執行多個代理, 但建議分兩步走: 先做「多個獨立代理各跑各的」, 再做「固定流程的協作」, 不建議讓代理之間自由對話. 原因是每多一個代理, 就多一條可能傳遞注入內容的路徑, 且同時進行的請求會共用同一組 GPU. 基礎元件 (LiteLLM 虛擬金鑰, OPA, MCP gateway, 記錄模型呼叫軌跡的 Langfuse) 都已就位, 要補的是每個代理的身分, 代理之間的信任邊界, 以及跨執行的共用配額.
 
 ### 三種「多代理」要分開看
 
@@ -345,7 +345,7 @@ LangChain 官方的 supervisor 遷移說明指出, `langgraph-supervisor` 套件
 
 ### 代理之間的訊息一律視為不可信
 
-OWASP 的代理應用十大風險中, ASI07「Insecure Inter-Agent Communication」指代理之間遭偽造的訊息可能把整群代理導向錯誤動作, ASI08「Cascading Failures」指錯誤訊號在自動化流程中擴大 (來源: OWASP GenAI Security Project, Top 10 for Agentic Applications). 因應做法沿用 M8.3 節的隔離原則 (設計建議, 信心: 中高):
+OWASP (推動應用程式安全的非營利社群) 的代理應用十大風險中, ASI07「Insecure Inter-Agent Communication」指代理之間遭偽造的訊息可能把整群代理導向錯誤動作, ASI08「Cascading Failures」指錯誤訊號在自動化流程中擴大 (來源: OWASP GenAI Security Project, Top 10 for Agentic Applications). 因應做法沿用 M8.3 節的隔離原則 (設計建議, 信心: 中高):
 
 1. **只傳固定欄位**: 上游代理的輸出須通過結構檢查 (欄位, 型別, 列舉值, 長度) 才交給下游; 自由文字只顯示給分析師, 不當作下游的指令或規劃依據.
 2. **權限不隨訊息變動**: 下游代理的工具範圍由自己的金鑰與 OPA 白名單決定. 上游訊息要求「幫我隔離這台主機」時, 下游仍須通過自己的政策判定.
@@ -355,9 +355,9 @@ OWASP 的代理應用十大風險中, ASI07「Insecure Inter-Agent Communication
 
 ### 同時執行的容量與配額
 
-**GPU 是共用瓶頸.** 同時進行的請求數大致等於「同時執行的代理數」乘以「每個代理內同時送出的呼叫數」(推算, 非實測). vLLM 的 KV cache不足時會發生搶佔 (preemption), 被搶佔的請求待空間足夠後重新計算; V1 預設的搶佔模式為 `RECOMPUTE`. 官方建議: 搶佔頻繁時降低 `max_num_seqs` 或 `max_num_batched_tokens`, 可縮小一批的請求數, 降低 KV cache需求; 搶佔次數可由 Prometheus 指標或 `disable_log_stats=False` 觀察 (來源: vLLM 文件 Optimization and Tuning). 實務做法是先用一個代理量出單次執行的呼叫數與延遲, 再逐一加入其他代理, 觀察搶佔次數與延遲, 超過可接受範圍就停止增加, 或另加一台推論主機 (設計建議, 信心: 中).
+**GPU 是共用瓶頸.** 同時進行的請求數大致等於「同時執行的代理數」乘以「每個代理內同時送出的呼叫數」(推算, 非實測). 推論伺服器 vLLM 的 KV cache 不足時會發生搶佔 (preemption), 被搶佔的請求待空間足夠後重新計算; V1 預設的搶佔模式為 `RECOMPUTE`. 官方建議: 搶佔頻繁時降低 `max_num_seqs` 或 `max_num_batched_tokens`, 可縮小一批的請求數, 降低 KV cache 需求; 搶佔次數可由 Prometheus (M6 的指標監控系統) 的指標或 `disable_log_stats=False` 觀察 (來源: vLLM 文件 Optimization and Tuning). 實務做法是先用一個代理量出單次執行的呼叫數與延遲, 再逐一加入其他代理, 觀察搶佔次數與延遲, 超過可接受範圍就停止增加, 或另加一台推論主機 (設計建議, 信心: 中).
 
-**金鑰層的限流.** LiteLLM 跨多個實例時, `tpm`, `rpm` 與 `max_parallel_requests` 的計數放在 Redis; Redis 無法連線時, 各實例會退回各自的記憶體計數, 例如 `rpm_limit: 2` 會變成每個實例各 2 次. 設定 `fail_closed_rate_limit_enforcement: true` 後, 無法驗證計數的請求會回 503 (來源: LiteLLM 文件 Users). 單一 LiteLLM 實例的部署不受影響; 多實例時, 建議啟用 fail closed (推論, 信心: 中).
+**金鑰層的限流.** LiteLLM 跨多個實例時, `tpm`, `rpm` 與 `max_parallel_requests` 的計數放在 Redis (常用來存放計數與快取的記憶體資料庫); Redis 無法連線時, 各實例會退回各自的記憶體計數, 例如 `rpm_limit: 2` 會變成每個實例各 2 次. 設定 `fail_closed_rate_limit_enforcement: true` 後, 無法驗證計數的請求會回 503 (來源: LiteLLM 文件 Users). 單一 LiteLLM 實例的部署不受影響; 多實例時, 建議啟用 fail closed (推論, 信心: 中).
 
 **跨執行的共用配額.** M8.4 節的單次配額只管「一次執行」(一個 `thread_id`) 的呼叫數. 要限制「所有代理加總」的呼叫量 (例如整個系統每分鐘最多對 SIEM 查詢 100 次), 需要外部計數器, 例如 Redis. LangGraph 在查詢 OPA 前讀取計數, 放進 `input.global_count`, 政策再加一條 `over_global_quota` 規則. OPA 本身不保存狀態, 計數由呼叫端負責 (設計建議, 信心: 中高).
 
