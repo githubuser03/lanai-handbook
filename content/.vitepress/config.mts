@@ -14,7 +14,7 @@ const tokenize = (text: string) =>
 export default defineConfig({
   lang: 'zh-Hant-TW',
   title: '地端 LAN-AI 自建手冊',
-  description: '地端 AI 的概念, 硬體選擇, 架設, 訓練與維運',
+  description: '地端 LAN-AI 自建手冊: 從底層原理到模組化組裝, 讓 AI 留在內網',
   base,
   // build 結果輸出到 repo 根目錄的 docs/, GitHub Pages 從 main 分支的 /docs 發布
   outDir: '../docs',

@@ -85,6 +85,8 @@ for (const f of walk(path.join(root, 'content'))) {
   })
   if (text.includes('::: info 本章屬性') || text.includes('::: info 本頁屬性')) {
     if (!STATUS_OK.test(text)) errors.push(`${rel}: 狀態欄不是「撰寫中 (僅有大綱) / 可閱讀 (...) / 已審閱」`)
+    // 每個有屬性框的內容頁都要有來源小節 (標題含「來源」或「參考資料」)
+    if (!/^#{2,3} .*(來源|參考資料)/m.test(text)) errors.push(`${rel}: 缺少「參考來源」或「資料來源」小節`)
   }
 }
 

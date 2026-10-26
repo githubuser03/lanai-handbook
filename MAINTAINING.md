@@ -35,6 +35,7 @@ git checkout -b 我的修改
 npm install
 npm run docs:dev      # 本機預覽, 存檔即更新
 # 修改 content/ 裡的 Markdown
+                      # 新增或改寫的頁面都要有「## 參考來源」小節, 否則 npm run check 會失敗
 npm run check         # 檢查資料與文字規範
 npm run docs:build    # 產生 docs/, 開 PR 前必須執行
 git add content docs

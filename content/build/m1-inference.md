@@ -231,7 +231,7 @@ macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對
 
 ### 以 Docker 執行 OpenAI 相容伺服器
 
-vLLM 官方的 Docker 範例如下 (來源: vLLM 文件 Using Docker):
+依 vLLM 官方 Docker 範例整理如下, 模型以 Hugging Face 上的小型測試模型為例 (來源: vLLM 文件 Using Docker):
 
 ```bash
 docker run --runtime nvidia --gpus all \
@@ -240,7 +240,7 @@ docker run --runtime nvidia --gpus all \
     -p 8000:8000 \
     --ipc=host \
     vllm/vllm-openai:latest \
-    --model Qwen/Qwen3-0.6B
+    --model HuggingFaceTB/SmolLM2-360M-Instruct
 ```
 
 `--ipc=host` (或改用 `--shm-size`) 讓容器使用主機的共用記憶體; vLLM 底層的 PyTorch 以共用記憶體在行程間交換資料, 張量平行推論特別需要 (來源同上).
@@ -308,7 +308,7 @@ docker run -d --name vllm --restart always \
 要讓模型自行決定是否呼叫工具 (`tool_choice` 為 `auto`), 須同時設定兩個參數 (來源: vLLM 文件 Tool Calling 與 CLI serve):
 
 - `--enable-auto-tool-choice`: 啟用自動工具選擇, 預設 False.
-- `--tool-call-parser <名稱>`: 依模型選擇解析器, 從模型輸出中擷取工具呼叫. 文件列出的解析器包含 `hermes`, `mistral`, `llama3_json`, `pythonic`, `deepseek_v3`, `openai`, `qwen3_xml` 等.
+- `--tool-call-parser <名稱>`: 依模型選擇解析器, 從模型輸出中擷取工具呼叫. 文件列出的解析器包含 `hermes`, `mistral`, `llama3_json`, `pythonic`, `openai` 等.
 
 部分模型另需 `--chat-template` 指定能處理 `tool` 角色訊息的對話範本, vLLM 的 examples 目錄提供了範本檔. 官方範例如下 (來源: vLLM 文件 Tool Calling):
 
@@ -356,6 +356,29 @@ curl http://<推論區位址>:8000/metrics
 - [ ] 啟動參數中沒有 `--trust-remote-code`, 映像以摘要值指定
 - [ ] 工具呼叫測試題 (M6) 通過, 解析器與範本已記入版本紀錄表
 
+## M1.11 同一台機器常駐多個模型
+
+**結論**: 同機常駐 3 個約 35B 的模型時, 先確認權重加上 KV 快取放得進顯示記憶體 (估算見 K3.4 節), 再選擇服務方式. 多併發且要穩定常駐, 建議每個模型各跑一個 vLLM 行程, 前面由 LiteLLM 分流 (M5.5 節); 低併發的小團隊可用 Ollama 或 llama-swap 依需求載入與卸載. 不建議把「單一 vLLM 伺服器同時服務多個模型」當作選項, 因為 vLLM 官方 FAQ 說明單一 OpenAI 相容伺服器不支援同時服務多個模型, 建議以多個實例加路由層處理 (來源: vLLM 文件 FAQ).
+
+| 方式 | 官方說法 | 優點 | 限制 | 適用情境 |
+|---|---|---|---|---|
+| 每個模型一個 vLLM 行程, 以 `--gpu-memory-utilization` 分配 | 該參數是「單一實例的使用上限」, 預設 0.92, 同一張卡上有其他 vLLM 實例也無妨, 例如兩個實例各設 0.5 (來源: vLLM 文件 Engine Arguments) | 模型常駐, 沒有切換延遲; 各模型可獨立重啟 | 比例須手動配置, 總和須小於 1; vLLM 論壇 (二手來源) 有回報指出 V1 引擎在同卡啟動第二個行程常因記憶體剖析失敗, 與官方說明有出入, 須實測啟動順序 | 多併發, 3 個模型都要常駐 |
+| 同上, 改用 `--kv-cache-memory-bytes` 直接指定 KV 快取大小 | 設定後會忽略 `--gpu-memory-utilization`, 且只在同一張卡, 啟動時空閒記憶體相同的前提下有效 (來源: vLLM 文件 Engine Arguments) | 避開比例配置的剖析問題 | 須自行換算每個模型需要的 KV 快取 (K3.4 節) | 同卡多行程啟動不穩時的替代做法 (推論, 信心: 中) |
+| NVIDIA MIG 硬體切分 | RTX PRO 6000 Blackwell Server Edition 規格表列「最多 4 個 24GB 的 MIG」; Workstation Edition 的 PNY 規格表列 4x24GB, 2x48GB, 1x96GB 的切分 (來源: NVIDIA 規格 PDF 與 PNY 規格表; NVIDIA 官網的 Workstation 頁面僅在 Max-Q 段落提到最多 4 個隔離實例, 未明確對應各版本) | 硬體層隔離, 一個行程異常不影響其他 | 切分檔位固定; 24GB 的切片放不下 FP8 的 35B 模型 (約 35GB); 3 個實例的混合檔位 (例如 48+24+24) 查無資料 | 多個小模型 (嵌入模型, 7B 級); 35B 級模型建議 2 個 48GB 的切片 |
+| Ollama 依需求載入 | `OLLAMA_MAX_LOADED_MODELS` 預設為 GPU 數量乘以 3, 記憶體足夠才會同時載入; 新模型必須完整放進顯示記憶體; `OLLAMA_KEEP_ALIVE` 預設 5 分鐘 (來源: Ollama 文件 FAQ) | 設定最簡單, 閒置時自動卸載 | 輪替時須重新載入; 併發與批次處理效率不如 vLLM (整理者判斷, 無官方數字) | 小團隊, 低併發 |
+| llama-swap 依需求載入 | 預設同一時間只執行一個模型; 以群組的 `swap`, `exclusive`, `persistent` 設定可讓多個模型同時常駐; `healthCheckTimeout` 預設 120 秒, 請求會等到端點就緒 (來源: llama-swap 文件 Configuration) | 可混用 vLLM, llama.cpp 等後端 | 官方未提供切換延遲的實測數字; 冷啟動時間以健康檢查逾時上限為界 | 模型數量多於記憶體, 使用頻率不高 |
+| vLLM sleep mode | Level 1 把權重移到 CPU 記憶體並丟棄 KV 快取, Level 2 兩者都丟棄; 伺服器模式須設 `VLLM_SERVER_DEV_MODE=1` 並加 `--enable-sleep-mode`, 端點為 `/sleep`, `/wake_up`, `/is_sleeping`; 官方警告這是開發用端點, 不得對使用者開放 (來源: vLLM 文件 Sleep Mode) | 不須重啟行程, 官方稱喚醒比完整重新載入快 (無秒數) | 並非為模型輪替設計, 文件未談多模型; Level 1 須有足夠的 CPU 記憶體容納權重 | 同一模型的間歇釋放, 不建議作為多模型方案 |
+
+vLLM 官方文件沒有「多模型輪替」功能 (查無). 輪替的實際延遲取決於儲存讀取速度, 引擎初始化與 CUDA graph 建立, 須在自己的硬體上實測, 本手冊不提供估計值.
+
+**建議的啟動方式** (推論, 信心: 中): 先啟動最大的模型, 再依序啟動其他兩個; 每啟動一個, 就用 `nvidia-smi` 確認剩餘顯示記憶體, 再決定下一個行程的 `--gpu-memory-utilization`. 三個行程都穩定後, 重新啟動其中一個, 確認它能在其他兩個運作的狀態下重新取得記憶體. 這個「單獨重啟」測試列入驗收 (M1.11 節末的檢核).
+
+**檢核**
+
+- [ ] 三個模型的行程都在運作, 加總的顯示記憶體使用量低於卡的容量, 並預留給 CUDA 執行環境的空間.
+- [ ] 逐一重新啟動單一行程, 其餘行程不受影響, 重啟的行程能重新取得記憶體.
+- [ ] 三個模型同時被請求時 (模擬預期的並行數), 檢查 vLLM 的搶佔 (preemption) 次數與延遲是否在可接受範圍 (見 M8.5 節的容量說明).
+
 ## 參考來源
 
 - [Ollama 文件: FAQ](https://docs.ollama.com/faq)
@@ -385,3 +408,12 @@ curl http://<推論區位址>:8000/metrics
 - [Docker 文件: Bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
 - [Docker 文件: docker image pull](https://docs.docker.com/reference/cli/docker/image/pull/)
 - [Ollama 文件: Context length](https://docs.ollama.com/context-length)
+- [vLLM 文件: Frequently Asked Questions](https://docs.vllm.ai/en/latest/usage/faq/)
+- [vLLM 文件: Engine Arguments](https://docs.vllm.ai/en/latest/configuration/engine_args/)
+- [vLLM 文件: Sleep Mode](https://docs.vllm.ai/features/sleep_mode.html)
+- [vLLM 文件: Optimization and Tuning](https://docs.vllm.ai/en/latest/configuration/optimization/)
+- [llama-swap 文件: Configuration](https://github.com/mostlygeek/llama-swap/wiki/Configuration)
+- [NVIDIA: RTX PRO 6000 Blackwell 工作站 GPU](https://www.nvidia.com/en-us/products/workstations/professional-desktop-gpus/rtx-pro-6000/)
+- [NVIDIA RTX PRO 6000 Blackwell Server Edition 規格表 (Akamai 託管)](https://www.akamai.com/site/en/documents/corporate/nvidia-rtx-pro-6000-blackwell-server-edition-datasheet.pdf)
+- [vLLM 論壇: 2 vLLM containers on a single GPU](https://discuss.vllm.ai/t/2-vllm-containers-on-a-single-gpu/608/2) (二手來源, 社群討論)
+- [Hugging Face: HuggingFaceTB/SmolLM2-360M-Instruct 模型卡](https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct)

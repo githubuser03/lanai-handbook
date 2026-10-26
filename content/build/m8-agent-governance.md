@@ -4,10 +4,10 @@
 - 等級: ◇ 進階
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: Rego 政策, 測試與 LangGraph 程式片段依官方文件撰寫, 未實機執行; 隔離模型的結構檢查, 斷路器, kill switch 與 A2 雙模型審查為整理者的設計建議 (推論); M8.4 節的模擬結果為內部研究紀錄, 模型判斷與分析師行為為腳本模擬; M8.1 節的 LangGraph 授權與 CLI 說明本輪未重新核對
+- 待查證: Rego 政策, 測試與 LangGraph 程式片段依官方文件撰寫, 未實機執行; 隔離模型的結構檢查, 斷路器, kill switch 與 A2 雙模型審查為整理者的設計建議 (推論); M8.4 節的模擬結果為內部研究紀錄, 模型判斷與分析師行為為腳本模擬; M8.1 節的 LangGraph 授權與 CLI 說明本輪未重新核對; M8.5 節的每代理白名單政策, 共用配額與信任邊界為設計建議, 未實機驗證, `Send` 與 `max_concurrency` 僅有社群討論串為據, `max_parallel_requests` 在 `/key/generate` 的欄位名稱待實機確認
 :::
 
-**結論**: 代理讓模型自己決定下一步要呼叫哪個工具, 所以每個動作都要在模型之外再檢查一次. 本手冊的做法是: LangGraph 負責流程控制, OPA 負責政策判定, 讀取不可信內容的工作交給沒有工具的隔離模型.
+**結論**: 代理讓模型自己決定下一步要呼叫哪個工具, 所以每個動作都要在模型之外再檢查一次. 本手冊的做法是: LangGraph 負責流程控制, OPA 負責政策判定, 讀取不可信內容的工作交給沒有工具的隔離模型. 需要多個代理同時執行或協作時, 見 M8.5 節.
 
 **這一塊在圖上的位置**: VM 控制區 (LangGraph, OPA) 與 VM 隔離區 (自建程式 + 本地模型). **前置模組**: M7. **完成後的狀態**: 代理能處理多步驟任務, 寫入與刪除需要人工核准, 異常時自動切斷.
 
@@ -235,7 +235,109 @@ graph.invoke(Command(resume=True), config)
 
 2026-10 的一次藍隊代理模擬 (使用真實的 LangGraph 1.2.17 與 OPA 1.4.2, 模型判斷與分析師行為以腳本模擬) 顯示: 沒有政策層時, 16 項注入攻擊全部得逞; 加上預設拒絕, 關鍵資產清單, 單次工具配額 (`siem.query` 每次執行上限 30 次) 與斷路器之後, 16 項中有 15 項由確定性規則擋下, 1 項由分析師拒絕; 政策判定延遲的中位數為 0.82 毫秒 (內部模擬, 推論). 這個結果的限制是模型判斷與分析師行為皆為模擬, 不代表真實模型與真實人員的表現; 讀者應以 M8.5 節的方法, 用自己的工具與測試資料重做.
 
-## M8.5 驗收測試
+## M8.5 多代理: 同時執行與協作
+
+**結論**: 本手冊的架構可以同時執行多個代理, 但建議分兩步走: 先做「多個獨立代理各跑各的」, 再做「固定流程的協作」, 不建議讓代理之間自由對話. 原因是每多一個代理, 就多一條可能傳遞注入內容的路徑, 且同時進行的請求會共用同一組 GPU. 基礎元件 (LiteLLM 虛擬金鑰, OPA, MCP gateway, Langfuse) 都已就位, 要補的是每個代理的身分, 代理之間的信任邊界, 以及跨執行的共用配額.
+
+### 三種「多代理」要分開看
+
+| 型態 | 做法 | 風險 | 本手冊的建議 |
+|---|---|---|---|
+| 並行獨立 | 多個代理各自處理不同任務, 彼此不傳訊息 (例如分流代理與週報代理) | 搶用 GPU 與工具配額 | 先做這一種 |
+| 固定流程協作 | 主流程依預先定義的順序呼叫專責代理, 傳遞的內容是固定欄位 JSON (例如分流後交給調查) | 上游輸出若遭操控, 會影響下游 | 第二步, 需套用本節的信任邊界 |
+| 自由對話 | 代理之間以自然語言彼此委派, 自行決定下一個該找誰 | 注入內容可沿對話擴散, 行為難以預測與稽核 | 不建議 (推論, 信心: 中高) |
+
+### 每個代理一個身分
+
+並行之後, 稽核與切斷都以「代理」為單位, 因此每個代理要有自己的身分與權限, 不共用:
+
+1. **各用一把虛擬金鑰**: 在 LiteLLM 為每個代理各發一把 (`/key/generate` 的做法見 M5.6 節的驗收測試), 設定自己的 `rpm_limit`, `tpm_limit` 與 `max_parallel_requests`. 官方文件說明這些限制對任何設定了它們的金鑰, 使用者或團隊都生效; 金鑰超過預算 (`max_budget`) 後請求會失敗, 但預設不檢查預算 (來源: LiteLLM 文件 Virtual Keys 與 Users). `max_parallel_requests` 在 `/key/generate` 的欄位名稱, 官方頁面的範例未直接展示, 實機驗證時請確認 (待查證).
+2. **各設工具範圍**: MCP 權限依金鑰, 團隊與組織設定 (來源: LiteLLM MCP 文件); 沒有設定伺服器清單時預設全部可連, 設定方式見 M7.2 節的表格. 每個代理的金鑰只列它需要的伺服器與工具.
+3. **OPA 以代理編號判定**: 呼叫 OPA 時帶入 `agent_id`, 政策依代理查白名單. `agent_id` 由 LangGraph 服務依自己的設定填入, 不取自模型輸出, 也不取自代理之間傳遞的訊息 (設計建議, 信心: 高).
+
+在 M8.2 節的政策中加入每個代理的工具白名單 (依 OPA 官方文件的語法撰寫, 未實機驗證):
+
+```rego
+package agent.tools
+
+# 每個代理各自的工具白名單; 代理編號不在表內, 或工具不在該代理的清單內, 都不成立
+agent_tools := {
+	"triage": {"siem.query"},
+	"investigate": {"siem.query", "ticket.create", "host.isolate"},
+}
+
+agent_ok if input.tool in agent_tools[input.agent_id]
+
+# 原本的 base_ok 增加一個條件
+base_ok if {
+	tiers[input.tool]
+	agent_ok
+	not over_quota
+	not touches_critical_asset
+}
+```
+
+這樣即使分流代理遭注入, 也無法叫用 `host.isolate`: 該工具不在它的白名單, 與模型輸出了什麼無關.
+
+### LangGraph 的做法: 專責代理當工具呼叫
+
+LangChain 官方的 supervisor 遷移說明指出, `langgraph-supervisor` 套件已不再積極維護, 建議改用 subagents 模式: 主代理把每個專責代理包成一個工具來呼叫. 該文件並說明: 專責代理中的 `interrupt` 會往上傳到最外層的圖, 只有最外層需要 checkpointer, 外層呼叫時帶 `thread_id`, 恢復時以 `Command(resume=...)` 繼續 (來源: LangChain 文件 Migrate: langgraph-supervisor). 子圖 (subgraph) 的文件另有幾項與並行有關的說明 (來源: LangGraph 文件 Subgraphs):
+
+- 子圖是「作為另一張圖的節點的圖」; 可以用包裝函式轉換父子狀態 (各自保有私有狀態), 或直接加入為節點並共用狀態欄位.
+- 子圖設為「每個執行緒保留狀態」(`checkpointer=True`) 時, 不支援對同一個子圖的平行呼叫, 否則會發生 checkpoint 衝突.
+- 多個這類子圖在節點內呼叫時, 各自要用獨立的節點名稱, 避免 checkpoint 相互覆蓋.
+
+動態展開多個平行分支, 社群討論串提到可用 `Send`, 並以 `max_concurrency` 控制同時數量 (二手來源, 為社群論壇討論, 實際行為待對照官方文件).
+
+固定流程協作的示意如下 (依上述文件整理的設計, 未實機驗證):
+
+```
+告警進入
+   |
+   v
+[主流程 LangGraph, thread_id = 本次執行編號]
+   |
+   +--> [分流代理]   金鑰 k-triage, 工具: siem.query
+   |        | 輸出固定欄位 JSON
+   |        v
+   |    [程式檢查結構, 長度, 列舉值]  不通過就整筆丟棄
+   |        |
+   +--> [調查代理]   金鑰 k-investigate, 工具: siem.query, ticket.create, host.isolate
+            | 每次工具呼叫先查 OPA (帶 agent_id)
+            v
+        [MCP gateway] --> 工具
+   A2 以上的動作: 雙模型審查或人工核准 (見 M8.4 節)
+```
+
+### 代理之間的訊息一律視為不可信
+
+OWASP 的代理應用十大風險中, ASI07「Insecure Inter-Agent Communication」指代理之間遭偽造的訊息可能把整群代理導向錯誤動作, ASI08「Cascading Failures」指錯誤訊號在自動化流程中擴大 (來源: OWASP GenAI Security Project, Top 10 for Agentic Applications). 因應做法沿用 M8.3 節的隔離原則 (設計建議, 信心: 中高):
+
+1. **只傳固定欄位**: 上游代理的輸出須通過結構檢查 (欄位, 型別, 列舉值, 長度) 才交給下游; 自由文字只顯示給分析師, 不當作下游的指令或規劃依據.
+2. **權限不隨訊息變動**: 下游代理的工具範圍由自己的金鑰與 OPA 白名單決定. 上游訊息要求「幫我隔離這台主機」時, 下游仍須通過自己的政策判定.
+3. **訊息不帶憑證**: 代理之間不傳遞金鑰, token 或網址憑證.
+4. **關鍵資產清單照常生效**: 上游填入的目標值若落在關鍵資產清單, 下游的非唯讀動作仍會遭拒 (見 M8.3 節「擋不住的情況」).
+5. **錯誤不往下游擴散**: 上游連續輸出格式錯誤時, 由斷路器切斷該代理, 下游不再接收 (見 M8.4 節).
+
+### 同時執行的容量與配額
+
+**GPU 是共用瓶頸.** 同時進行的請求數大致等於「同時執行的代理數」乘以「每個代理內同時送出的呼叫數」(推算, 非實測). vLLM 的 KV 快取不足時會發生搶佔 (preemption), 被搶佔的請求待空間足夠後重新計算; V1 預設的搶佔模式為 `RECOMPUTE`. 官方建議: 搶佔頻繁時降低 `max_num_seqs` 或 `max_num_batched_tokens`, 可縮小一批的請求數, 降低 KV 快取需求; 搶佔次數可由 Prometheus 指標或 `disable_log_stats=False` 觀察 (來源: vLLM 文件 Optimization and Tuning). 實務做法是先用一個代理量出單次執行的呼叫數與延遲, 再逐一加入其他代理, 觀察搶佔次數與延遲, 超過可接受範圍就停止增加, 或另加一台推論主機 (設計建議, 信心: 中).
+
+**金鑰層的限流.** LiteLLM 跨多個實例時, `tpm`, `rpm` 與 `max_parallel_requests` 的計數放在 Redis; Redis 無法連線時, 各實例會退回各自的記憶體計數, 例如 `rpm_limit: 2` 會變成每個實例各 2 次. 設定 `fail_closed_rate_limit_enforcement: true` 後, 無法驗證計數的請求會回 503 (來源: LiteLLM 文件 Users). 單一 LiteLLM 實例的部署不受影響; 多實例時, 建議啟用 fail closed (推論, 信心: 中).
+
+**跨執行的共用配額.** M8.4 節的單次配額只管「一次執行」(一個 `thread_id`) 的呼叫數. 要限制「所有代理加總」的呼叫量 (例如整個系統每分鐘最多對 SIEM 查詢 100 次), 需要外部計數器, 例如 Redis. LangGraph 在查詢 OPA 前讀取計數, 放進 `input.global_count`, 政策再加一條 `over_global_quota` 規則. OPA 本身不保存狀態, 計數由呼叫端負責 (設計建議, 信心: 中高).
+
+### 觀測與切斷以代理為單位
+
+- **追蹤**: 同一次協作內的所有代理共用同一個 `thread_id`, 並記在 Langfuse 的追蹤與 OPA 的決策紀錄中, 才查得出完整路徑 (設計建議).
+- **單獨切斷一個代理**: 以 `/key/block` 封鎖該代理的虛擬金鑰 (做法見 M5.4 節「離職停用流程」), 或在 OPA 政策對該 `agent_id` 一律回 `deny`, 其他代理不受影響. 這與 M8.4 節的全域 kill switch 並存.
+- **斷路器的範圍**: 斷路器的對象改為「代理 + 工具」的組合, 避免一個代理出錯時, 連帶封鎖其他代理使用同一個工具.
+
+### 為什麼先固定流程
+
+K5 引用的 BFCL V4 顯示, 小模型單步工具呼叫約 78% 至 88%, 多輪任務約 30% 至 42%. 多個代理串接時, 整體成功率是各段相乘: 示意計算, 每段 90% 成功, 串接 5 段約為 59% (0.9 的 5 次方; 非實測). 因此固定流程的順序與欄位, 比讓代理自行決定交給誰更容易測試與稽核 (信心: 高). 需要新增代理時, 先確認它能獨立通過 M8.6 節的測試, 再接進流程.
+
+## M8.6 驗收測試
 
 下列測試全部通過後, 才讓代理處理真實資料 (測試清單為整理者建議, 未實機驗證).
 
@@ -274,3 +376,10 @@ graph.invoke(Command(resume=True), config)
 - [LangGraph 文件: Interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts)
 - [Simon Willison: The Dual LLM pattern](https://simonwillison.net/2023/Apr/25/dual-llm-pattern/)
 - [OWASP GenAI: LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
+- [LangGraph 文件: Subgraphs](https://docs.langchain.com/oss/python/langgraph/use-subgraphs)
+- [LangChain 文件: Migrate from langgraph-supervisor](https://docs.langchain.com/oss/python/migrate/langgraph-supervisor.md)
+- [LangChain 社群論壇: Best practices for parallel nodes (fanouts)](https://forum.langchain.com/t/best-practices-for-parallel-nodes-fanouts/1900.md) (二手來源, 社群討論)
+- [LiteLLM 文件: Virtual Keys, Budgets, Rate Limits](https://docs.litellm.ai/docs/proxy/users)
+- [LiteLLM 文件: MCP](https://docs.litellm.ai/docs/mcp)
+- [vLLM 文件: Optimization and Tuning](https://docs.vllm.ai/en/latest/configuration/optimization/)
+- [OWASP GenAI Security Project: Top 10 for Agentic Applications](https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agent)
