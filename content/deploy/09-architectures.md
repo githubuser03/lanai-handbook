@@ -4,7 +4,7 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: 記憶體與磁碟占用為研究 2 的推論值, 實機驗證前請視為推估值
+- 待查證: 記憶體與磁碟占用為研究 2 的推論值, 實機驗證前請視為推估值; 9.3 圖中 Keycloak, OPA, ToolHive, gVisor, ModelScan 的設定未實機驗證
 :::
 
 **結論**: 依人數與需求分三種組合, 由小到大逐步加層. 單人單機用最小組合; 2 至 10 人且需要檢索, 用標準組合; 多人, 多模型且有人每週維運 (並符合第 10.1 節條件), 才採進階組合.
@@ -82,12 +82,12 @@ docker run -d -p 127.0.0.1:3000:8080 \
 - 向量庫: 介面內建的, 或 Qdrant
 - 文件解析: Docling
 - 評估: promptfoo 測試集 (第 14 章)
-- 網路: Tailscale
+- 網路: 只限內網 (辦公室或機房的區域網路)
 
 **啟動順序**: 推論引擎 / llama-swap → 向量庫 → 介面 → (排程) 文件解析與匯入 → promptfoo 驗證.
 
 ```
-[家人 / 同事裝置] --Tailscale (WireGuard)--> [主機 100.x.y.z]
+[家人 / 同事裝置] --內網 HTTPS--> [主機 192.168.x.y]
                                               |
                      +------------------------+-----------------+
                      v                        v                 v
@@ -100,7 +100,7 @@ docker run -d -p 127.0.0.1:3000:8080 \
 
 **在最小組合的檢核表之上, 另加**:
 
-- [ ] 以 Tailscale ACL 限定可連入的裝置
+- [ ] 以主機防火牆限定可連入的內網網段
 - [ ] 每位使用者使用個別帳號
 - [ ] RAG 文件來源只限可信資料夾 (對應 OWASP LLM08 與 ASI06, 見第 11.4 節)
 - [ ] 升級前先跑 promptfoo 測試集
@@ -112,32 +112,37 @@ docker run -d -p 127.0.0.1:3000:8080 \
 
 **元件**: 標準組合全部, 加上:
 
+- 推論伺服器: vLLM (多人同時使用時, 吞吐量明顯高於 llama.cpp 與 Ollama)
 - 閘道: LiteLLM 或 Bifrost 擇一, 以映像摘要值 (digest) 鎖定版本
-- Caddy (HTTPS)
-- 代理: LangGraph 程式庫, 嵌入自己撰寫的服務
-- 沙箱化的程式碼執行容器
-- 少量已審核, 已容器化的 MCP 伺服器
-- 可選: Langfuse (另備至少 12GB 記憶體給 ClickHouse 與 Redis 等), Prompt Guard 2 22M
+- 反向代理: Nginx 或 Caddy, 只接受內網連線
+- 身分驗證 (可選): Keycloak, 以 OIDC 提供單一登入
+- 代理: LangGraph 程式庫, 嵌入自己撰寫的服務; 搭配 OPA 政策引擎
+- 隔離模型: 自建程式加本地模型, 專門讀取不可信內容, 不給任何工具
+- 工具閘道: MCP gateway (ToolHive 等), 加上少量已審核, 已容器化的 MCP 伺服器
+- 程式碼沙箱: Docker 加 gVisor
+- 模型入庫檢查 (ModelScan 等) 與 NFS 唯讀的模型存放區
+- 可選: n8n (規則固定的流程自動化), Langfuse (另備至少 12GB 記憶體給 ClickHouse 與 Redis 等), OTel Collector, Prometheus 與 Grafana, Prompt Guard 2 22M
 
-**啟動順序**: PostgreSQL / Redis → 推論 / llama-swap → 閘道 → 向量庫 → MCP 伺服器 (容器) → 代理服務 → 介面 → Caddy → 可觀測性.
+**啟動順序**: PostgreSQL / Redis → 推論伺服器 / llama-swap → 閘道 → 向量庫 → OPA → MCP gateway 與 MCP 伺服器 (容器) → 代理服務 → n8n → Keycloak → 介面 → 反向代理 → 可觀測性.
 
-```
-[使用者] --Tailscale--> [Caddy :443 (TLS, 基本驗證, 速率限制)]
-                              |
-                              v
-                       [介面 (SSO 可選)]
-                              |
-                              v
-        [代理服務 (LangGraph)] ---> [閘道 LiteLLM / Bifrost (內網, 管理路徑封鎖)]
-             |        |                         |
-             |        |                         v
-             |        |                   [llama-swap -> 推論引擎]
-             |        v
-             |   [MCP 伺服器容器: 非 root, 唯讀, 限制對外連線, 只掛指定資料夾]
-             v
-      [程式碼沙箱: --network none, rootless / gVisor]
-      [Langfuse (可選) <- OTel 追蹤]
-```
+![圖 9-1 進階組合的完整部署架構](/images/architecture.svg)
+
+圖 9-1 與 README 的架構圖相同. 珊瑚色元件接觸不可信內容, 紫色是可信控制區, 米色是基礎設施; 粗框是實體主機, 細框是 VM, 點線框是設備. 方塊上方是要安裝的軟體, 下方是角色.
+
+**部署分區**: 以 Proxmox VE 的 VM 劃分信任區, 接觸不可信內容的元件一律放 VM, 不放 LXC 容器 (LXC 與主機共用核心, 隔離較弱; 推論, 信心: 中).
+
+| VM 區 | 放什麼 | 網路限制 |
+|---|---|---|
+| 入口區 | 反向代理, 介面, Keycloak, Docling, Qdrant | 只接受內網使用者連線 |
+| 控制區 | LangGraph, OPA | 只能連閘道區與隔離區 |
+| 隔離區 | 隔離模型 | 只能連 LiteLLM, 不持有任何工具憑證 |
+| 閘道區 | LiteLLM, MCP gateway | 唯一保存 API 金鑰, 唯一能對外連線的區 |
+| 工具區 | MCP 伺服器, 程式碼沙箱 | 沙箱無網路; MCP 伺服器只能連指定系統 |
+| 推論區 | vLLM (GPU 直通) | 只接受閘道區連線 |
+| 稽核區 | Langfuse, OTel Collector, Prometheus | 只接收紀錄, 轉送既有 SIEM |
+| 自動化區 | n8n | 只能連閘道區 (LiteLLM, MCP gateway) |
+
+資料來源: 分區方式整理自 2026-10 的藍隊代理架構模擬與研究 2, 屬推論, 信心: 中. 實際部署前請以自己的網段與防火牆規則驗證.
 
 **在前兩組的檢核表之上, 另加**:
 
@@ -148,6 +153,9 @@ docker run -d -p 127.0.0.1:3000:8080 \
 - [ ] 沙箱無網路, 並有資源上限
 - [ ] MCP 工具描述變更時重新審核
 - [ ] 金鑰輪替流程已準備, 並演練過一次
+- [ ] 推論伺服器只接受閘道連線
+- [ ] 模型檔入庫前掃描並記錄雜湊值, 推論伺服器以唯讀方式掛載
+- [ ] n8n 不保存外部系統金鑰, 工具一律經 MCP gateway 呼叫
 
 ## 9.4 硬體等級對應
 
