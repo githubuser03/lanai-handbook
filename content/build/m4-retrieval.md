@@ -4,7 +4,7 @@
 - 等級: ○ 依情境, 有「問自己文件」的需求才讀
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: 查無公開的繁體中文嵌入與重排序基準 (含 TAIDE 嵌入模型), 各嵌入模型卡也未列出繁體中文評測; 重排序模型未列具體型號 (來源待補); 多數嵌入模型的多語言總分在模型卡上無法直接對照 (來源待補); sqlite-vec 目前是否已提供近似最近鄰索引 (來源待補); 向量庫記憶體占用未引用公開實測; Chroma 與 LanceDB 的內嵌模式限制引自二手來源 (Actian 比較文); 文中的類比為整理者所寫, 不代表技術上完全等同
+- 待查證: 查無公開的繁體中文嵌入與重排序基準 (含 TAIDE 嵌入模型), 各嵌入模型卡也未列出繁體中文評測; 兩款重排序模型的模型卡均未列繁體中文評測; 多數嵌入模型的多語言總分在模型卡上無法直接對照 (來源待補); sqlite-vec 目前是否已提供近似最近鄰索引 (來源待補); 向量庫記憶體占用未引用公開實測; Chroma 與 LanceDB 的內嵌模式限制引自二手來源 (Actian 比較文); 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 家庭規模 (數萬至數十萬段落) 下, 向量庫的選擇差異遠小於嵌入模型與文件解析品質的差異, 因此以「備份是否簡單」當作主要選擇依據 (信心: 中高). 嵌入模型的排行榜名次不一定適用繁體中文, 請用自己的 50 題問答實測.
@@ -73,7 +73,16 @@ Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請
 
 ### 重排序
 
-重排序在向量庫找出候選段落之後, 再用另一個模型逐段比對問題, 調整先後順序. 重排序為選配. 多語言重排序模型的授權與語言支援差異大, 繁體中文評測同樣無法確認, 因此導入前請先讀模型卡, 再用 M4.3 節的 50 題自測 (整理者建議; 具體型號來源待補).
+重排序在向量庫找出候選段落之後, 再用另一個模型逐段比對問題, 調整先後順序. 可以想成初選與複選: 向量庫先快速挑出一批可能相關的段落, 重排序模型再把問題和每一段放在一起仔細比對, 重新排名. 重排序為選配, 會多花一次模型運算.
+
+下列兩款授權允許商業使用, 模型卡都列出支援中文:
+
+| 模型 | 授權 | 規模與上下文 | 語言與訓練資料 |
+|---|---|---|---|
+| nvidia/llama-nemotron-rerank-1b-v2 | OpenMDW-1.1; 另附 Llama 3.2 Community License; 模型卡標示可商用 | 1B 參數, 以 Llama-3.2-1B 微調; 評估至 8,192 token | 以 26 種語言評估, 含中文; 模型卡的評測為搭配同系列嵌入模型的整體結果, 未單獨列出重排序分數 |
+| cross-encoder/mmarco-mMiniLMv2-L12-H384-v1 | Apache 2.0 | 以多語言 MiniLMv2 為基礎的小型模型 | 以 MMARCO 訓練 (MS MARCO 以 Google Translate 機器翻譯成 14 種語言), 語言清單含中文 |
+
+兩款的模型卡都沒有繁體中文評測, 也沒有寫明是否涵蓋繁體中文, 導入前請用 M4.3 節的 50 題自測比較「有無重排序」的命中率. 單機讀者可先試 mMiniLMv2, 規模小, 對硬體要求較低; 有 GPU 且需要較長段落時, 再評估 Nemotron 重排序模型 (推論, 信心: 中). Nemotron 重排序模型附帶 Llama 3.2 授權, 對外提供服務前請依 [K4](/know/k4-licenses) 檢查條款.
 
 ## M4.3 繁體中文 50 題自測法
 
@@ -99,7 +108,7 @@ Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請
 
 ### 進階組合
 
-Docling (CPU) 或 Marker (有 GPU) 解析 → EmbeddingGemma-300m, multilingual-e5-large-instruct 或 snowflake-arctic-embed-l-v2.0 → Qdrant (混合檢索) → 重排序 (選配) → 用 50 至 100 題自建繁體中文測試集評估命中率.
+Docling (CPU) 或 Marker (有 GPU) 解析 → EmbeddingGemma-300m, multilingual-e5-large-instruct 或 snowflake-arctic-embed-l-v2.0 → Qdrant (混合檢索) → 重排序 (選配, mMiniLMv2 或 Nemotron 重排序模型) → 用 50 至 100 題自建繁體中文測試集評估命中率.
 
 ### 安全提醒
 
@@ -142,6 +151,12 @@ RAG 的文件來源就是攻擊面: 文件中若夾帶給模型的惡意指示, 
 - [OWASP GenAI Security Project: OWASP GenAI LLM Top 10 2026 (發布日 2026-08-03)](https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/)
 - [OWASP GenAI Security Project: Top 10 for Agentic Applications for 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/)
 
-- 文中的類比 (開書考試, 圖書館索書號與卡片櫃): 整理者所寫, 無外部來源, 不應當作技術定義引用.
+重排序模型:
 
-整理者建議 (推論, 無外部來源): M4.3 節的 50 題自測流程與「差距小於 5 個百分點」的判定門檻, M4.4 節的最小可行與進階組合, 以及容量規劃的算式 (算術結果). 「備份是否簡單」作為選擇依據, 亦屬整理者判斷 (信心: 中高). 「查無繁體中文檢索評測」僅指上列四份模型卡未提供, 公開基準是否存在仍須另行查證 (來源待補).
+- [Hugging Face 模型卡: nvidia/llama-nemotron-rerank-1b-v2 (授權, 語言, 上下文, 評測)](https://huggingface.co/nvidia/llama-nemotron-rerank-1b-v2)
+- [NVIDIA NeMo AutoModel 文件: llama-nemotron-rerank-1b-v2 (以 Llama 3.2 1B 訓練的 cross-encoder)](https://docs.nvidia.com/nemo/automodel/model-coverage/reranking-models/nvidia/llama-nemotron-rerank-1b-v2)
+- [Hugging Face 模型卡: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1 (授權, 基礎模型, 訓練資料, 語言)](https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1/blob/265d6fb9678e8fc6b1adeda526533b2a1f1a7f07/README.md)
+
+- 文中的類比 (開書考試, 圖書館索書號與卡片櫃, 初選與複選): 整理者所寫, 無外部來源, 不應當作技術定義引用.
+
+整理者建議 (推論, 無外部來源): M4.3 節的 50 題自測流程與「差距小於 5 個百分點」的判定門檻, M4.4 節的最小可行與進階組合, 以及容量規劃的算式 (算術結果); 重排序兩款模型的使用順序建議. 「備份是否簡單」作為選擇依據, 亦屬整理者判斷 (信心: 中高). 「查無繁體中文檢索評測」僅指上列四份模型卡未提供, 公開基準是否存在仍須另行查證 (來源待補).
