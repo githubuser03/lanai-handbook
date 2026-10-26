@@ -87,7 +87,8 @@ export default defineConfig({
           { text: 'E1 內部知識庫問答', link: '/examples/e1-knowledge-base' },
           { text: 'E2 資安告警分流', link: '/examples/e2-alert-triage' },
           { text: 'E3 合約與法規文件比對', link: '/examples/e3-document-compare' },
-          { text: 'E4 每週報告自動化', link: '/examples/e4-weekly-report' }
+          { text: 'E4 每週報告自動化', link: '/examples/e4-weekly-report' },
+          { text: 'E5 多代理事件調查', link: '/examples/e5-multi-agent-investigation' }
         ]
       },
       {
