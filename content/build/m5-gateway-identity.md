@@ -4,7 +4,7 @@
 - 等級: ○ 依情境, 符合條件才讀
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: llama-swap 授權 (訓練資料內資訊, 可能已過時); 另有一個 LiteLLM 漏洞據報預定於 2026-10-27 公開, 本章發布前須重新查證; M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令未實機驗證; Keycloak 的 Google Hosted Domain 欄位是否在登入時強制檢查網域, 須在測試環境驗證; Google 身分提供者的回呼網址格式來自社群論壇 (二手來源), 以主控台顯示為準; Open WebUI 的 `AIOHTTP_CLIENT_SSL_CERT_FILE` 是否涵蓋 OIDC 請求未確認; Langfuse `AUTH_KEYCLOAK_ISSUER` 的值為依 OIDC 慣例的推論
+- 待查證: llama-swap 授權 (訓練資料內資訊, 可能已過時); 另有一個 LiteLLM 漏洞據報預定於 2026-10-27 公開 (原引的 SOCRadar 文章未見此說法, 來源待補), 本章發布前須重新查證; M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令未實機驗證; Keycloak 的 Google Hosted Domain 欄位是否在登入時強制檢查網域, 須在測試環境驗證; Google 身分提供者的回呼網址格式來自社群論壇 (二手來源), 以主控台顯示為準; Open WebUI 的 `AIOHTTP_CLIENT_SSL_CERT_FILE` 是否涵蓋 OIDC 請求未確認; Langfuse `AUTH_KEYCLOAK_ISSUER` 的值為依 OIDC 慣例的推論
 :::
 
 **結論**: 單機單人不需要閘道. 只有多模型輪替而沒有多人治理需求時, 用 llama-swap 就夠. LiteLLM 有納入評估, 但不列為預設, 原因是一年內兩度成為供應鏈入侵的入口, 且集中保存上游金鑰 (信心: 高). 符合 M5.1 節的條件時, 閘道放在獨立的閘道區, 成為唯一保存 API 金鑰的地方; 帳號則交給身分驗證伺服器統一管理.
@@ -47,7 +47,7 @@ LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權, SSO 等�
 | 2026-03-24 | TeamPCP 先入侵 LiteLLM CI/CD 中未鎖定版本的 Trivy 掃描工具, 竊取 PyPI 發布權杖, 再發布含後門的 1.82.7 與 1.82.8 | Snyk |
 | 2026-10-21 | 官方事故報告指出發布流程遭入侵, 攻擊者將惡意 v1.107.0 推送到 Docker registry 與 PyPI; 惡意 wheel 於 UTC 11:39 至 13:23 在 PyPI 上架; v1.107.0, latest, main-latest, main-stable 標籤都曾指向惡意映像; 惡意程式放在 Python 啟動檔 (cook.pth, sitecustomize.py), 只要 Python 啟動就會執行 | LiteLLM 官方事故報告, Wiz, Help Net Security |
 
-官方建議鎖定 `litellm==1.106.2`, 或 2026-10-21 之前發布的明確版本 (SOCRadar 轉述). 官方的攻擊鏈分析指出, 起點是 5 月 27 日有一組 master key 出現在公開儲存庫, 之後攻擊者竊得三組 GitHub 權杖. 官方說明企業版私有發行未受影響.
+官方建議鎖定 `litellm==1.106.2`, 或 2026-10-21 之前發布的明確版本 (SOCRadar 轉述). 官方事故報告指出, 發布權限曾暫時放寬, 攻擊者取得開發者的 GitHub CLI 憑證後修改發布流程, 入口點官方表示尚未確認. 官方說明企業版私有發行未受影響.
 
 2026 年的 CVE 紀錄見[元件版本與安全公告頁](/ref/versions). 其中 CVE-2026-42208 為未驗證即可利用的 SQL 注入 (1.81.16 至 1.83.6, 修補於 1.83.7), 來源為 LiteLLM 官方部落格與 Bishop Fox.
 
