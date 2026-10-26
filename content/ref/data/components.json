@@ -351,6 +351,17 @@
       "verified_on": "2026-10-26",
       "expires_after_days": 30,
       "status": ""
+    },
+    {
+      "component": "vLLM",
+      "cve": "GHSA-3c86-2m5g-59q7 (無 CVE 編號)",
+      "summary": "CVSS 7.8, 特定處理器載入器在 trust_remote_code=False 時仍執行模型內程式碼; 0.28.0 修補, 2026-08-28 公告",
+      "source_name": "vLLM GitHub Security Advisory",
+      "source_url": "https://github.com/vllm-project/vllm/security/advisories/GHSA-3c86-2m5g-59q7",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": ""
     }
   ]
 }

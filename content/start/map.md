@@ -19,7 +19,7 @@
 | Proxmox VE, VM 分區, 備份伺服器 | [M0 基礎環境](/build/m0-foundation) | K6 | ● |
 | vLLM (或 Ollama, llama.cpp) | [M1 推論伺服器](/build/m1-inference) | K1, K2, K3 | ● |
 | Open WebUI, Nginx 或 Caddy | [M2 使用者介面與反向代理](/build/m2-ui-proxy) | K6 | ● |
-| ModelScan, NFS 模型存放區, Hugging Face | [M3 模型入庫與存放](/build/m3-model-intake) | K1, K4 | ○ |
+| ModelAudit, NFS 模型存放區, Hugging Face | [M3 模型入庫與存放](/build/m3-model-intake) | K1, K4 | ○ |
 | Docling, Qdrant, 嵌入模型 | [M4 檢索 (RAG)](/build/m4-retrieval) | K1 | ○ |
 | LiteLLM, Keycloak, 雲端 API | [M5 模型閘道與身分驗證](/build/m5-gateway-identity) | K6 | ○ |
 | Langfuse, OTel, Prometheus, 既有 SIEM | [M6 可觀測, 稽核與評估](/build/m6-observability) | K5 | ○ |

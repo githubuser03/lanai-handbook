@@ -4,7 +4,7 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: 本章所有指令依官方文件整理, 尚未在實機執行; llama.cpp 與 LM Studio 的操作步驟本輪未核對, 僅列定位; 標示「推論」的段落未有官方文件依據
+- 待查證: 本章所有指令依官方文件整理, 尚未在實機執行; llama.cpp 與 LM Studio 的操作步驟本輪未核對, 僅列定位; 標示「推論」的段落未有官方文件依據; M1.10 節的 vLLM 指令依官方文件改寫, 未實機驗證, 以 `Authorization: Bearer` 標頭帶金鑰的寫法未找到 vLLM 官方 curl 範例; vLLM 映像在唯讀模型目錄與 `HF_HUB_OFFLINE=1` 下能否完整離線啟動, 本輪未驗證
 :::
 
 **結論**: 初階讀者以 Ollama 完成第一次對話最快: 安裝, 執行一行指令, 即可開始. 完成後再依[組裝總覽](/build/overview)加上介面 (M2). 本章也整理上線前常遺漏的五項工作: GPU 驅動確認, 模型下載驗證, 離線安裝, 日誌, 以及參數調校. 多人同時使用時改用 vLLM, 見 M1.10 節.
@@ -181,7 +181,7 @@ Ollama 以環境變數設定. 預設值與用途如下 (來源: Ollama FAQ):
 | 環境變數 | 預設值 | 用途與調整原則 |
 |---|---|---|
 | `OLLAMA_HOST` | `127.0.0.1:11434` | 綁定位址. 改成 `0.0.0.0` 會開放給其他裝置, 僅在有防火牆與存取控制時才做 |
-| `OLLAMA_CONTEXT_LENGTH` | 4096 | 上下文長度. 加大會增加記憶體占用 (見 K2.3 節) |
+| `OLLAMA_CONTEXT_LENGTH` | 依顯示記憶體而定: 小於 24GiB 為 4k, 24 至 48GiB 為 32k, 48GiB 以上為 256k (來源: Ollama 文件 Context length) | 上下文長度. 加大會增加記憶體占用 (見 K2.3 節); 官方建議代理與程式工具至少設 64000 |
 | `OLLAMA_NUM_PARALLEL` | 1 | 每個模型同時處理的請求數. 所需記憶體隨它與上下文長度的乘積增加 |
 | `OLLAMA_MAX_LOADED_MODELS` | GPU 數量 x 3 (CPU 推論為 3) | 可同時載入的模型數 |
 | `OLLAMA_MAX_QUEUE` | 512 | 忙碌時的排隊上限, 超過時回應 503 |
@@ -214,13 +214,147 @@ macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對
 
 ## M1.10 多人共用時改用 vLLM
 
-待撰寫要點:
+多人同時使用, 或需要 Prometheus 指標與更廣的 GPU 支援時, 推論區改用 vLLM 的 OpenAI 相容伺服器. 個人或低階硬體仍以 Ollama 或 llama.cpp 為首選 (選型判斷為本手冊的架構決定, 信心: 中高). vLLM 的安全前提是「只有閘道區連得到它」: 它的 API 金鑰只保護部分路徑, 不能當作唯一防線.
 
-- 選型依據: 多人並行吞吐量, 硬體廣度 (NVIDIA, AMD ROCm, Intel), Prometheus 指標, 商業支援; 個人或低階硬體仍以 Ollama 或 llama.cpp 為首選
-- 在 VM 推論區以 GPU 直通執行 vLLM 容器, 只接受閘道區連線
-- 加固: 設定 `--api-key` 作為縱深防禦 (只保護 `/v1` 路徑), 不開 `--trust-remote-code`, 版本至少 0.11.1 並追蹤安全公告
-- 工具呼叫解析器 (tool-call parser) 與對話範本要和模型一起鎖定版本
-- 以唯讀方式掛載模型存放區 (見 M3)
+### 硬體與平台需求
+
+下列條件取自 vLLM 文件 GPU Installation:
+
+| 平台 | 條件 |
+|---|---|
+| 作業系統 | 只支援 Linux; 不支援原生 Windows, 須改用 WSL |
+| NVIDIA | 運算能力 (compute capability) 7.5 以上, 例如 T4, RTX 20 系列, A100, L4, H100 |
+| AMD | ROCm 6.3 以上; 支援 MI200, MI300, MI350 (MI350 須 ROCm 7.0 以上), Radeon RX 7900 與 9000 系列等 |
+| Intel | Intel Data Center GPU 與 Arc GPU, 官方描述為基本推論與服務功能 |
+
+在 Proxmox VE 上, 推論區 VM 以 GPU 直通取得顯示卡 (見 M0.1 節). VM 內用 Docker 執行時, NVIDIA 顯示卡須先安裝驅動與 NVIDIA Container Toolkit (來源: Docker 文件 GPU access). AMD 與 Intel 各有官方映像 (`vllm/vllm-openai-rocm`, `vllm/vllm-openai-xpu`) (來源: vLLM 文件 Using Docker).
+
+### 以 Docker 執行 OpenAI 相容伺服器
+
+vLLM 官方的 Docker 範例如下 (來源: vLLM 文件 Using Docker):
+
+```bash
+docker run --runtime nvidia --gpus all \
+    -v ~/.cache/huggingface:/root/.cache/huggingface \
+    --env "HF_TOKEN=$HF_TOKEN" \
+    -p 8000:8000 \
+    --ipc=host \
+    vllm/vllm-openai:latest \
+    --model Qwen/Qwen3-0.6B
+```
+
+`--ipc=host` (或改用 `--shm-size`) 讓容器使用主機的共用記憶體; vLLM 底層的 PyTorch 以共用記憶體在行程間交換資料, 張量平行推論特別需要 (來源同上).
+
+官方範例會從 Hugging Face 下載模型, 並發布到主機所有位址. 推論區改成下列寫法 (依 vLLM 文件 Using Docker, Engine Arguments, Security 與 Docker 文件 Port publishing and mapping 整理, 未實機驗證):
+
+```bash
+set -a; . ./.env; set +a          # .env 權限 600, 內含 VLLM_API_KEY
+
+docker run -d --name vllm --restart always \
+  --runtime nvidia --gpus all \
+  --ipc=host \
+  -p <推論區 VM 的內網位址>:8000:8000 \
+  -v /mnt/models:/models:ro \
+  -e HF_HUB_OFFLINE=1 \
+  -e VLLM_API_KEY="$VLLM_API_KEY" \
+  vllm/vllm-openai@sha256:<摘要值> \
+  --model /models/<組織>/<模型>/<revision> \
+  --served-model-name <對外模型名稱>
+```
+
+逐項說明:
+
+| 設定 | 作用 | 依據 |
+|---|---|---|
+| `-p <內網位址>:8000:8000` | 只在推論區 VM 的內網介面發布; 8000 是 vLLM 預設連接埠 | Docker 文件 Port publishing and mapping; vLLM 文件 CLI serve |
+| `-v /mnt/models:/models:ro` | 以唯讀方式掛載 M3 的模型存放區, 容器無法改動模型檔 | Docker 文件 Bind mounts; 見 M3.3 節 |
+| `--model /models/...` | `--model` 接受 Hugging Face 模型名稱或路徑; 改指向存放區內含 revision 的路徑, 不從網路下載 | vLLM 文件 Engine Arguments |
+| `HF_HUB_OFFLINE=1` | 不對 Hugging Face Hub 發出任何 HTTP 請求 | Hugging Face 文件 Environment variables |
+| `VLLM_API_KEY` | 與 `--api-key` 等效; 以環境變數傳入, 金鑰不出現在指令參數中 | vLLM 文件 Security, Quickstart |
+| `@sha256:<摘要值>` | 以摘要值鎖定映像, 不使用官方範例的 `latest` | Docker 文件 docker image pull; 見 O2 |
+| `--served-model-name` | API 中使用的模型名稱; 未設定時沿用 `--model` 的值 | vLLM 文件 Engine Arguments |
+
+不設 `HF_TOKEN`: 推論區只讀本地存放區, 不需要 Hugging Face 金鑰 (推論, 信心: 中高). `--revision` 與 `--tokenizer-revision` 用於指定 Hub 上的版本 (來源: vLLM 文件 Engine Arguments); 改用本地路徑時, revision 已經寫在 M3 的存放路徑中.
+
+常用的資源參數 (來源: vLLM 文件 Engine Arguments): `--gpu-memory-utilization` 預設 0.92, 是模型執行器可使用的 GPU 記憶體比例; `--max-model-len` 未指定時從模型設定推導; 多張 GPU 時以 `--tensor-parallel-size` 指定張量平行數, 預設 1. 調整原則與 M1.8 節相同: 先用預設值跑通, 一次只改一項.
+
+### 加固: API 金鑰只是縱深防禦
+
+**`--api-key` 的保護範圍有限**. vLLM 文件 Security 指出, `--api-key` (或 `VLLM_API_KEY`) 只套用到 `/v1`, `/v2`, `/inference` 與 `/cohere` 開頭的路徑, 並明確建議不要只靠它保護 vLLM. 即使設定了金鑰, 下列端點仍不需驗證 (來源: vLLM 文件 Security):
+
+- `/invocations`: SageMaker 相容端點, 與 `/v1` 端點走相同的推論功能
+- `/pooling`, `/classify`, `/score`, `/rerank` 等非 `/v1` 版本
+- `/metrics`, `/tokenize`, `/detokenize`, `/health`, `/version`
+- `/pause`, `/abort_requests`, `/update_weights` 等營運控制端點
+
+**因應方式**:
+
+1. **網路限制是主要防線**: 推論區只接受閘道區連線 (另加稽核區抓取指標), 規則見 M0.2 節. vLLM 文件也建議防火牆只開放 API 伺服器使用的 TCP 連接埠.
+2. **需要更細的控管時, 在推論區 VM 內加反向代理**: vLLM 文件指出最有效的做法是放在反向代理之後, 只放行預定開放的端點, 其餘一律封鎖. 實務上可只開放 `/v1` 給閘道區, `/metrics` 給稽核區 (後半為推論, 信心: 中).
+3. **多人隔離交給閘道**: vLLM 文件說明同一個伺服器行程內的租戶之間沒有隔離, 建議每個租戶各跑一個實例, 或改用閘道. 本手冊由 LiteLLM 發給每位使用者個別金鑰與配額 (見 M5).
+
+**其他設定** (來源: vLLM 文件 Security, CLI serve, Engine Arguments):
+
+- `--trust-remote-code` 預設為 False, 保持關閉. 即使如此, 引擎本身仍可能有缺陷, 例如 GHSA-3c86-2m5g-59q7 在特定架構下忽略了這個設定 (見 M3.1 節), 因此模型一律經 M3 入庫流程.
+- 正式環境不要設定 `VLLM_SERVER_DEV_MODE=1`.
+- `--enable-tokenizer-info-endpoint` 預設關閉, 開啟後可能暴露對話範本與 tokenizer 設定, 保持關閉.
+- 不需要 API 說明頁時, 可加 `--disable-fastapi-docs` 關閉 OpenAPI schema, Swagger UI 與 ReDoc.
+- 多節點部署時, 節點間通訊預設不安全, 官方要求放在隔離的網路.
+
+**版本**: 本手冊的研究整理以 0.11.1 為最低版本 (2025 年多個遠端執行程式碼等級的漏洞). 2026-08 公告的 GHSA-3c86-2m5g-59q7 修補版為 0.28.0 (來源: vLLM GitHub Security Advisory), 因此依目前公告, 至少要 0.28.0. vLLM 公告更新頻繁, 請訂閱 GitHub Security Advisories, 並以[版本頁](/ref/versions)與 [O3](/ops/advisories) 為準.
+
+### 工具呼叫解析器與對話範本要和模型一起鎖定
+
+要讓模型自行決定是否呼叫工具 (`tool_choice` 為 `auto`), 須同時設定兩個參數 (來源: vLLM 文件 Tool Calling 與 CLI serve):
+
+- `--enable-auto-tool-choice`: 啟用自動工具選擇, 預設 False.
+- `--tool-call-parser <名稱>`: 依模型選擇解析器, 從模型輸出中擷取工具呼叫. 文件列出的解析器包含 `hermes`, `mistral`, `llama3_json`, `pythonic`, `deepseek_v3`, `openai`, `qwen3_xml` 等.
+
+部分模型另需 `--chat-template` 指定能處理 `tool` 角色訊息的對話範本, vLLM 的 examples 目錄提供了範本檔. 官方範例如下 (來源: vLLM 文件 Tool Calling):
+
+```bash
+vllm serve meta-llama/Llama-3.1-8B-Instruct \
+    --enable-auto-tool-choice \
+    --tool-call-parser llama3_json \
+    --chat-template examples/tool_chat_template_llama3.1_json.jinja
+```
+
+指定函式名稱 (named function) 與 `required` 兩種模式則預設支援, 以結構化輸出保證能解析 (來源同上). 另外, 模型沒有對話範本時, Chat Completions API 無法處理對話, 須以 `--chat-template` 指定範本檔 (來源: vLLM 文件 Online Serving).
+
+解析器與範本選錯時, 工具呼叫可能解析失敗或格式錯誤, 而且不一定會報錯 (推論, 信心: 中). 因此每個模型上線時, 把下列四項一起記入 [O2](/ops/versioning) 的版本紀錄表, 任一項變動都視為升級, 先跑 M6 測試集:
+
+| 欄位 | 範例 |
+|---|---|
+| 模型路徑 (含 revision) | `/models/<組織>/<模型>/<revision>` |
+| vLLM 映像摘要值 | `vllm/vllm-openai@sha256:<摘要值>` |
+| `--tool-call-parser` | `<解析器名稱>` |
+| `--chat-template` | 範本檔的路徑與 SHA-256 |
+
+自訂的範本檔與模型一起經 M3 入庫, 放在模型存放區, 以唯讀方式掛載. 範本是會在伺服器上渲染的程式邏輯 (見 M3.1 節), 不要從網路直接引用.
+
+### Prometheus 指標
+
+vLLM 的 OpenAI 相容伺服器在 `/metrics` 端點提供 Prometheus 格式的指標, 例如 `vllm:num_requests_running` (執行中的請求數), `vllm:kv_cache_usage_perc` (KV cache 使用率, 1 代表 100%), `vllm:time_to_first_token_seconds` (首個 token 延遲的直方圖) (來源: vLLM 文件 Metrics). 稽核區的 Prometheus 定期抓取這個端點 (見 [M6](/build/m6-observability)). `/metrics` 不受 API 金鑰保護, 而且包含模型, 吞吐量與佇列等資訊 (來源: vLLM 文件 Security), 防火牆只開放給稽核區.
+
+### 驗收測試
+
+指令依 vLLM 文件 Quickstart 與 Metrics 的範例改寫, 未實機驗證. 金鑰放在 `Authorization: Bearer` 標頭是 OpenAI 相容 API 的慣例; vLLM 文件只說明金鑰須放在標頭中, 本輪未找到官方的 curl 範例.
+
+```bash
+# 從閘道區: 帶金鑰應成功, 不帶金鑰應回應錯誤
+curl http://<推論區位址>:8000/v1/models -H "Authorization: Bearer <金鑰>"
+curl http://<推論區位址>:8000/v1/models
+
+# 從稽核區: 可讀取指標
+curl http://<推論區位址>:8000/metrics
+```
+
+- [ ] 從閘道區帶金鑰可列出模型, 不帶金鑰時回應錯誤
+- [ ] 從入口區, 自動化區與使用者網段連 8000 連接埠失敗 (M0.5 節)
+- [ ] 容器內無法寫入 `/models`
+- [ ] 中斷推論區的對外連線後重新啟動容器, 服務仍可正常啟動 (確認不依賴 Hugging Face 下載)
+- [ ] 啟動參數中沒有 `--trust-remote-code`, 映像以摘要值指定
+- [ ] 工具呼叫測試題 (M6) 通過, 解析器與範本已記入版本紀錄表
 
 ## 參考來源
 
@@ -234,3 +368,20 @@ macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對
 - [Ollama 文件: Troubleshooting](https://docs.ollama.com/troubleshooting)
 - [Ollama 文件: Import](https://docs.ollama.com/import)
 - [Hugging Face 文件: CLI guide](https://huggingface.co/docs/huggingface_hub/guides/cli)
+- [vLLM 文件: GPU Installation](https://docs.vllm.ai/en/latest/getting_started/installation/gpu/)
+- [vLLM 文件: Using Docker](https://docs.vllm.ai/en/latest/deployment/docker/)
+- [vLLM 文件: Quickstart](https://docs.vllm.ai/en/latest/getting_started/quickstart/)
+- [vLLM 文件: Engine Arguments](https://docs.vllm.ai/en/latest/configuration/engine_args/)
+- [vLLM 文件: CLI serve](https://docs.vllm.ai/en/latest/cli/serve/)
+- [vLLM 文件: Security](https://docs.vllm.ai/en/latest/usage/security/)
+- [vLLM 文件: Tool Calling](https://docs.vllm.ai/en/latest/features/tool_calling/)
+- [vLLM 文件: Online Serving](https://docs.vllm.ai/en/latest/serving/online_serving/)
+- [vLLM 文件: Metrics](https://docs.vllm.ai/en/latest/usage/metrics/)
+- [vLLM GitHub Security Advisories](https://github.com/vllm-project/vllm/security/advisories)
+- [vLLM GitHub Security Advisory: GHSA-3c86-2m5g-59q7](https://github.com/vllm-project/vllm/security/advisories/GHSA-3c86-2m5g-59q7)
+- [Hugging Face 文件: Environment variables](https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables)
+- [Docker 文件: GPU access](https://docs.docker.com/engine/containers/gpu/)
+- [Docker 文件: Port publishing and mapping](https://docs.docker.com/engine/network/port-publishing/)
+- [Docker 文件: Bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
+- [Docker 文件: docker image pull](https://docs.docker.com/reference/cli/docker/image/pull/)
+- [Ollama 文件: Context length](https://docs.ollama.com/context-length)

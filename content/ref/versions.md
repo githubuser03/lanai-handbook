@@ -61,6 +61,7 @@
 | Langflow | CVE-2026-0768 | CVSS 9.8, 未驗證即以 root 執行程式碼, 自 2026-08-29 起觀測到持續利用 | VulnCheck |
 | n8n | CVE-2026-21858 | CVSS 10.0, 未驗證, 1.121.0 修補 | VulnCheck |
 | MCP 相關 | CVE-2025-49596, CVE-2025-6514 等 | 見[第 13.3 節](/build/m7-tools-sandbox) | The Hacker News, JFrog |
+| vLLM | GHSA-3c86-2m5g-59q7 (無 CVE 編號) | CVSS 7.8, 特定處理器載入器在 trust_remote_code=False 時仍執行模型內程式碼; 0.28.0 修補, 2026-08-28 公告 | [vLLM GitHub Security Advisory](https://github.com/vllm-project/vllm/security/advisories/GHSA-3c86-2m5g-59q7) |
 
 <!-- data:other_cves:end -->
 

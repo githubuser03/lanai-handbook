@@ -4,7 +4,7 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: 記憶體與磁碟占用為研究 2 的推論值, 實機驗證前請視為推估值; 里程碑 3 圖中 Keycloak, OPA, ToolHive, gVisor, ModelScan 的設定未實機驗證
+- 待查證: 記憶體與磁碟占用為研究 2 的推論值, 實機驗證前請視為推估值; 里程碑 3 圖中 Keycloak, OPA, ToolHive, gVisor, ModelAudit 的設定未實機驗證
 :::
 
 **結論**: 第二部的十個模組依相依關係由下往上組裝, 中途有三個里程碑, 每個里程碑都是可以獨立使用的系統. 單人組到里程碑 1; 2 至 10 人且需要檢索, 組到里程碑 2; 多人, 多模型且有人每週維運 (並符合 M5.1 節條件), 才組到里程碑 3.
@@ -107,7 +107,7 @@
 - 隔離模型: 自建程式加本地模型, 專門讀取不可信內容, 不給任何工具
 - 工具閘道: MCP gateway (ToolHive 等), 加上少量已審核, 已容器化的 MCP 伺服器
 - 程式碼沙箱: Docker 加 gVisor
-- 模型入庫檢查 (ModelScan 等) 與 NFS 唯讀的模型存放區
+- 模型入庫檢查 (ModelAudit 等) 與 NFS 唯讀的模型存放區
 - 可選: n8n (規則固定的流程自動化), Langfuse (另備至少 12GB 記憶體給 ClickHouse 與 Redis 等), OTel Collector, Prometheus 與 Grafana, Prompt Guard 2 22M
 
 **啟動順序**: PostgreSQL / Redis → 推論伺服器 / llama-swap → 閘道 → 向量庫 → OPA → MCP gateway 與 MCP 伺服器 (容器) → 代理服務 → n8n → Keycloak → 介面 → 反向代理 → 可觀測性.
