@@ -45,6 +45,8 @@ docker run -d -p 127.0.0.1:3000:8080 \
 
 `WEBUI_SECRET_KEY` 請存入 `.env` 並沿用, 否則重建容器後所有人須重新登入 (來源: Open WebUI Quick Start). 官方範例使用浮動的 `:main` 標籤, 本手冊建議改用固定版本 (見 O2).
 
+Open WebUI 文件中標為 `ConfigVar` 的環境變數只在第一次啟動時寫入設定, 之後再改環境變數不會生效, 要到管理介面調整 (來源: Open WebUI 文件 Environment Variable Configuration). 因此第一次啟動前就要決定好這類設定.
+
 **尚待實機驗證的取捨 (推論, 信心: 中高)**: Ollama 預設只綁 127.0.0.1:11434 (來源: Ollama FAQ). 在 Linux 上, 容器經 `host-gateway` 連主機時, 流量不是從主機的 127.0.0.1 進入, 因此預設設定下可能連不到. 常見解法有三種, 各有取捨:
 
 | 做法 | 作法 | 風險 |

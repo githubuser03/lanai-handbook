@@ -4,7 +4,7 @@
 - 等級: ◇ 進階
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: Rego 政策, 測試與 LangGraph 程式片段依官方文件撰寫, 未實機執行; 隔離模型的結構檢查, 斷路器, kill switch 與 T2 雙模型審查為整理者的設計建議 (推論); M8.4 節的模擬結果為內部研究紀錄, 模型判斷與分析師行為為腳本模擬; M8.1 節的 LangGraph 授權與 CLI 說明本輪未重新核對
+- 待查證: Rego 政策, 測試與 LangGraph 程式片段依官方文件撰寫, 未實機執行; 隔離模型的結構檢查, 斷路器, kill switch 與 A2 雙模型審查為整理者的設計建議 (推論); M8.4 節的模擬結果為內部研究紀錄, 模型判斷與分析師行為為腳本模擬; M8.1 節的 LangGraph 授權與 CLI 說明本輪未重新核對
 :::
 
 **結論**: 代理讓模型自己決定下一步要呼叫哪個工具, 所以每個動作都要在模型之外再檢查一次. 本手冊的做法是: LangGraph 負責流程控制, OPA 負責政策判定, 讀取不可信內容的工作交給沒有工具的隔離模型.
@@ -50,10 +50,10 @@ default decision := "deny"
 
 # 工具白名單與可回復性分級; 不在表內的工具一律拒絕
 tiers := {
-	"siem.query": "T0",
-	"ticket.create": "T1",
-	"host.isolate": "T2",
-	"mail.send": "T3",
+	"siem.query": "A0",
+	"ticket.create": "A1",
+	"host.isolate": "A2",
+	"mail.send": "A3",
 }
 
 # 關鍵資產: 非唯讀動作不得以這些主機為對象
@@ -64,17 +64,17 @@ quota := {"siem.query": 30}
 
 decision := "allow" if {
 	base_ok
-	tiers[input.tool] in {"T0", "T1"}
+	tiers[input.tool] in {"A0", "A1"}
 }
 
 decision := "review" if {
 	base_ok
-	tiers[input.tool] == "T2"
+	tiers[input.tool] == "A2"
 }
 
 decision := "approval" if {
 	base_ok
-	tiers[input.tool] == "T3"
+	tiers[input.tool] == "A3"
 }
 
 base_ok if {
@@ -86,7 +86,7 @@ base_ok if {
 over_quota if input.call_count >= quota[input.tool]
 
 touches_critical_asset if {
-	tiers[input.tool] != "T0"
+	tiers[input.tool] != "A0"
 	input.args.target in critical_assets
 }
 ```
@@ -163,7 +163,7 @@ decision_logs:
 
 ### 擋不住的情況
 
-格式檢查只能確認「值的形狀正確」, 無法確認「值是否被操控」. 例如郵件中藏有指令, 讓隔離模型在 `indicators` 填入網域控制站的 IP 位址; 這個值格式完全合法, 後續若據此執行「隔離主機」, 就會影響關鍵系統. 因應方式是由 OPA 的關鍵資產清單把關 (見 M8.2 節的 `touches_critical_asset`), 並讓 T2 以上的動作經過審查或人工核准 (見 M8.4 節) (信心: 中高).
+格式檢查只能確認「值的形狀正確」, 無法確認「值是否遭到操控」. 例如郵件中藏有指令, 讓隔離模型在 `indicators` 填入網域控制站的 IP 位址; 這個值格式完全合法, 後續若據此執行「隔離主機」, 就會影響關鍵系統. 因應方式是由 OPA 的關鍵資產清單把關 (見 M8.2 節的 `touches_critical_asset`), 並讓 A2 以上的動作經過審查或人工核准 (見 M8.4 節) (信心: 中高).
 
 ## M8.4 人工核准, 斷路器與配額
 
@@ -171,12 +171,12 @@ decision_logs:
 
 | OPA 決策 | 對應等級 | LangGraph 的處理 |
 |---|---|---|
-| `allow` | T0, T1 | 直接執行工具, 記錄結果 |
-| `review` | T2 | 由兩個不同模型分別審查動作與理由; 兩者都同意才以 canary 方式先對少量對象執行, 確認無誤後再擴大; 不一致即轉人工核准 |
-| `approval` | T3 | 暫停流程, 等待人工核准 |
+| `allow` | A0, A1 | 直接執行工具, 記錄結果 |
+| `review` | A2 | 由兩個不同模型分別審查動作與理由; 兩者都同意才以 canary 方式先對少量對象執行, 確認無誤後再擴大; 不一致即轉人工核准 |
+| `approval` | A3 | 暫停流程, 等待人工核准 |
 | `deny` | 任何等級 | 不執行, 記錄拒絕原因 |
 
-分級定義見 K5.6 節. T2 的雙模型審查與 canary 分批屬於本手冊的設計建議 (推論, 信心: 中).
+分級定義見 K5.6 節. A2 的雙模型審查與 canary 分批屬於本手冊的設計建議 (推論, 信心: 中).
 
 ### 以 LangGraph 的 interrupt 實作人工核准
 
@@ -253,7 +253,7 @@ graph.invoke(Command(resume=True), config)
 
 **人工核准與切斷**
 
-- [ ] T3 動作會暫停, 核准後才執行; 拒絕後不執行; 核准紀錄能對應到 OPA 的 `decision_id`.
+- [ ] A3 動作會暫停, 核准後才執行; 拒絕後不執行; 核准紀錄能對應到 OPA 的 `decision_id`.
 - [ ] 重新啟動 LangGraph 服務後, 暫停中的核准請求仍能恢復 (確認 checkpointer 把狀態存在資料庫).
 - [ ] 單一工具連續出錯時斷路器開啟, 其他工具仍可使用.
 - [ ] 啟動 kill switch 後, 所有代理都無法呼叫工具.

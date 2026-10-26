@@ -121,7 +121,7 @@ box(60, 195, 380, 62, "● 維運 (固定工作)", "版本鎖定與回退 · 機
 box(590, 200, 170, 62, "既有 SIEM", "資安監控平台", "beige")
 box(800, 208, 320, 52, "● Proxmox Backup Server 或 NAS", "備份伺服器", "beige")
 box(65, 312, 250, 56, "● NFS 共享", "NAS 內建或 TrueNAS 等 · 模型存放區", "beige")
-box(375, 312, 210, 58, "○ ModelScan 等", "模型入庫檢查 · 雜湊紀錄", "beige")
+box(375, 312, 210, 58, "○ ModelAudit 等", "模型入庫檢查 · 雜湊紀錄", "beige")
 
 box(80, 458, 280, 84, "● vLLM", "推論伺服器", "beige", sub2="個人或低階硬體: Ollama / llama.cpp")
 box(420, 462, 260, 66, "○ Langfuse · OTel · Prometheus", "可觀測與稽核平台", "beige")
@@ -129,7 +129,7 @@ box(740, 462, 180, 66, "◇ 官方或自建 MCP", "工具伺服器", "beige")
 box(940, 462, 160, 66, "◇ Docker + gVisor", "程式碼沙箱", "beige")
 
 box(80, 622, 280, 66, "○ LiteLLM", "模型閘道", "beige")
-box(780, 622, 320, 66, "◇ MCP gateway (ToolHive 等)", "工具閘道 · 可由 LiteLLM 兼任", "beige")
+box(780, 622, 320, 66, "◇ ToolHive vMCP 或 LiteLLM", "工具閘道 (MCP gateway)", "beige")
 
 box(80, 790, 250, 66, "● Open WebUI 等", "使用者介面", "purple")
 box(380, 790, 180, 66, "○ Keycloak", "身分驗證伺服器", "beige")

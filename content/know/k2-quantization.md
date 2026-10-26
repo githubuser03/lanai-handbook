@@ -63,7 +63,7 @@ KV cache 位元組數 ≈ 2 x 層數 x KV 頭數 x 每頭維度 x 上下文長�
 
 ### Ollama 的相關設定
 
-- 預設上下文為 4096 token; 可用環境變數 `OLLAMA_CONTEXT_LENGTH` 調整 (來源: Ollama FAQ).
+- 預設上下文依顯示記憶體而定: 小於 24GiB 為 4k, 24 至 48GiB 為 32k, 48GiB 以上為 256k; 可用環境變數 `OLLAMA_CONTEXT_LENGTH` 調整 (來源: Ollama 文件 Context length).
 - 同時處理的請求數 `OLLAMA_NUM_PARALLEL` 預設為 1; 所需記憶體會隨 `OLLAMA_NUM_PARALLEL` x `OLLAMA_CONTEXT_LENGTH` 增加 (來源: Ollama FAQ).
 
 因此記憶體吃緊時, 優先調降上下文長度與同時請求數, 再考慮換更小的模型. 設定方式見 [M1.8 節](/build/m1-inference).

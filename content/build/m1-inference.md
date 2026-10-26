@@ -181,7 +181,7 @@ Ollama 以環境變數設定. 預設值與用途如下 (來源: Ollama FAQ):
 | 環境變數 | 預設值 | 用途與調整原則 |
 |---|---|---|
 | `OLLAMA_HOST` | `127.0.0.1:11434` | 綁定位址. 改成 `0.0.0.0` 會開放給其他裝置, 僅在有防火牆與存取控制時才做 |
-| `OLLAMA_CONTEXT_LENGTH` | 4096 | 上下文長度. 加大會增加記憶體占用 (見 K2.3 節) |
+| `OLLAMA_CONTEXT_LENGTH` | 依顯示記憶體而定: 小於 24GiB 為 4k, 24 至 48GiB 為 32k, 48GiB 以上為 256k (來源: Ollama 文件 Context length) | 上下文長度. 加大會增加記憶體占用 (見 K2.3 節); 官方建議代理與程式工具至少設 64000 |
 | `OLLAMA_NUM_PARALLEL` | 1 | 每個模型同時處理的請求數. 所需記憶體隨它與上下文長度的乘積增加 |
 | `OLLAMA_MAX_LOADED_MODELS` | GPU 數量 x 3 (CPU 推論為 3) | 可同時載入的模型數 |
 | `OLLAMA_MAX_QUEUE` | 512 | 忙碌時的排隊上限, 超過時回應 503 |
@@ -301,7 +301,7 @@ docker run -d --name vllm --restart always \
 - 不需要 API 說明頁時, 可加 `--disable-fastapi-docs` 關閉 OpenAPI schema, Swagger UI 與 ReDoc.
 - 多節點部署時, 節點間通訊預設不安全, 官方要求放在隔離的網路.
 
-**版本**: 本手冊的研究整理以 0.11.1 為最低版本 (2025 年多個遠端執行程式碼等級的漏洞). 2026-08 公告的 GHSA-3c86-2m5g-59q7 修補版為 0.28.0 (來源: vLLM GitHub Security Advisory), 因此以目前公告而言至少要 0.28.0. vLLM 公告更新頻繁, 請訂閱 GitHub Security Advisories, 並以[版本頁](/ref/versions)與 [O3](/ops/advisories) 為準.
+**版本**: 本手冊的研究整理以 0.11.1 為最低版本 (2025 年多個遠端執行程式碼等級的漏洞). 2026-08 公告的 GHSA-3c86-2m5g-59q7 修補版為 0.28.0 (來源: vLLM GitHub Security Advisory), 因此依目前公告, 至少要 0.28.0. vLLM 公告更新頻繁, 請訂閱 GitHub Security Advisories, 並以[版本頁](/ref/versions)與 [O3](/ops/advisories) 為準.
 
 ### 工具呼叫解析器與對話範本要和模型一起鎖定
 
@@ -384,3 +384,4 @@ curl http://<推論區位址>:8000/metrics
 - [Docker 文件: Port publishing and mapping](https://docs.docker.com/engine/network/port-publishing/)
 - [Docker 文件: Bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
 - [Docker 文件: docker image pull](https://docs.docker.com/reference/cli/docker/image/pull/)
+- [Ollama 文件: Context length](https://docs.ollama.com/context-length)

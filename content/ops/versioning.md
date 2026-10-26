@@ -46,7 +46,7 @@ docker image ls --digests
 2. **備份**: 依 [O1](/ops/backup)備份資料卷, 並確認備份可用.
 3. **在隔離環境先試**: 用另一組容器名稱與連接埠, 載入備份的資料, 先升級試跑.
 4. **跑測試集**: 用 [M6](/build/m6-observability)的回歸測試集比較升級前後的結果與耗時.
-5. **正式升級**: 以相同的啟動指令與環境變數重建容器; 密鑰類設定要沿用. 例如 Open WebUI 的 `WEBUI_SECRET_KEY` 若改變, 重建後所有人須重新登入 (來源: Open WebUI Quick Start).
+5. **正式升級**: 以相同的啟動指令與環境變數重建容器; 密鑰類設定要沿用. 例如 Open WebUI 的 `WEBUI_SECRET_KEY` 若改變, 重建後所有人須重新登入 (來源: Open WebUI Quick Start). 另外, Open WebUI 標為 `ConfigVar` 的環境變數只在第一次啟動時生效, 升級時改這類變數不會生效, 要在管理介面調整 (來源: Open WebUI 文件 Environment Variable Configuration).
 6. **更新版本紀錄**: 填寫 19.1 的紀錄表.
 7. **觀察**: 升級後一週內留意日誌 ([M1.7 節](/build/m1-inference)) 與使用者回報.
 

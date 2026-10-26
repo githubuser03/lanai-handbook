@@ -41,7 +41,7 @@ Gemma 是授權會變動的例子. Google 開源部落格說明 Gemma 4 是 Gemm
 
 檔案格式也影響風險. pickle 格式 (常見副檔名 `.bin`, `.pt`) 在載入時可以執行任意 Python 程式; Hugging Face 會掃描上傳的 pickle 檔並標示可疑的 import, 但官方自承掃描「並非百分之百可靠」, 使用者須自行確認 (來源: Hugging Face 文件 Pickle scanning). 因此優先選用 safetensors 或 GGUF, 避免來源不明的 pickle 檔. 入庫掃描與雜湊紀錄的做法見 [M3](/build/m3-model-intake).
 
-**對應架構圖**: 雲端模型來源到入庫檢查主機 (ModelScan 等) 的那一段.
+**對應架構圖**: 雲端模型來源到入庫檢查主機 (ModelAudit 等) 的那一段.
 
 ## K4.3 OSI 開源與「原始碼公開」的差異
 

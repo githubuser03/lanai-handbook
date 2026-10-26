@@ -214,7 +214,7 @@ groups:
           summary: "vLLM 排隊請求持續超過 10 個"
 ```
 
-規則格式依 Prometheus 官方的 alerting rules 範例 (groups, alert, expr, for, labels, annotations). 修改後先以 `promtool check rules <檔案>` 檢查語法, 再對 Prometheus 程序送出 `SIGHUP` 重新載入; 只有全部規則檔格式正確時才會套用 (來源: Prometheus 文件 Recording rules). Prometheus 本身不發通知, 由 Alertmanager 依 `receivers` 設定送出, 可用的整合包括 `email_configs` 與 `webhook_configs` 等; Alertmanager 設定檔可用 `amtool check-config` 檢查 (來源: Prometheus 文件 Alerting rules, Alertmanager configuration).
+規則格式依 Prometheus 官方的 alerting rules 範例 (groups, alert, expr, for, labels, annotations). 修改後先以 `promtool check rules <檔案>` 檢查語法, 再對 Prometheus 行程送出 `SIGHUP` 重新載入; 只有全部規則檔格式正確時才會套用 (來源: Prometheus 文件 Recording rules). Prometheus 本身不發通知, 由 Alertmanager 依 `receivers` 設定送出, 可用的整合包括 `email_configs` 與 `webhook_configs` 等; Alertmanager 設定檔可用 `amtool check-config` 檢查 (來源: Prometheus 文件 Alerting rules, Alertmanager configuration).
 
 **Grafana**: 以 Prometheus 為資料來源建立儀表板 (來源: Grafana 文件 Prometheus data source). 建議至少放四張圖: 執行中與排隊中的請求數, 第一個 token 的延遲, 端到端延遲, 每秒生成 token 數 (推論, 信心: 中).
 

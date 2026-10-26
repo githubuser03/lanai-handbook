@@ -7,7 +7,7 @@
 - 待查證: n8n 與 LiteLLM 設定依官方文件整理, 未實機驗證; n8n 的 OpenAI 憑證是否可改指向 OpenAI 相容 API, 官方憑證文件未說明, 因此本頁改用 HTTP Request 節點; 工具名稱 (ticket.list_closed 等) 為示意
 :::
 
-**結論**: 每週報告是規則固定的流程, 適合交給 n8n 排程執行, 不需要代理自己決定步驟. n8n 經 MCP gateway 呼叫唯讀工具取得工作紀錄與指標, 由程式計算數字, 再經 LiteLLM 請模型撰寫文字說明; 草稿送給負責人確認, 確認後才寄出. 對外發信屬 T3 (不可回復), 一律人工核准, 而且核准由工具閘道再檢查一次, 不只靠 n8n 流程本身.
+**結論**: 每週報告是規則固定的流程, 適合交給 n8n 排程執行, 不需要代理自己決定步驟. n8n 經 MCP gateway 呼叫唯讀工具取得工作紀錄與指標, 由程式計算數字, 再經 LiteLLM 請模型撰寫文字說明; 草稿送給負責人確認, 確認後才寄出. 對外發信屬 A3 (不可回復), 一律人工核准, 而且核准由工具閘道再檢查一次, 不只靠 n8n 流程本身.
 
 **對象**: 企業. **需要的模組**: M0 至 M6, M9 (另需 M7 的工具閘道; 不需要程式碼沙箱).
 
@@ -41,9 +41,9 @@ M9 的前置模組包含 M7: n8n 依本手冊的架構只經 LiteLLM 與 MCP gat
    | 1. Schedule Trigger: 每週五 14:00 (工作流程時區設為 Asia/Taipei)
    v
 [MCP Client 節點] --Streamable HTTP, Bearer--> [閘道區: MCP gateway]
-   |   --> [工具區: 工單 MCP 伺服器] ticket.list_closed (T0)
-   |   --> [工具區: 監控 MCP 伺服器] metrics.availability (T0)
-   |   --> [工具區: 工作紀錄 MCP 伺服器] worklog.list (T0)
+   |   --> [工具區: 工單 MCP 伺服器] ticket.list_closed (A0)
+   |   --> [工具區: 監控 MCP 伺服器] metrics.availability (A0)
+   |   --> [工具區: 工作紀錄 MCP 伺服器] worklog.list (A0)
    v
 [程式節點] 2. 計算數字, 填入週報的固定表格 (模型不經手數字)
    |
@@ -55,7 +55,7 @@ M9 的前置模組包含 M7: n8n 依本手冊的架構只經 LiteLLM 與 MCP gat
    |
    v
 [MCP Client 節點] 5. 把草稿與核准網址 ($execution.resumeUrl) 送給負責人
-   |   --> MCP gateway --> 內部通訊或工單工具 (T1, 內部可見)
+   |   --> MCP gateway --> 內部通訊或工單工具 (A1, 內部可見)
    v
 [Wait 節點] 6. On Webhook Call, 最長等待 3 天
    |
@@ -63,7 +63,7 @@ M9 的前置模組包含 M7: n8n 依本手冊的架構只經 LiteLLM 與 MCP gat
    |
    | 負責人核准 (經反向代理呼叫核准網址, 需驗證)
    v
-[MCP Client 節點] 7. mail.send (T3)
+[MCP Client 節點] 7. mail.send (A3)
    |   --> MCP gateway 確認有對應的核准紀錄後才放行
    v
 [收件者: 名單固定在郵件工具的設定中, 不由模型決定]
@@ -121,7 +121,7 @@ M9 的前置模組包含 M7: n8n 依本手冊的架構只經 LiteLLM 與 MCP gat
 
 - n8n 的 Wait 節點支援四種恢復方式: 經過一段時間, 指定時間, 收到 Webhook 呼叫, 表單送出. 本範例用「On Webhook Call」. 每次執行都會產生唯一的恢復網址 `$execution.resumeUrl`, 可放進通知中; 恢復網址可以要求 Basic Auth, Header Auth 或 JWT 驗證 (n8n 文件). 設定驗證, 不使用 None.
 - 開啟「Limit Wait Time」, 例如最長 3 天. 官方文件說明, 逾時後流程會自動恢復, 因此逾時後的分支必須是「不寄出, 通知負責人」, 不能直接接寄信節點.
-- 寄信屬 T3. 核准狀態不只存在 n8n: 負責人核准時, 核准紀錄 (核准者, 時間, 草稿雜湊值) 同時寫入稽核區; MCP gateway 收到 `mail.send` 時, 先確認有對應的核准紀錄才放行 (政策判定方式同 E2 的 OPA 做法). 這樣即使 n8n 流程遭竄改, 也無法未經核准寄信 (推論, 信心: 中).
+- 寄信屬 A3. 核准狀態不只存在 n8n: 負責人核准時, 核准紀錄 (核准者, 時間, 草稿雜湊值) 同時寫入稽核區; MCP gateway 收到 `mail.send` 時, 先確認有對應的核准紀錄才放行 (政策判定方式同 E2 的 OPA 做法). 這樣即使 n8n 流程遭竄改, 也無法未經核准寄信 (推論, 信心: 中).
 - 收件者名單固定在郵件 MCP 伺服器的設定 (例如內部主管群組, 客戶的指定窗口), `mail.send` 不接受模型或 n8n 傳入的任意收件者.
 
 ## 驗收方式
