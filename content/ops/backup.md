@@ -4,7 +4,7 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: Docker 資料卷備份指令為通用做法, Docker 官方頁面 "Back up, restore, or migrate data volumes" 本輪因頁面過長未能擷取, 執行前請對照該頁
+- 待查證: Docker 官方 Volumes 頁面的備份與還原段落已核對, 其範例以 `--volumes-from` 搭配 `tar`, 本章範本改為直接掛載具名資料卷, 屬整理者改寫, 指令未實機驗證; 備份與還原演練的頻率, 保留份數與檢查表為整理者建議, 無來源; 備份加密與金鑰保管的做法來源待補
 :::
 
 **結論**: 要備份的是「資料與設定」, 不是模型檔. 對話資料庫, 向量庫, 設定檔與測試集每週備份一次, 並至少一份存放在另一台裝置; 備份沒有還原過, 就不算備份 (信心: 高).
@@ -14,7 +14,7 @@
 | 對象 | 是否備份 | 說明 |
 |---|---|---|
 | 介面的資料卷 (對話, 使用者, 設定) | 是 | 以 Open WebUI 為例, 資料存放在掛載到 `/app/backend/data` 的資料卷 (來源: Open WebUI Quick Start) |
-| 向量庫資料 | 是 | 重建需要重新嵌入全部文件, 耗時又耗算力 |
+| 向量庫資料 | 是 | 重建需要重新嵌入全部文件, 耗時又耗算力. Open WebUI 的資料目錄內含 `vector_db/` (ChromaDB), 隨資料卷一併備份 (來源: Open WebUI 文件 Backups) |
 | 原始文件 | 是 | 向量庫只是衍生資料, 原始文件才是來源 |
 | 設定檔 (compose 檔, 閘道設定) | 是 | 納入版本控制 |
 | `.env` 與金鑰 | 是, 但分開存放 | 與一般備份分開, 限制存取, 不放進同一個備份包 |
@@ -25,9 +25,9 @@
 
 ## O1.2 備份做法
 
-原則 (信心: 高, 屬通用做法): 備份前先停止會寫入資料的服務, 以免資料庫檔案處於不一致狀態; 備份檔存放到另一台裝置或另一個磁碟, 並保留多個日期的版本.
+原則 (信心: 高, 屬通用做法): 備份前先停止會寫入資料的服務, 以免資料庫檔案處於不一致狀態; 備份檔存放到另一台裝置或另一個磁碟, 並保留多個日期的版本. Open WebUI 文件也建議在冷檔案系統上備份資料庫 (停止服務後備份), 且不要依賴管理介面的資料庫下載功能, 因為它可能漏掉尚在 `webui.db-wal` 的新寫入 (來源: Open WebUI 文件 Backups).
 
-**Docker 資料卷的備份範本** (未實機驗證, 執行前請對照 Docker 官方文件; 映像請固定版本標籤):
+**Docker 資料卷的備份範本** (整理者依 Docker 文件 Volumes 頁面的 `tar` 備份做法改寫, 未實機驗證, 執行前請對照該頁; 映像請固定版本標籤):
 
 ```bash
 docker stop open-webui
@@ -43,7 +43,7 @@ docker start open-webui
 - [ ] 已複製到另一台裝置或另一個磁碟
 - [ ] 記錄備份日期與來源版本
 
-Open WebUI 官方建議更新前先備份資料卷 (來源: Open WebUI Quick Start), 因此升級流程應把備份放在第一步 ([O2](/ops/versioning)).
+Open WebUI 官方建議每次更新前先備份資料卷 (來源: Open WebUI Quick Start 與 Updating 文件), 因此升級流程應把備份放在第一步 ([O2](/ops/versioning)).
 
 ## O1.3 還原演練
 
@@ -71,3 +71,13 @@ Open WebUI 官方建議更新前先備份資料卷 (來源: Open WebUI Quick Sta
 ## O1.5 備份本身的安全
 
 備份檔含有對話內容與使用者資料, 與正式環境同樣敏感 (信心: 高). 存放備份的裝置要有存取控制; 若備份離開機房或放到雲端, 先加密, 並決定金鑰由誰保管.
+
+## 參考來源
+
+- [Open WebUI 文件: Quick Start (資料卷 `/app/backend/data`, 更新前備份)](https://docs.openwebui.com/getting-started/quick-start/)
+- [Open WebUI 文件: Updating (更新前備份, 還原會先清空資料卷)](https://docs.openwebui.com/getting-started/updating/)
+- [Open WebUI 文件: Backups (備份範圍, 冷備份建議)](https://docs.openwebui.com/tutorials/maintenance/backups/)
+- [Docker 文件: Volumes (Back up a volume, Restore volume from a backup)](https://docs.docker.com/engine/storage/volumes.md)
+- 手冊內部連結: [M1.5 節](/build/m1-inference), [M6](/build/m6-observability), [O2](/ops/versioning), [O3](/ops/advisories)
+
+整理者建議 (推論, 無外部來源): O1.1 的備份對象取捨 (模型檔不備份, `.env` 分開存放), O1.3 的還原演練步驟與「每季一次」的頻率 (本文已標信心: 低), O1.4 的定期檢查表, O1.5 的備份加密與存取控制原則 (信心: 高, 屬通用做法). 備份檔大小檢查與 `tar tzf` 列出內容屬通用做法, 未另引來源.
