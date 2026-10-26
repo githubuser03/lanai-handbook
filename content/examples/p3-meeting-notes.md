@@ -7,7 +7,7 @@
 - 待查證: whisper.cpp 與 OpenCC 指令依官方 README 整理, 未實機驗證; Whisper 對台灣華語, 中英夾雜與專有名詞的辨識準確度無公開基準; Open WebUI 內建語音轉文字是否支援直接上傳錄音檔, 官方文件未說明; 長逐字稿的分段長度建議屬推論; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
-**結論**: 里程碑 1 (M0 至 M2) 加上一個可地端執行的語音轉文字程式, 就能把會議錄音整理成摘要, 決議與待辦清單. 本頁以 whisper.cpp (MIT 授權) 搭配 OpenAI Whisper 模型 (程式碼與權重皆為 MIT 授權) 為例, 錄音與逐字稿都不離開本機. 模型產生的摘要一律由記錄者核對後才寄給與會者, 尤其是決議, 負責人與期限.
+**結論**: 里程碑 1 (M0 至 M2) 加上一個可地端執行的語音轉文字程式, 就能把會議錄音整理成摘要, 決議與待辦清單. 本頁以 whisper.cpp 搭配 OpenAI Whisper 模型為例: Whisper 是把語音辨識成文字的模型, whisper.cpp 是在一般電腦上執行這個模型的程式 (兩者皆為 MIT 授權), 錄音與逐字稿都不離開本機. 模型產生的摘要一律由記錄者核對後才寄給與會者, 尤其是決議, 負責人與期限.
 
 **對象**: 個人. **需要的模組**: M1, M2.
 
@@ -36,8 +36,8 @@
 | 模組 | 里程碑 | 在本範例的用途 |
 |---|---|---|
 | [M0 基礎環境](/build/m0-foundation) | 里程碑 1 | 單機即可; 錄音檔與逐字稿的保存與刪除規則 |
-| [M1 推論伺服器](/build/m1-inference) | 里程碑 1 | 以 Ollama 執行對話模型, 負責整理摘要 |
-| [M2 使用者介面與反向代理](/build/m2-ui-proxy) | 里程碑 1 | 在 Open WebUI 使用固定的會議記錄提示範本 |
+| [M1 推論伺服器](/build/m1-inference) | 里程碑 1 | 以 Ollama (載入模型並提供 API 的推論伺服器) 執行對話模型, 負責整理摘要 |
+| [M2 使用者介面與反向代理](/build/m2-ui-proxy) | 里程碑 1 | 在 Open WebUI (瀏覽器上的對話介面) 使用固定的會議記錄提示範本 |
 | 語音轉文字程式 (不屬於任何模組) | - | 例如 whisper.cpp, 在本機把錄音轉成文字檔 |
 
 ## 流程
@@ -95,7 +95,7 @@ ffmpeg -i meeting.m4a -ar 16000 -ac 1 -c:a pcm_s16le meeting.wav
 
 whisper-cli 的 `-l` 預設為 `en`, 中文會議務必指定 `zh` (或 `auto` 自動偵測). 另有 `--prompt` 可提供初始提示, 例如放入常出現的人名與產品名; 效果因錄音而異, 請自行比較 (推論).
 
-**3. 轉成台灣用字.** 若逐字稿出現簡體字, 可用 OpenCC (Apache 2.0) 的 `s2twp` 設定轉成台灣正體並替換台灣常用詞彙:
+**3. 轉成台灣用字.** 若逐字稿出現簡體字, 可用簡繁轉換工具 OpenCC (Apache 2.0) 的 `s2twp` 設定轉成台灣正體並替換台灣常用詞彙:
 
 ```bash
 opencc -c s2twp.json -i meeting.txt -o meeting-tw.txt
@@ -120,7 +120,7 @@ opencc -c s2twp.json -i meeting.txt -o meeting-tw.txt
 
 **5. 長逐字稿分段處理.** Open WebUI 官方疑難排解頁指出, Ollama 在顯示記憶體小於 24GiB 時預設上下文只有 4096 token. 一小時會議的逐字稿通常超過這個長度 (推論). 做法有兩種: 依 M1.8 節調高上下文長度; 或把逐字稿依議程切成幾段, 每段先各自整理, 最後再請模型合併 (推論, 信心: 中).
 
-**6. 可選: 介面內建的語音轉文字.** Open WebUI 內建本機 Whisper (以 faster_whisper 執行, `WHISPER_MODEL` 預設為 `base`, 可用 `WHISPER_LANGUAGE` 指定語言), 適合用麥克風口述. 是否支援直接上傳錄音檔, 官方文件未說明, 因此本頁以 whisper.cpp 處理錄音檔.
+**6. 可選: 介面內建的語音轉文字.** Open WebUI 內建本機 Whisper (以另一套 Whisper 執行程式 faster_whisper 執行, `WHISPER_MODEL` 預設為 `base`, 可用 `WHISPER_LANGUAGE` 指定語言), 適合用麥克風口述. 是否支援直接上傳錄音檔, 官方文件未說明, 因此本頁以 whisper.cpp 處理錄音檔.
 
 ## 驗收方式
 

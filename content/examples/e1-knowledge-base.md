@@ -37,13 +37,13 @@
 
 | 模組 | 里程碑 | 在本範例的用途 |
 |---|---|---|
-| [M0 基礎環境](/build/m0-foundation) | 里程碑 1 | Proxmox VE 的入口區, 閘道區, 推論區, 稽核區 VM; 備份伺服器 |
-| [M1 推論伺服器](/build/m1-inference) | 里程碑 1 | 多人並行用 vLLM, 只接受閘道區連線 |
-| [M2 使用者介面與反向代理](/build/m2-ui-proxy) | 里程碑 1 | Open WebUI 前面加 Nginx 或 Caddy, 只接受內網連線 |
+| [M0 基礎環境](/build/m0-foundation) | 里程碑 1 | 以 Proxmox VE (在實體主機上建立與管理多台 VM 的虛擬化平台) 切出入口區, 閘道區, 推論區, 稽核區 VM; 備份伺服器 |
+| [M1 推論伺服器](/build/m1-inference) | 里程碑 1 | 多人並行用 vLLM (能同時處理多人請求的推論伺服器), 只接受閘道區連線 |
+| [M2 使用者介面與反向代理](/build/m2-ui-proxy) | 里程碑 1 | Open WebUI 是同事在瀏覽器裡提問的對話介面, 前面加 Nginx 或 Caddy 擔任反向代理, 只接受內網連線 |
 | [M3 模型入庫與存放](/build/m3-model-intake) | 里程碑 2 | 對話模型與嵌入模型都經入庫檢查, 推論伺服器唯讀掛載 |
-| [M4 檢索 (RAG)](/build/m4-retrieval) | 里程碑 2 | Docling 解析, Qdrant 向量庫, 依部門分知識庫 |
-| [M5 模型閘道與身分驗證](/build/m5-gateway-identity) | 里程碑 2 | LiteLLM 虛擬金鑰與配額; Keycloak 以 OIDC 提供單一登入與群組 |
-| [M6 可觀測, 稽核與評估](/build/m6-observability) | 里程碑 2 | 各部門的 50 題測試集; Langfuse 記錄呼叫軌跡, 轉送既有 SIEM |
+| [M4 檢索 (RAG)](/build/m4-retrieval) | 里程碑 2 | Docling 把 PDF, Word 等檔案解析成純文字, Qdrant 向量庫存放段落向量, 依部門分知識庫 |
+| [M5 模型閘道與身分驗證](/build/m5-gateway-identity) | 里程碑 2 | LiteLLM 是所有模型呼叫的閘道, 負責虛擬金鑰與配額; Keycloak 管理帳號與群組, 以 OIDC 提供單一登入 |
+| [M6 可觀測, 稽核與評估](/build/m6-observability) | 里程碑 2 | 各部門的 50 題測試集; Langfuse 記錄並顯示每次模型呼叫的軌跡, 紀錄另轉送既有 SIEM |
 
 ## 流程
 
@@ -127,7 +127,7 @@
 - 向量庫改用 Qdrant: `VECTOR_DB=qdrant`, `QDRANT_URI` 指向入口區的 Qdrant, `QDRANT_API_KEY` 設定 API 金鑰 (官方環境變數文件).
 - 文件解析設為 Docling (見 P1 的設定要點); 嵌入模型例如 EmbeddingGemma 或 Snowflake Arctic Embed 2.0 (L), 依 M4.3 節以各部門文件實測後決定.
 - Open WebUI 連模型改經 LiteLLM, 使用 Open WebUI 專用的虛擬金鑰, 並限制可用模型 (LiteLLM 文件的 `/key/generate` 支援 `models` 與 `metadata` 欄位).
-- Open WebUI 以 `ENABLE_OTEL` 開啟 OpenTelemetry (預設關閉). 官方文件列出的預設匯出協定 (`OTEL_OTLP_SPAN_EXPORTER`) 為 gRPC, 而 Langfuse 只接收 HTTP 版的 OTLP, 因此先送到 OTel Collector, 再由 Collector 以 HTTP 轉送 Langfuse (見 M6.4 節).
+- Open WebUI 以 `ENABLE_OTEL` 開啟 OpenTelemetry (預設關閉). 官方文件列出的預設匯出協定 (`OTEL_OTLP_SPAN_EXPORTER`) 為 gRPC, 而 Langfuse 只接收 HTTP 版的 OTLP, 因此先送到 OTel Collector (接收紀錄, 轉換格式後再轉送的中繼程式), 再由 Collector 以 HTTP 轉送 Langfuse (見 M6.4 節).
 - 標為 `ConfigVar` 的環境變數只在第一次啟動時生效, 之後的變更要在管理介面調整, 並記錄在變更紀錄中 (見 O2).
 
 ### 提示範本

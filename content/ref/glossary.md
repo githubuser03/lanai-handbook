@@ -45,6 +45,23 @@
 | GGUF, safetensors | 模型檔格式 |
 | 開源 / 原始碼公開 | 見[授權速查](/ref/licenses): 前者指符合 OSI 定義, 後者指原始碼可看但使用有限制 |
 
+## 常見工具與服務
+
+下列工具在多個章節出現, 此處只說明各自在架構中的角色; 授權見[授權速查](/ref/licenses), 版本見[版本與漏洞](/ref/versions).
+
+| 工具 | 角色 |
+|---|---|
+| Ollama, llama.cpp, vLLM | 推論伺服器: 載入模型檔, 對其他程式提供呼叫模型的 API (見 [M1](/build/m1-inference)) |
+| Open WebUI | 使用者介面: 讓使用者在瀏覽器裡和模型對話, 並管理知識庫 (見 [M2](/build/m2-ui-proxy)) |
+| LiteLLM | 模型閘道: 所有模型呼叫的統一入口, 負責轉送, 金鑰與配額 (見 [M5](/build/m5-gateway-identity)) |
+| Keycloak | 身分驗證服務: 管理帳號與群組, 讓各服務共用同一套登入 (SSO) (見 [M5](/build/m5-gateway-identity)) |
+| Qdrant | 向量庫: 存放文件段落的向量, 依意思找出相近段落 (見 [M4](/build/m4-retrieval)) |
+| n8n | 流程自動化平台: 依排程或事件串接各系統, 自動執行固定流程 (見 [M9](/build/m9-automation)) |
+| OPA | 政策引擎: 依事先寫好的規則判斷某個動作准不准執行 (見 [M8](/build/m8-agent-governance)) |
+| LangGraph | 代理開發框架: 把模型, 工具與判斷步驟串成可追蹤的流程 (見 [M8](/build/m8-agent-governance)) |
+| Docker | 容器工具: 把服務與執行環境包成映像, 在隔離的容器中執行 (見 [M0](/build/m0-foundation)) |
+| Hugging Face | 模型分享網站: 多數開放權重模型從這裡下載 (見 [M3](/build/m3-model-intake)) |
+
 ## 禁用的中國大陸用語
 
 軟件, 信息, 數據(指一般資料), 網絡, 質量, 項目, 用戶, 默認, 文件(指 file), 接口, 代碼, 算法, 智能, 審計, 利益相關者, 最佳實踐. 一律改用台灣慣用語.
@@ -63,3 +80,4 @@
 - 開源 / 原始碼公開: [The Open Source Definition, OSI](https://opensource.org/osd)
 - token 譯名: [世界日報, AI大模型術語「Token」譯名爭論不休 官方終於定名了](https://www.worldjournal.com/wj/story/121343/9402011)
 - 禁用的中國大陸用語清單與各術語對照為整理者依台灣慣用說法編寫, 無單一外部來源.
+- 常見工具與服務的角色說明: 整理者依各工具官方文件與本手冊各章歸納, 原始來源列在所連結章節的「參考來源」.

@@ -7,7 +7,7 @@
 - 待查證: 設定步驟與指令依 Open WebUI 官方文件整理, 未實機驗證; Open WebUI 的選單名稱會隨版本調整, 操作前請以所用版本的文件核對; 繁體中文的切塊大小與 Top K 建議值尚無公開實測; 嵌入模型範例已更換, 數字須對照官方模型卡; Ollama 上 snowflake-arctic-embed2 標籤的檔案大小本輪未讀; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
-**結論**: 個人只要組到里程碑 1 (M0 至 M2), 再加上 M4 的檢索功能, 就能把筆記, 手冊與論文放進 Open WebUI 的知識庫, 用自然語言提問並取得附出處的回答. 不需要閘道, 身分驗證或代理. 上線前用 M4.3 節的 50 題自測法確認檢索命中率, 之後每次換模型或調整設定都重跑一次.
+**結論**: 個人只要組到里程碑 1 (M0 至 M2), 再加上 M4 的檢索功能, 就能把筆記, 手冊與論文放進 Open WebUI (在瀏覽器裡和模型對話的使用者介面, 內建知識庫功能) 的知識庫, 用自然語言提問並取得附出處的回答. 不需要閘道, 身分驗證或代理. 上線前用 M4.3 節的 50 題自測法確認檢索命中率, 之後每次換模型或調整設定都重跑一次.
 
 **對象**: 個人. **需要的模組**: M1, M2, M4.
 
@@ -37,12 +37,12 @@
 | 模組 | 里程碑 | 在本範例的用途 |
 |---|---|---|
 | [M0 基礎環境](/build/m0-foundation) | 里程碑 1 | 一台 Linux 或 Mac 加 Docker 即可; 設定資料卷的備份 |
-| [M1 推論伺服器](/build/m1-inference) | 里程碑 1 | 以 Ollama 執行對話模型與嵌入模型 |
+| [M1 推論伺服器](/build/m1-inference) | 里程碑 1 | 以 Ollama 執行對話模型與嵌入模型; Ollama 是載入模型並提供 API 的推論伺服器 |
 | [M2 使用者介面與反向代理](/build/m2-ui-proxy) | 里程碑 1 | Open WebUI 只綁 127.0.0.1, 單人使用不需要反向代理 |
-| [M4 檢索 (RAG)](/build/m4-retrieval) | 里程碑 2 的模組 | 知識庫, Docling 文件解析, 嵌入模型; 個人使用可以只加 M4, 不必組 M3, M5, M6 |
+| [M4 檢索 (RAG)](/build/m4-retrieval) | 里程碑 2 的模組 | 知識庫, Docling (把 PDF, Word 等檔案轉成純文字的解析服務), 嵌入模型; 個人使用可以只加 M4, 不必組 M3, M5, M6 |
 | [M6 可觀測, 稽核與評估](/build/m6-observability) (只用 M6.1 節) | 里程碑 2 的模組 | 保存 50 題測試集, 不需要追蹤平台 |
 
-硬體等級 A 與 C (16GB) 的讀者, [組裝總覽](/build/overview)建議改用 AnythingLLM 桌面版; 本頁以 Open WebUI 說明, 概念相同.
+硬體等級 A 與 C (16GB) 的讀者, [組裝總覽](/build/overview)建議改用 AnythingLLM 桌面版, 這是把對話介面, 知識庫與模型呼叫包在同一個程式裡的桌面應用程式; 本頁以 Open WebUI 說明, 概念相同.
 
 ## 流程
 
@@ -86,7 +86,7 @@ docker run -d --name docling --network localai \
   quay.io/docling-project/docling-serve:<固定版本標籤>
 ```
 
-Open WebUI 的容器同樣加上 `--network localai` (其餘參數見 M2.2 節). 官方文件提醒, 除非另外設定 Redis 這類共享狀態機制, 否則 docling-serve 維持 `UVICORN_WORKERS=1`.
+Open WebUI 的容器同樣加上 `--network localai` (其餘參數見 M2.2 節). 官方文件提醒, 除非另外設定 Redis (讓多個程序共用狀態的記憶體資料庫) 這類共享狀態機制, 否則 docling-serve 維持 `UVICORN_WORKERS=1`.
 
 **2. 在 Open WebUI 指定文件解析引擎.** 到 **Settings > Admin > Documents**, 把內容解析引擎 (Content Extraction Engine) 設為 **Docling**, Docling Server URL 填 `http://docling:5001` (這也是官方預設值). 上傳第一份文件後, 先預覽解析出的文字; 官方疑難排解頁指出, 模型「看不到」文件內容通常是解析問題, 而不是模型問題.
 

@@ -88,7 +88,7 @@
 | 假設 | 內容 |
 |---|---|
 | 假設 A | 下載量反映真人採用, 檢索模型就是最多人選用的模型 |
-| 假設 B | 下載量多半來自自動化流程: RAG 服務每次啟動, CI 測試每次執行, 容器每次重建, 都會重新拉取模型 |
+| 假設 B | 下載量多半來自自動化流程: RAG 服務每次啟動, CI (持續整合, 程式每次修改後自動建置與測試的流程) 每次執行, 容器每次重建, 都會重新拉取模型 |
 
 鑑別方式是看讚數. 讚數必須由真人登入點擊; 如果某類模型下載量極高, 讚數卻很少, 代表大部分下載不是真人.
 
@@ -108,7 +108,7 @@
 
 | 條件 | 證據 | 信心 |
 |---|---|---|
-| 被框架設為預設值 | 向量資料庫 Chroma 的官方文件寫明, 預設嵌入模型使用 `all-MiniLM-L6-v2`, 也就是第一名; 沒有特別指定模型時, 每個新專案都會下載一次 | 高 |
+| 被框架設為預設值 | Chroma 是負責存放向量並依相似度查詢的向量資料庫, 官方文件寫明, 預設嵌入模型使用 `all-MiniLM-L6-v2`, 也就是第一名; 沒有特別指定模型時, 每個新專案都會下載一次 | 高 |
 | 小到一般 CPU 就能跑 | 10 億參數以下的模型占 52.1% 的下載量 | 高 |
 | 授權寬鬆, 可直接商用 | Apache 2.0 與 MIT 合計占 79.7% 的下載量; 授權檢查方式見[授權紅旗](/decide/license-flags) | 高 |
 | 有生態系幫忙轉發 | 以 Google 模型為上游的生成式模型共 249 個入榜, 其中 210 個是社群做的量化或微調版本, 讓同一個模型同時出現在多種執行環境 | 中 |
@@ -204,10 +204,10 @@
 
 **資料來源**
 
-- 下載量與模型資料: Hugging Face hub-stats 資料集的 models.parquet, 使用 2026-10-25 版與 2026-04-25 版兩份快照 (2026-10-26 下載). [Hugging Face: cfahlgren1/hub-stats](https://huggingface.co/datasets/cfahlgren1/hub-stats)
+- 下載量與模型資料: Hugging Face 上公開的全站統計資料集 hub-stats, 取其中記錄每個模型下載數與標籤的 models.parquet, 使用 2026-10-25 版與 2026-04-25 版兩份快照 (2026-10-26 下載). [Hugging Face: cfahlgren1/hub-stats](https://huggingface.co/datasets/cfahlgren1/hub-stats)
 - 全站模型數對照: Hugging Face 模型頁 2026-10-26 顯示 3,186,252 個, 與快照去重後的 3,185,807 個相差約 440 個, 差距來自快照時間. [Hugging Face: Models](https://huggingface.co/models)
 - Chroma 預設嵌入模型: 官方文件寫明「Chroma's default embedding function uses the Sentence Transformers all-MiniLM-L6-v2 model」 (2026-10-26 擷取). [Chroma 文件: Embedding Functions](https://docs.trychroma.com/docs/embeddings/embedding-functions)
-- LangChain 範例模型: 官方 Sentence Transformers 整合文件的範例使用 `sentence-transformers/all-mpnet-base-v2` (2026-10-26 擷取). [LangChain 文件: Sentence Transformers](https://docs.langchain.com/oss/python/integrations/embeddings/sentence_transformers.md)
+- LangChain 範例模型: LangChain 是串接模型, 檢索與工具的應用程式開發框架; 其官方 Sentence Transformers 整合文件的範例使用 `sentence-transformers/all-mpnet-base-v2` (2026-10-26 擷取). [LangChain 文件: Sentence Transformers](https://docs.langchain.com/oss/python/integrations/embeddings/sentence_transformers.md)
 - Cisco SecureBERT 2.0: 模型卡說明以資安問答, 治理與指令資料以對比學習訓練, 用途為資安語意搜尋與威脅情資檢索; 實體辨識模型可辨識指標, 惡意程式, 組織, 受影響系統與弱點五類實體. [Hugging Face: cisco-ai/SecureBERT2.0-biencoder](https://huggingface.co/cisco-ai/SecureBERT2.0-biencoder), [Hugging Face: cisco-ai/SecureBERT2.0-NER](https://huggingface.co/cisco-ai/SecureBERT2.0-NER)
 
 **計算方式與整理者判斷**

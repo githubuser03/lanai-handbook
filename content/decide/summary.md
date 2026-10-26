@@ -42,8 +42,8 @@
 
 本頁的三項前提, 表格內容與建議步驟是整理者依本手冊各章整理的判斷框架 (信心: 中, 屬推論), 不是市場統計. 頁內可查證的外部事實只有以下兩項.
 
-- **開放權重模型與雲端旗艦模型有能力差距**: Epoch AI 2026-05-29 的資料洞察指出, 最強的開放權重模型平均落後封閉前沿模型約 4 個月, 以 Epoch Capabilities Index (ECI) 計約 8 點 (自 2026 年 1 月起統計). 該指數是通用能力的綜合指標, 不代表讀者自己的任務, 因此本頁建議用自己的題目實測. [Epoch AI: 開放與封閉模型的能力差距](https://epoch.ai/data-insights/open-closed-eci-gap)
-- **2026 年已知事件多出在推論引擎之上的中介層**: CISA Known Exploited Vulnerabilities (KEV) 目錄 (catalogVersion 2026.10.23) 列有 LiteLLM 3 筆 (CVE-2026-42208, CVE-2026-42271, CVE-2026-59822), Langflow 6 筆, n8n 1 筆 (CVE-2025-68613). 這些是已知被利用的漏洞實例, 不是事件的完整統計; 「多出在」是整理者對這些實例的歸納 (信心: 中, 推論). 逐項來源與 Flowise 的紀錄見[架構地圖](/start/map)的參考來源. [CISA: Known Exploited Vulnerabilities 目錄 (JSON)](https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json)
+- **開放權重模型與雲端旗艦模型有能力差距**: Epoch AI 是追蹤 AI 模型能力與算力趨勢的研究機構, 該機構 2026-05-29 的資料洞察指出, 最強的開放權重模型平均落後封閉前沿模型約 4 個月, 以 Epoch Capabilities Index (ECI) 計約 8 點 (自 2026 年 1 月起統計). 該指數是通用能力的綜合指標, 不代表讀者自己的任務, 因此本頁建議用自己的題目實測. [Epoch AI: 開放與封閉模型的能力差距](https://epoch.ai/data-insights/open-closed-eci-gap)
+- **2026 年已知事件多出在推論引擎之上的中介層**: CISA Known Exploited Vulnerabilities (KEV) 目錄是美國網路安全暨基礎設施安全局 (CISA) 維護的「已確認遭實際利用的漏洞」清單. 該目錄 (catalogVersion 2026.10.23) 列有 LiteLLM 3 筆 (CVE-2026-42208, CVE-2026-42271, CVE-2026-59822), Langflow 6 筆, n8n 1 筆 (CVE-2025-68613). LiteLLM 是統一轉送模型呼叫並管理金鑰的閘道; Langflow 是以拖拉方塊組出 AI 應用流程的低程式碼平台; n8n 是串接各系統, 依排程或事件自動執行工作的流程自動化平台. 這些是已知被利用的漏洞實例, 不是事件的完整統計; 「多出在」是整理者對這些實例的歸納 (信心: 中, 推論). 逐項來源與 Flowise 的紀錄見[架構地圖](/start/map)的參考來源. [CISA: Known Exploited Vulnerabilities 目錄 (JSON)](https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json)
 
 其餘敘述的依據在各章:
 

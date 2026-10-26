@@ -15,11 +15,13 @@
 
 容器映像的標籤 (tag) 是版本的名字, 可以是明確的版本號, 也可以是 `latest` 這類名稱. 後者會跟著發布者更新而改指向新內容, 稱為浮動標籤; 可以想成「最新一期」這個說法, 這個月和下個月指的是不同的雜誌.
 
-2026-10-21 的 LiteLLM 事件中, `v1.107.0`, `latest`, `main-latest`, `main-stable` 等標籤都曾指向惡意映像 (來源: LiteLLM 官方事故報告, 見 [M5.3 節](/build/m5-gateway-identity)). 浮動標籤隨時可能指向不同內容, 不能當作版本固定.
+LiteLLM 是統一轉送模型呼叫並管理金鑰的閘道 (見 [M5](/build/m5-gateway-identity)). 2026-10-21 的 LiteLLM 事件中, `v1.107.0`, `latest`, `main-latest`, `main-stable` 等標籤都曾指向惡意映像 (來源: LiteLLM 官方事故報告, 見 [M5.3 節](/build/m5-gateway-identity)). 浮動標籤隨時可能指向不同內容, 不能當作版本固定.
 
 ### 固定方式
 
 摘要值 (digest) 是依映像內容算出的一串雜湊值, 內容只要有一點改變, 摘要值就不同, 因此能鎖定確切內容.
+
+下表涵蓋本手冊架構中的常駐元件: Open WebUI 是使用者在瀏覽器裡和模型對話的介面, Ollama 是載入模型並提供 API 的推論伺服器, 兩者通常以 Docker 容器或系統服務的形式執行; Python 套件則是 LiteLLM 這類以 Python 撰寫的服務所依賴的程式庫.
 
 | 對象 | 固定方式 |
 |---|---|
@@ -28,7 +30,7 @@
 | Python 套件 | 在需求檔中寫明確版本, 例如 `litellm==<版本>` |
 | 模型檔 | 記錄來源庫與 revision (見 [M1.5 節](/build/m1-inference)) |
 
-查詢本機映像的摘要值 (來源: Docker 文件 docker image ls 的 `--digests` 選項, 未實機驗證):
+Docker 是建立與執行容器的工具. 查詢本機映像的摘要值 (來源: Docker 文件 docker image ls 的 `--digests` 選項, 未實機驗證):
 
 ```bash
 docker image ls --digests
@@ -83,7 +85,7 @@ docker pull ghcr.io/open-webui/open-webui:<新版本標籤>
 
 - 無法每週檢查安全公告時, 移除非必要元件.
 - 以[「架構地圖」分層圖](/start/map)檢視哪些層可以拿掉, 優先拿掉 ○ 與 ◇ 層中用量最低的.
-- 元件的儲存庫已封存, 或長期沒有更新, 且沒有替代維護者時, 規劃替換 (例: LLM Guard 的儲存庫已於 2026-07-09 封存, 來源: GitHub 儲存庫, 亦見版本頁).
+- 元件的儲存庫已封存, 或長期沒有更新, 且沒有替代維護者時, 規劃替換 (例: LLM Guard 是檢查模型輸入與輸出的護欄工具, 其儲存庫已於 2026-07-09 封存, 來源: GitHub 儲存庫, 亦見版本頁).
 
 ## 參考來源
 
