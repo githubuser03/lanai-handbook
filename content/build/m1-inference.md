@@ -216,11 +216,11 @@ sudo usermod -a -G ollama $(whoami)
 **Linux 以 systemd 設定環境變數**: 第一行開啟服務的設定編輯畫面, 加入環境變數後存檔; 後兩行讓系統重新讀取設定並重新啟動 Ollama.
 
 ```bash
-systemctl edit ollama.service
+sudo systemctl edit ollama.service
 # 在 [Service] 區段加入, 例如:
 #   Environment="OLLAMA_CONTEXT_LENGTH=8192"
-systemctl daemon-reload
-systemctl restart ollama
+sudo systemctl daemon-reload
+sudo systemctl restart ollama
 ```
 
 **上下文長度的兩種設定方式與預設值**: `OLLAMA_CONTEXT_LENGTH` 設定整個 Ollama 服務的預設上下文長度; Modelfile 或 API 請求中的 `num_ctx` 參數只影響該模型或該次請求. 兩份官方文件對預設值的寫法不同: Context length 頁依顯示記憶體分成 4k, 32k, 256k 三級, Modelfile 頁的參數表則寫 `num_ctx` 預設 2048 (來源: Ollama 文件 Context length 與 Modelfile, 2026-10-27 擷取). 實際生效的值以 `ollama ps` 輸出的 CONTEXT 欄位為準; 同一指令的 PROCESSOR 欄位可確認模型是否有部分退回 CPU 執行 (來源: Ollama 文件 Context length). 建議上線前明確設定上下文長度, 不依賴預設值 (推論, 信心: 中高).

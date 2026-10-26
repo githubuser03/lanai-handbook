@@ -98,7 +98,7 @@ docker run -d \
 
 上述指令建立資料卷並啟動 n8n 容器, 只在自動化區的內網位址提供服務. 實際設定放在 `/etc/n8n/n8n.env`, 內容如下, 包含時區, 加密金鑰, 停用高風險節點與限制對外連線:
 
-```bash
+```ini
 GENERIC_TIMEZONE=Asia/Taipei
 TZ=Asia/Taipei
 N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true

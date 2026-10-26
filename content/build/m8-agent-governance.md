@@ -57,7 +57,7 @@ OPA 以 `opa run --server` 啟動為伺服器, 預設監聽 `localhost:8181`; �
 curl -s -X POST http://localhost:8181/v1/data/agent/tools/decision \
   -H 'Content-Type: application/json' \
   -d '{"input": {"tool": "siem.query", "args": {"target": "web01"}, "call_count": 3}}'
-# 預期回應形式: {"decision_id": "...", "result": "allow"}
+# 預期回應形式 (已依下方「決策紀錄」啟用 decision_logs 時才含 decision_id): {"decision_id": "...", "result": "allow"}
 ```
 
 呼叫端程式須「失敗即拒絕」: 連不到 OPA, 回應不是 200, 或回應中沒有 `result` 時, 一律視為拒絕 (推論, 信心: 高).

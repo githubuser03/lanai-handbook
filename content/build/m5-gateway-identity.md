@@ -182,9 +182,9 @@ Nginx 的前綴比對採最長符合, 因此 `/realms/master/` 會優先於 `/re
 
 Keycloak 端登記完成後, 換到 Open WebUI 這一端, 告訴它要去哪裡確認身分, 以及登記時拿到的 client ID 與 secret. 下列設定寫在 Open WebUI 的環境變數檔.
 
-依 Open WebUI 官方 SSO 與 Keycloak 文件整理的環境變數 (未實機驗證):
+依 Open WebUI 官方 SSO 與 Keycloak 文件整理的環境變數 (未實機驗證). 這份檔案以 `docker run --env-file` 或 Docker Compose 的 `env_file` 載入; `OAUTH_SCOPES` 的值含空白, 不要用 shell 的 `. ./.env` 方式載入:
 
-```bash
+```ini
 # .env (權限 600)
 WEBUI_URL=https://ai.example.internal
 ENABLE_OAUTH_SIGNUP=true

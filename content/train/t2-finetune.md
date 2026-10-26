@@ -148,7 +148,7 @@ python convert_hf_to_gguf.py <合併後的模型目錄> --outfile model-bf16.ggu
 ollama create <新模型名稱> -f Modelfile
 ```
 
-**llama-server**: 也可以不合併, 直接載入原模型與 LoRA adapter. llama-server 的 `--lora` 參數指定 adapter 檔案路徑, 多個 adapter 以逗號分隔 (來源: llama.cpp 文件 server README). adapter 須先轉成 GGUF; llama.cpp 儲存庫提供 `convert_lora_to_gguf.py` 腳本 (來源: llama.cpp GitHub 儲存庫檔案列表), 官方模型文件另指向轉換 adapter 的線上工具 GGUF-my-LoRA (來源: llama.cpp 文件 models.md). 腳本的參數本輪未查證.
+**llama-server**: 也可以不合併, 直接載入原模型與 LoRA adapter. llama-server 的 `--lora` 參數指定 adapter 檔案路徑, 多個 adapter 以逗號分隔 (來源: llama.cpp 文件 server README). adapter 須先轉成 GGUF; llama.cpp 儲存庫提供 `convert_lora_to_gguf.py` 腳本 (來源: llama.cpp GitHub 儲存庫檔案列表), 官方模型文件另指向轉換 adapter 的線上工具 GGUF-my-LoRA (來源: llama.cpp 文件 models.md). 依該腳本在 b11889 版的原始碼, 必填參數是 adapter 目錄 (內含 PEFT 的 adapter 設定與權重), 另可用 `--base` 指定基底模型的設定檔目錄 (只需要設定檔, 不需要權重), `--outfile` 指定輸出檔, `--outtype` 指定精度 (f32, f16, bf16, q8_0, auto, 預設 f32) (來源: llama.cpp GitHub 儲存庫 convert_lora_to_gguf.py, 2026-10-27 查閱原始碼).
 
 ### 回退
 
