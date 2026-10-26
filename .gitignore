@@ -1,4 +1,4 @@
 node_modules/
-docs/.vitepress/dist/
-docs/.vitepress/cache/
+content/.vitepress/cache/
 .DS_Store
+# 注意: docs/ 是 build 後的網站檔案, 必須納入版控, GitHub Pages 從這裡發布
