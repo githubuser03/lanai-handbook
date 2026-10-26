@@ -35,6 +35,7 @@ export default defineConfig({
     // 上方導覽列
     nav: [
       { text: '從這裡開始', link: '/' },
+      { text: '決策參考', link: '/decide/summary' },
       { text: '分層圖', link: '/intro/03-layers' },
       { text: '參考資料', link: '/ref/versions' }
     ],
@@ -47,6 +48,17 @@ export default defineConfig({
           { text: '1. 使用說明與自我檢測', link: '/' },
           { text: '2. 人工智慧的基本概念', link: '/intro/02-basics' },
           { text: '3. 地端 AI 分層與預設組合', link: '/intro/03-layers' }
+        ]
+      },
+      {
+        text: '決策參考 (給評估者)',
+        items: [
+          { text: '一頁決策摘要', link: '/decide/summary' },
+          { text: '該不該自架決策樹', link: '/decide/should-self-host' },
+          { text: '成本試算表', link: '/decide/tco' },
+          { text: '風險自評', link: '/decide/risk-checklist' },
+          { text: '授權紅旗', link: '/decide/license-flags' },
+          { text: '30 天 PoC 計畫', link: '/decide/poc-30days' }
         ]
       },
       {
