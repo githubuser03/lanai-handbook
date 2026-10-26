@@ -21,6 +21,11 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
 
+  // 程式碼上色: 低飽和的 GitHub 配色
+  markdown: {
+    theme: { light: 'github-light', dark: 'github-dark-dimmed' }
+  },
+
   themeConfig: {
     // 上方導覽列
     nav: [

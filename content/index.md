@@ -4,7 +4,7 @@ layout: home
 hero:
   name: 作業手冊
   text: 左側選單, 右側內容的文件網站
-  tagline: 內容用 Markdown 撰寫, push 到 GitHub 後自動更新網站.
+  tagline: 用 Markdown 撰寫, 經 PR 核准後發布.
   actions:
     - theme: brand
       text: 開始閱讀

@@ -1,0 +1,256 @@
+/*
+ * 樣式原則: 低調, 沉穩, 工程師感.
+ * - 中性灰階為主, 重點色只有一個, 低飽和的灰青色
+ * - 字型全用系統內建, 不載入外部字型 (可離線, 不外連)
+ * - 標題與導覽用等寬字型, 內文用無襯線體, 中文優先使用系統繁中字型
+ * - 去掉首頁漸層與大面積色塊, 圓角縮小, 邊框用細線
+ */
+
+:root {
+  /* 字型 */
+  --vp-font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC',
+    'PingFang TC', 'Microsoft JhengHei', 'Helvetica Neue', Arial, sans-serif;
+  --vp-font-family-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Mono', Menlo,
+    Consolas, 'Liberation Mono', 'Noto Sans Mono CJK TC', monospace;
+
+  /* 重點色: 低飽和灰青 */
+  --vp-c-brand-1: #3f6b73;
+  --vp-c-brand-2: #355a61;
+  --vp-c-brand-3: #2c4c52;
+  --vp-c-brand-soft: rgba(63, 107, 115, 0.1);
+
+  /* 淺色底與文字 */
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-alt: #f6f7f8;
+  --vp-c-bg-elv: #ffffff;
+  --vp-c-bg-soft: #f3f4f5;
+  --vp-c-text-1: #1f2328;
+  --vp-c-text-2: #4a525b;
+  --vp-c-text-3: #6b737c;
+  --vp-c-divider: #e1e4e8;
+  --vp-c-border: #d0d5da;
+  --vp-c-gutter: #eceef0;
+
+  /* 提示框: 全部走中性, 只靠左邊線區分 */
+  --vp-custom-block-tip-border: transparent;
+  --vp-custom-block-tip-text: var(--vp-c-text-1);
+  --vp-custom-block-tip-bg: rgba(63, 107, 115, 0.08);
+  --vp-custom-block-tip-code-bg: rgba(63, 107, 115, 0.12);
+  --vp-custom-block-warning-bg: rgba(154, 118, 38, 0.1);
+  --vp-custom-block-warning-code-bg: rgba(154, 118, 38, 0.14);
+  --vp-custom-block-danger-bg: rgba(160, 64, 64, 0.09);
+  --vp-custom-block-danger-code-bg: rgba(160, 64, 64, 0.13);
+  --vp-custom-block-info-bg: var(--vp-c-bg-soft);
+
+  /* 按鈕與首頁 */
+  --vp-button-brand-bg: var(--vp-c-brand-1);
+  --vp-button-brand-hover-bg: var(--vp-c-brand-2);
+  --vp-button-brand-active-bg: var(--vp-c-brand-3);
+  --vp-button-brand-text: #ffffff;
+  --vp-home-hero-name-color: var(--vp-c-text-1);
+  --vp-home-hero-name-background: none;
+  --vp-home-hero-image-background-image: none;
+  --vp-home-hero-image-filter: none;
+
+  /* 行內程式碼與區塊 */
+  --vp-code-block-bg: #f6f8fa;
+  --vp-code-color: #3f4a54;
+  --vp-code-line-highlight-color: rgba(63, 107, 115, 0.1);
+}
+
+.dark {
+  --vp-c-brand-1: #8fb8bf;
+  --vp-c-brand-2: #7aa5ad;
+  --vp-c-brand-3: #5f8a92;
+  --vp-c-brand-soft: rgba(143, 184, 191, 0.14);
+
+  --vp-c-bg: #14171a;
+  --vp-c-bg-alt: #101316;
+  --vp-c-bg-elv: #1a1e22;
+  --vp-c-bg-soft: #1a1e22;
+  --vp-c-text-1: #d7dce1;
+  --vp-c-text-2: #a2abb4;
+  --vp-c-text-3: #7d8791;
+  --vp-c-divider: #2a2f35;
+  --vp-c-border: #333a41;
+  --vp-c-gutter: #0e1113;
+
+  --vp-custom-block-tip-bg: rgba(143, 184, 191, 0.1);
+  --vp-custom-block-tip-code-bg: rgba(143, 184, 191, 0.16);
+  --vp-custom-block-warning-bg: rgba(201, 162, 77, 0.1);
+  --vp-custom-block-warning-code-bg: rgba(201, 162, 77, 0.16);
+  --vp-custom-block-danger-bg: rgba(204, 107, 107, 0.1);
+  --vp-custom-block-danger-code-bg: rgba(204, 107, 107, 0.16);
+
+  --vp-button-brand-bg: #4d767e;
+  --vp-button-brand-hover-bg: #5a858d;
+  --vp-button-brand-active-bg: #416a72;
+  --vp-button-brand-text: #ffffff;
+
+  --vp-code-block-bg: #0f1215;
+  --vp-code-color: #c3cad1;
+  --vp-code-line-highlight-color: rgba(143, 184, 191, 0.12);
+}
+
+/* 導覽與側欄: 等寬字型, 字級縮小, 工具介面的感覺 */
+.VPNavBarTitle .title,
+.VPSidebarItem.level-0 > .item .text,
+.VPNavBarMenuLink,
+.VPLocalNav {
+  font-family: var(--vp-font-family-mono);
+}
+
+.VPNavBarTitle .title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.VPSidebarItem.level-0 > .item .text {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--vp-c-text-2);
+}
+
+.VPSidebarItem.level-1 .text,
+.VPSidebarItem.level-2 .text {
+  font-size: 14px;
+}
+
+/* 內文標題: 等寬字型, 去掉 h2 的粗上框 */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4 {
+  font-family: var(--vp-font-family-mono);
+  letter-spacing: -0.01em;
+}
+
+.vp-doc h1 {
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.vp-doc h2 {
+  font-size: 21px;
+  font-weight: 600;
+  border-top: 1px solid var(--vp-c-divider);
+  margin-top: 40px;
+  padding-top: 28px;
+}
+
+.vp-doc h3 {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* 右側目錄 */
+.VPDocAsideOutline .outline-title {
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+/* 圓角縮小, 邊框用細線 (元件樣式有 scoped 權重, 這幾條需要 !important 才蓋得過) */
+.vp-doc div[class*='language-'],
+.vp-doc .custom-block,
+.vp-doc :not(pre) > code,
+.VPLocalSearchBox {
+  border-radius: 4px;
+}
+
+.VPButton,
+.VPFeature {
+  border-radius: 4px !important;
+}
+
+.vp-doc div[class*='language-'] {
+  border: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc .custom-block {
+  border: none;
+  border-left: 3px solid var(--vp-c-brand-1);
+}
+
+.vp-doc .custom-block.warning {
+  border-left-color: #9a7626;
+}
+
+.vp-doc .custom-block.danger {
+  border-left-color: #a04040;
+}
+
+.vp-doc .custom-block.info,
+.vp-doc .custom-block.details {
+  border-left-color: var(--vp-c-border);
+}
+
+.dark .vp-doc .custom-block.warning {
+  border-left-color: #c9a24d;
+}
+
+.dark .vp-doc .custom-block.danger {
+  border-left-color: #cc6b6b;
+}
+
+/* 表格: 細線, 表頭不填色 */
+.vp-doc table {
+  font-size: 14px;
+}
+
+.vp-doc th,
+.vp-doc td {
+  border-color: var(--vp-c-divider);
+}
+
+.vp-doc th {
+  background-color: transparent;
+  font-family: var(--vp-font-family-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc tr {
+  background-color: transparent;
+}
+
+.vp-doc tr:nth-child(2n) {
+  background-color: var(--vp-c-bg-soft);
+}
+
+/* 首頁 */
+.VPHero .name {
+  font-family: var(--vp-font-family-mono);
+  font-weight: 600;
+}
+
+.VPHero .text {
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.VPFeature {
+  background-color: transparent !important;
+  border: 1px solid var(--vp-c-divider) !important;
+}
+
+.VPFeature .title {
+  font-family: var(--vp-font-family-mono);
+  font-size: 15px;
+}
+
+.VPButton.brand,
+.VPButton.alt {
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+}
+
+/* 內文連結: 底線細化, 不加粗 */
+.vp-doc a {
+  font-weight: 500;
+  text-underline-offset: 3px;
+}
