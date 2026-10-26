@@ -162,7 +162,7 @@ service:
 | Ollama | 官方 API 文件沒有列出指標端點 (來源: Ollama API 文件) | 回應中帶 `eval_count`, `eval_duration`, `total_duration` 等欄位 | 改在閘道層蒐集 |
 | LiteLLM (閘道層) | 在 `litellm_settings` 加 `callbacks: ["prometheus"]` 後, 提供 `/metrics` (來源: LiteLLM 文件 Prometheus metrics) | `litellm_request_total_latency_metric` (histogram), `litellm_proxy_total_requests_metric` | 自 v1.85.0 起 `/metrics` 預設需要 LiteLLM API 金鑰 (同上) |
 
-**網路例外**: 推論區原則上只接受閘道區連線. Prometheus 要抓取 vLLM 指標時, `/metrics` 與推論端點共用同一個連接埠, 而且有多個不需金鑰的端點 (見 M5.5 節), 因此只對 Prometheus 主機的單一 IP 開放這個連接埠, 並記錄這條例外 (推論, 信心: 中).
+**網路例外**: 推論區原則上只接受閘道區連線. Prometheus 要抓取 vLLM 指標時, `/metrics` 與推論端點共用同一個連接埠, 而且有多個不需金鑰的端點 (見 M5.6 節), 因此只對 Prometheus 主機的單一 IP 開放這個連接埠, 並記錄這條例外 (推論, 信心: 中).
 
 **prometheus.yml 範例** (依 Prometheus 設定文件的欄位整理, 未實機驗證):
 

@@ -254,3 +254,13 @@
   font-weight: 500;
   text-underline-offset: 3px;
 }
+
+/* 內文頁底部的版權聲明 */
+.site-copyright {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: 1px solid var(--vp-c-divider);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--vp-c-text-3);
+}

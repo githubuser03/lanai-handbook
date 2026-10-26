@@ -4,6 +4,7 @@
 - 等級: 參考資料
 - 狀態: 撰寫中 (僅有大綱)
 - 資料基準日: 2026-10-26
+- 待查證: 本頁尚無實測數據與分數; 待撰寫時須逐項連到下列官方榜單並標明擷取日期
 :::
 
 **本章要回答的問題**: 各硬體等級跑各模型的實際速度為何?
@@ -19,3 +20,8 @@
 待撰寫要點:
 
 - BFCL, MTEB 等分數, 須連到官方排行榜
+
+## 參考來源
+
+- [Berkeley Function Calling Leaderboard (BFCL) V4](https://gorilla.cs.berkeley.edu/leaderboard.html): UC Berkeley 維護, 評測模型呼叫函式 (工具) 的準確度, 頁面標示最後更新日為 2026-04-12 (2026-10-26 擷取)
+- [MTEB Leaderboard, Hugging Face Space](https://huggingface.co/spaces/mteb/leaderboard): 嵌入模型的多工作評測榜單 (2026-10-26 擷取)

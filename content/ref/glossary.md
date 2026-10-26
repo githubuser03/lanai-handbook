@@ -3,6 +3,7 @@
 ::: info 本頁說明
 - 依台灣常用說法整理, 對照尚未以國家教育研究院雙語詞彙核對 (信心: 中).
 - 處理方式分三種: 有通用中文譯名者用中文, 首次出現附原文; 業界慣用英文者直接用英文; 沒有通用譯名者保留英文, 不自創譯名.
+- 待查證: 繁體中文譯名尚未逐項以國家教育研究院雙語詞彙核對
 - 新增或修改術語請開 PR, 並在說明中附上所依據的台灣用法來源.
 :::
 
@@ -34,7 +35,7 @@
 
 | 術語 | 說明 |
 |---|---|
-| token | 文字被切成的最小處理單位. 不譯為「詞元」, 因該詞為中國大陸用語 (來源: 世界日報報導, 待核對) |
+| token | 文字被切成的最小處理單位. 不譯為「詞元」, 因該詞為中國大陸官方定名 (來源: 世界日報 2026-03-25 報導) |
 | KV cache | 推論時暫存注意力運算結果的記憶體 |
 | LoRA, QLoRA | 低秩適配微調方法 |
 | MCP | Model Context Protocol, 模型與外部工具之間的協定 |
@@ -45,3 +46,18 @@
 ## 禁用的中國大陸用語
 
 軟件, 信息, 數據(指一般資料), 網絡, 質量, 項目, 用戶, 默認, 文件(指 file), 接口, 代碼, 算法, 智能, 審計, 利益相關者, 最佳實踐. 一律改用台灣慣用語.
+
+## 參考來源
+
+名詞解釋為整理者撰寫, 專有名詞定義參考下列來源 (2026-10-26 擷取):
+
+- RAG: [Lewis 等人, Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks (2020)](https://arxiv.org/abs/2005.11401)
+- LoRA: [Hu 等人, LoRA: Low-Rank Adaptation of Large Language Models (2021)](https://arxiv.org/abs/2106.09685)
+- QLoRA: [Dettmers 等人, QLoRA: Efficient Finetuning of Quantized LLMs (2023)](https://arxiv.org/abs/2305.14314)
+- 提示注入: [OWASP LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
+- MCP: [Model Context Protocol 規格 2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28)
+- GGUF: [GGUF 格式說明, ggml 儲存庫](https://raw.githubusercontent.com/ggml-org/ggml/master/docs/gguf.md)
+- safetensors: [Safetensors 文件, Hugging Face](https://huggingface.co/docs/safetensors/index)
+- 開源 / 原始碼公開: [The Open Source Definition, OSI](https://opensource.org/osd)
+- token 譯名: [世界日報, AI大模型術語「Token」譯名爭論不休 官方終於定名了](https://www.worldjournal.com/wj/story/121343/9402011)
+- 禁用的中國大陸用語清單與各術語對照為整理者依台灣慣用說法編寫, 無單一外部來源.

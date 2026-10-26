@@ -4,7 +4,7 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: 記憶體與磁碟占用為研究 2 的推論值, 實機驗證前請視為推估值; 里程碑 3 圖中 Keycloak, OPA, ToolHive, gVisor, ModelAudit 的設定未實機驗證
+- 待查證: 記憶體與磁碟占用為研究 2 的推論值, 實機驗證前請視為推估值; 模型範例已更換, 數字須對照官方模型卡; 里程碑 3 圖中 Keycloak, OPA, ToolHive, gVisor, ModelAudit 的設定未實機驗證
 :::
 
 **結論**: 第二部的十個模組依相依關係由下往上組裝, 中途有三個里程碑, 每個里程碑都是可以獨立使用的系統. 單人組到里程碑 1; 2 至 10 人且需要檢索, 組到里程碑 2; 多人, 多模型且有人每週維運 (並符合 M5.1 節條件), 才組到里程碑 3.
@@ -15,7 +15,7 @@
 | 2. 能查文件, 能多人用 (標準組合) | 再加 M3 至 M6 | 家庭或小團隊 2 至 10 人 | B, D, E; C 級須為中高記憶體款 | 嵌入模型約 0.6 至 1.2GB; 向量庫約 1 至 2GB; 磁碟約 10 至 30GB |
 | 3. 能動手做事 (進階組合) | 再加 M7 至 M9 | 多人, 多模型, 含閘道, 代理與沙箱 | F | 閘道加 PostgreSQL 約 1 至 2GB; 磁碟約 50 至 100GB |
 
-資料來源: 研究 2 (2026-10-26), 占用值由各元件公開資料加總推算, 信心: 中.
+資料來源: 研究 2 (2026-10-26), 占用值由各元件公開資料加總推算, 信心: 中. 嵌入模型一欄: EmbeddingGemma 的 Ollama 標籤頁標示 622MB; Arctic Embed 2.0 (L) 為 568M 參數 (Hugging Face 模型卡), 以每參數 2 位元組推估約 1.1GB (推論).
 
 ## 組裝順序與相依關係
 
@@ -65,7 +65,7 @@
 
 - 推論引擎, 搭配 llama-swap (需要多模型輪替時)
 - 介面: Open WebUI 或 LibreChat
-- 嵌入模型: Qwen3-Embedding-0.6B 或 bge-m3
+- 嵌入模型: EmbeddingGemma-300m 或 Snowflake Arctic Embed 2.0 (L)
 - 向量庫: 介面內建的, 或 Qdrant
 - 文件解析: Docling
 - 評估: promptfoo 測試集 (M6)
@@ -156,3 +156,12 @@
 | F | 進階組合 | 有人能每週維運時才採用 |
 
 資料來源: 研究 2 第 12.4 節, 屬推論, 信心: 中.
+
+## 參考來源
+
+本頁的里程碑劃分, 組裝順序, VM 分區與硬體等級對應, 是整理者依各模組內容所做的設計與判斷 (信心標示見各表下方), 其中引用的內部研究紀錄為非公開來源, 沒有公開連結. 各元件的版本, 參數, 指令與漏洞紀錄, 來源列在對應模組章 (M0 至 M9) 的「參考來源」與[版本與漏洞頁](/ref/versions); 本頁另可查證的外部事實如下.
+
+- 嵌入模型占用: [EmbeddingGemma-300m 模型卡 (Hugging Face)](https://huggingface.co/google/embeddinggemma-300m), [EmbeddingGemma Ollama 標籤頁](https://ollama.com/library/embeddinggemma/tags) (622MB), [Snowflake Arctic Embed L v2.0 模型卡 (Hugging Face)](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0) (568M 參數, 約 1.1GB 為整理者以每參數 2 位元組推估).
+- 「只綁 127.0.0.1」: [Docker 文件: Port publishing and mapping](https://docs.docker.com/engine/network/port-publishing/) 說明發布容器連接埠後服務對外部開放, 加上 127.0.0.1 才限制為主機本機存取.
+- 檢核表中的 OWASP LLM08 與 ASI06, 對應見 K6.4 節的「參考來源」.
+- 尚無公開來源: 各里程碑的記憶體與磁碟占用 (除嵌入模型外) 為整理者推估, Langfuse 記憶體需求見 M6, VM 與 LXC 隔離強度比較為整理者判斷 (推論, 信心: 中), 實機驗證前請視為推估值.
