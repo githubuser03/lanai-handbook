@@ -7,6 +7,8 @@
 - 待查證: Dify 授權的實際改版紀錄公開資料查無; MinerU 改授權的版本界線為整理者比對套件中繼資料的結果; 本頁不構成法律意見, 對外提供服務前請以各專案儲存庫的授權檔為準
 :::
 
+**結論**: 個人與內部使用多半不受授權限制, 限制集中在「對外提供服務」與「散布」. 對外提供服務前, 先確認表中標為非 OSI 開源的元件, 以及模型授權的條件 (例如使用者數門檻, 標示義務, 研究用途限定), 最嚴格的條款決定能做什麼 (信心: 中).
+
 ::: warning 使用前請先看
 授權條款會改版 (MinerU 與 LobeHub 都曾改過, 見頁尾「授權改版紀錄」; Dify 的條文載明提供者可調整條款), 以下為 2026-10-27 研究整理, 對外提供服務前請以各專案儲存庫的授權檔為準. 個人與內部使用通常不受影響 (信心: 中). 本頁不構成法律意見, 如有疑義請洽法律顧問.
 :::
@@ -49,11 +51,11 @@ OSI (Open Source Initiative) 定義的開源授權不得對使用方式設限. �
 
 | 模型 | 授權 | 備註 |
 |---|---|---|
-| Llama 系列 (含 Prompt Guard 2, Llama Guard 4) | Llama 4 Community License | 對話模型, 以及判斷輸入是否為攻擊或違規內容的護欄分類模型. Hugging Face 上須登入並填表取得存取權. 授權要點: 前一曆月月活躍使用者逾 7 億須向 Meta 申請授權; 須顯示 "Built with Llama"; 須遵守 Acceptable Use Policy |
-| Snowflake Arctic Embed L v2.0 | Apache 2.0 | 嵌入模型 (M4), 把文字轉成向量. Snowflake 發布, 約 5.7 億參數, 模型卡標示可免費商用 |
+| Llama 系列 (含 Prompt Guard 2, Llama Guard 4) | Llama 4 Community License | 對話模型, 以及判斷輸入是否為攻擊或違規內容的護欄分類模型. Hugging Face 上須登入並填表取得存取權. 授權要點: 以 Llama 4 版本發布日為準, 發布日前一個月的月活躍使用者超過 7 億者須向 Meta 申請授權 (一次性判定); 須顯示 "Built with Llama"; 須遵守 Acceptable Use Policy |
+| nomic-embed-text-v2-moe | Apache 2.0 | 嵌入模型 (M4), 把文字轉成向量. Nomic AI 發布, 總參數 475M, 每次運算啟用 305M (MoE) |
 | EmbeddingGemma | Gemma Terms of Use | 嵌入模型 (M4). Google 發布, 約 3 億參數; 須接受條款才能下載. 條款要點: 散布時須轉遞使用限制並附條款全文; Google 不主張對輸出內容的權利 |
-| Gemma-3-TAIDE-12b-Chat-2602 | Gemma-TAIDE (TAIDE G 類) 模型授權條款, 另受 Gemma Terms of Use 約束 | 繁體中文對話模型, 基底為 google/gemma-3-12b-pt; 須接受條款才能下載. 條款授予非專屬, 全球, 無償的使用授權, 條文未設使用者數或營收門檻, 散布衍生模型時可向使用者收費; 散布時須附 Gemma Terms of Use 聲明並標示源自 TAIDE G 類模型及 taide.tw; 不得用於軍事或非法目的, 不得產生非法或不當言論, 也不得表示內容由人類生成; 條款修訂於發布時立即生效 |
-| llama-nemotron-rerank-1b-v2 | OpenMDW-1.1, 另附 Llama 3.2 Community License | 重排序模型 (M4), 把檢索結果重新排序. NVIDIA 發布, 以 Llama-3.2-1B 微調; 模型卡標示可商用. Llama 3.2 授權要點: 前一曆月月活躍使用者逾 7 億須向 Meta 申請授權; 散布時須附授權副本並顯著標示 "Built with Llama"; 以其訓練或微調並散布的模型, 名稱開頭須含 "Llama"; 須遵守 Acceptable Use Policy; 準據法為美國加州法 |
+| Gemma-3-TAIDE-12b-Chat-2602 | Gemma-TAIDE (TAIDE G 類) 模型授權條款, 另受 Gemma Terms of Use 約束 | 繁體中文對話模型, 基底為 google/gemma-3-12b-pt; 須接受條款才能下載. 條款授予非專屬, 全球, 無償的使用授權, 條文未設使用者數或營收門檻, 散布衍生模型時可向使用者收費; 散布時須附 Gemma Terms of Use 聲明並標示源自 TAIDE G 類模型及 taide.tw; 衍生模型在中華民國境內外提供使用授權, 或參加國內組織舉辦的排名比賽時, 須在模型說明中以顯著方式標示為 TAIDE G 類模型的衍生作品 (條款第七條); 不得用於軍事或非法目的, 不得產生非法或不當言論, 也不得表示內容由人類生成; 條款修訂於發布時立即生效 |
+| llama-nemotron-rerank-1b-v2 | OpenMDW-1.1, 另附 Llama 3.2 Community License | 重排序模型 (M4), 把檢索結果重新排序. NVIDIA 發布, 以 Llama-3.2-1B 微調; 模型卡標示可商用. Llama 3.2 授權要點: 以 Llama 3.2 版本發布日為準, 發布日前一個月的月活躍使用者超過 7 億者須向 Meta 申請授權 (一次性判定); 散布時須附授權副本並顯著標示 "Built with Llama"; 以其訓練或微調並散布的模型, 名稱開頭須含 "Llama"; 須遵守 Acceptable Use Policy; 準據法為美國加州法 |
 | mmarco-mMiniLMv2-L12-H384-v1 | Apache 2.0 | 重排序模型 (M4). cross-encoder 發布的多語言模型, 以機器翻譯的 MS MARCO 訓練 |
 
 其餘模型授權見 [K4](/know/k4-licenses).
@@ -91,7 +93,7 @@ OSI (Open Source Initiative) 定義的開源授權不得對使用方式設限. �
 - [Hugging Face 模型卡: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1](https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1/blob/265d6fb9678e8fc6b1adeda526533b2a1f1a7f07/README.md)
 - [Llama 4 Community License Agreement](https://dev.meta.ai/llama/llama4/license), [Llama Guard 4 模型卡](https://huggingface.co/meta-llama/Llama-Guard-4-12B), [Llama Prompt Guard 2 模型卡](https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-86M)
 - [Gemma Terms of Use](https://ai.google.dev/gemma/terms), [EmbeddingGemma 模型卡](https://huggingface.co/google/embeddinggemma-300m)
-- [Snowflake Arctic Embed L v2.0 模型卡](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0)
+- [nomic-embed-text-v2-moe 模型卡](https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe)
 - [Gemma-3-TAIDE-12b-Chat-2602 模型卡](https://huggingface.co/taide/Gemma-3-TAIDE-12b-Chat-2602), [國研院 TAIDE 模型下載與授權條款頁 (Llama3-TAIDE 與 Gemma-TAIDE 兩套條款全文)](https://taide.stpi.niar.org.tw/public/download-model)
 - [Llama 3.2 Community License (Meta 發布於 Hugging Face 模型庫的授權檔)](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct/blob/main/LICENSE.txt)
 

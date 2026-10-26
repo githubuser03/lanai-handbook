@@ -7,7 +7,7 @@
 - 待查證: 台灣現價多數查無, 本頁以美元價為主並標示日期與性質; 部分價格為媒體轉引的二手來源; 主機其他零組件未查價; 價格變動快, 引用前請以當月報價為準
 :::
 
-**結論**: 單機同時常駐 3 個約 35B 的模型, 僅計 GPU 或整機本體的預算, 入門約 3,100 至 8,000 美元 (統一記憶體機種, 以 MoE 模型為主), 標準約 11,360 至 16,000 美元 (1 張 96GB 的 RTX PRO 6000), 進階約 22,720 至 32,000 美元 (2 張 RTX PRO 6000). 這些價格不含主機其他零組件, 且 2026 年 DRAM 與 GDDR7 漲價使各選項價格明顯上升, 多數官方通路缺貨 (信心: 高, 依據為 TrendForce 與各媒體報導). 配置的選擇邏輯見 [K3.4 節](/know/k3-hardware).
+**結論**: 單機同時常駐 3 個約 35B 的模型, 僅計 GPU 或整機本體的預算, 入門約 3,100 至 8,000 美元 (統一記憶體機種, 以 MoE 模型為主), 標準約 11,360 至 16,000 美元 (1 張 96GB 的 RTX PRO 6000), 進階約 22,720 至 32,000 美元 (2 張 RTX PRO 6000). 這些價格不含主機其他零組件, 且 2026 年 DRAM 與 GDDR7 漲價使各選項價格明顯上升 (信心: 高, 依據為 TrendForce 的 DRAM 與 GDDR7 價格報告); 表中多個品項的官方通路標示缺貨 (信心: 中, 依據為表中各列的來源). 配置的選擇邏輯見 [K3.4 節](/know/k3-hardware).
 
 價格表中的統一記憶體機種, 指 CPU 與 GPU 共用同一池記憶體的整機; MoE (Mixture of Experts, 混合專家) 模型每次只啟用一部分參數, 對記憶體頻寬的需求較低, 因此常搭配這類機種 (見 [K3](/know/k3-hardware)). DRAM 是一般電腦的主記憶體, GDDR7 是新一代顯示卡使用的記憶體, 兩者的漲價都直接反映在硬體售價上.
 
@@ -26,14 +26,15 @@
 | 品項 | 價格 | 查價日期 | 性質與來源 |
 |---|---|---|---|
 | RTX PRO 6000 Blackwell Workstation | 16,000 (缺貨) | 2026-08-12 | 官方商店掛牌, 非正式建議售價 (letsdatascience 轉引 PCMag 與 Tom's Hardware) |
-| 同上 | 13,250 | 2026-06-13 | NVIDIA 商店 (ITHome 轉引 Tom's Hardware); 上市價 8,565 (2025-03) |
-| 同上 (PNY / Newegg 通路) | 11,359.99 / 12,099.99 | 2026-06-13 | 通路價 (ITHome) |
-| RTX PRO 6000 Blackwell Server Edition | 14,999 | 2026-06-13 | 通路價 (ITHome) |
+| 同上 | 13,250 | 2026-06-13 | NVIDIA 商店 (IT之家轉引 Tom's Hardware, 二手來源); 上市價 8,565 (2025-03) |
+| 同上 (PNY / Newegg 通路) | 11,359.99 / 12,099.99 | 2026-06-13 | 通路價 (IT之家, 二手來源) |
+| RTX PRO 6000 Blackwell Server Edition | 14,999 | 2026-06-13 | 通路價 (IT之家, 二手來源) |
 | RTX PRO 6000 台灣 | 現價查無; 2025 年上市前傳聞散裝約 NT$200,000, 盒裝約 NT$270,000 | 2025 | 已過時, 僅供對照 (Techbang) |
 | RTX PRO 5000 Blackwell 48GB | 4,199.99 (上市刊價); 二手最低三筆均價 7,040 | 2025-12-28; 2026-10 | 前者通路 (TechRadar), 後者二手 (GPU Poet); 兩者差距大 |
 | RTX PRO 5000 72GB | 價格查無 | - | - |
 | RTX PRO 4500 Blackwell 32GB | 6,209 (建議售價 5,499) | 日期查無 | 通路 (SHI) |
 | GeForce RTX 5090 32GB | 新品 4,288 至 4,381; 二手刊登 3,590 至 4,304 (建議售價 1,999) | 2026-08-07 至 08 | 刊登價非成交價 (BuySellRAM) |
+| 同上 (美國網購第三方賣家) | 6,500 至 9,500 開價 (官方通路缺貨) | 2026-09-16 | 次級來源, 開價非成交價; 文中的新台幣金額為美元換算, 不是台灣售價 (科技新報) |
 | RTX 3090 二手 | 1,095 至 1,181 (8 月); 1,200 至 1,400 (9 月) | 2026-08 至 09 | 二手刊登價 (BuySellRAM; OpenClawDC) |
 | RTX 4090 二手 | 2,350 至 2,500 | 2026-08 至 09 | 二手刊登價 (InsiderLLM) |
 
@@ -54,11 +55,11 @@
 
 ## 3 個 35B 級模型的配置預算
 
-以下為上表價格的算術加總, 僅含 GPU 或整機本體, 不含 CPU, 主機板, 系統記憶體, 電源, 機箱與儲存 (這些項目未查價, 系統記憶體同樣受 DRAM 漲價影響). 配置的容量與頻寬分析見 [K3.4 節](/know/k3-hardware).
+表中的 FP8 是以 8 位元浮點數存放權重的格式, 品質接近原始的 16 位元, 但記憶體需求約為 4 位元量化的兩倍 (見 [K2](/know/k2-quantization)). 以下為上表價格的算術加總, 僅含 GPU 或整機本體, 不含 CPU, 主機板, 系統記憶體, 電源, 機箱與儲存 (這些項目未查價, 系統記憶體同樣受 DRAM 漲價影響). 配置的容量與頻寬分析見 [K3.4 節](/know/k3-hardware).
 
 | 檔位 | 配置 | 價格區間 (美元) | 算式 | 適用 |
 |---|---|---|---|---|
-| 入門 | GB10 整機或 Strix Halo 128GB, 3 個 MoE 模型的 4 位元 | 約 3,100 至 8,000 | Strix Halo 3,100 至 4,350; GB10 OEM 4,699.99 至 7,999 | 個人或 2 至 3 人 PoC, 低併發 |
+| 入門 | GB10 整機或 Strix Halo 128GB, 3 個 MoE 模型的 4 位元 | 約 3,100 至 8,000 | Strix Halo 3,100 至 4,350; GB10 OEM 4,699.99 至 7,999 | 個人或 2 至 3 人 PoC, 同時使用人數少 |
 | 標準 | 1 張 RTX PRO 6000 (96GB), 4 位元量化 | 11,360 至 16,000 (卡本體) | PNY 11,359.99 (2026-06) 至官方掛牌 16,000 (2026-08, 缺貨) | 小團隊日常使用 |
 | 進階 | 2 張 RTX PRO 6000, FP8 | 22,720 至 32,000 (卡本體) | 標準檔的 2 倍 | 要 FP8 品質, 長上下文, 或較多人同時使用 |
 | 大容量統一記憶體 | Mac Studio M5 Ultra | 5,499 起; 256GB 加 16TB 為 18,299 | 官方建議售價 (美國); 台灣 M5 Ultra 起 NT$199,900 (次級來源) | 容量需求大, 並行需求低到中 |
@@ -91,7 +92,7 @@
 媒體與通路 (二手來源):
 
 - [letsdatascience: NVIDIA raises RTX PRO 6000 Blackwell price again](https://letsdatascience.com/news/nvidia-raises-rtx-pro-6000-blackwell-price-again-6d1ae9ff)
-- [ITHome: RTX PRO 6000 價格報導](https://www.ithome.com/0/963/977.htm)
+- [IT之家 (ithome.com, 非台灣的 iThome): RTX PRO 6000 價格報導 (二手來源, 轉引 Tom's Hardware)](https://www.ithome.com/0/963/977.htm)
 - [TechSpot: NVIDIA raises RTX PRO 6000 Blackwell price](https://techspot.com/news/113460-nvidia-raises-rtx-pro-6000-blackwell-price-staggering.html)
 - [鉅亨: RTX PRO 6000 價格報導](https://hao.cnyes.com/post/263122)
 - [Techbang: NVIDIA Blackwell RTX PRO 6000](https://www.techbang.com/posts/122132-nvidia-blackwellrtx-pro-6000)

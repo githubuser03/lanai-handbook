@@ -4,10 +4,10 @@
 - 等級: ◇ 進階
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: LangGraph, OPA, LiteLLM 的程式與設定依官方文件整理, 未實機驗證; LangGraph 平行分支其中一支出錯時的行為, 官方 Graph API 頁面未說明, 整理者以 langgraph 1.2.17 本機測試確認 (見主流程一節), 本頁仍在節點內攔截錯誤; 工具名稱 (siem.query, edr.query, ti.lookup 等) 為示意, 須依自己的系統調整; 同時執行時的延遲與 GPU 搶佔次數未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 待查證: LangGraph, OPA, LiteLLM 的程式與設定依官方文件整理, 除下列 LangGraph 平行分支測試外未實機驗證; LangGraph 平行分支其中一支出錯時的行為, 官方 Graph API 頁面未說明, 整理者以 langgraph 1.2.17 本機測試確認 (見主流程一節), 本頁仍在節點內攔截錯誤; 工具名稱 (siem.query, edr.query, ti.lookup 等) 為示意, 須依自己的系統調整; 同時執行時的延遲與 GPU 搶佔次數未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
-**結論**: 一件資安事件同時交給三個專責代理調查: 紀錄代理查 SIEM (集中收集各系統紀錄與告警的平台), 端點代理查 EDR (裝在電腦與伺服器上偵測可疑行為, 可遠端隔離主機的防護軟體), 情資代理查內部情資平台 (彙整已知惡意 IP, 網域與檔案雜湊值的資料庫). 三者平行執行, 只能用唯讀工具, 各有自己的金鑰與工具白名單; 結果以固定欄位 JSON 回傳, 經程式檢查後才交給彙整代理. 彙整代理撰寫調查報告草稿並提出處置建議, 處置動作沿用 E2 的 A0 至 A3 分級與人工核准. 這個設計同時示範 M8.5 節的兩種多代理: 調查階段是並行, 整體是固定流程協作; 代理之間不自由對話.
+**結論**: 一件資安事件同時交給三個專責代理調查: 紀錄代理查 SIEM (集中收集各系統紀錄與告警的平台), 端點代理查 EDR (裝在電腦與伺服器上偵測可疑行為, 可遠端隔離主機的防護軟體), 情資代理查內部情資平台 (彙整已知惡意 IP, 網域與檔案雜湊值的資料庫). 三者平行執行, 只能用唯讀工具, 各有自己的金鑰與工具白名單; 結果以固定欄位 JSON 回傳, 經程式檢查後才交給彙整代理. 彙整代理撰寫調查報告草稿並提出處置建議, 處置動作沿用 E2 的 A0 至 A3 分級與人工核准. 這個設計屬於 M8.5 節的固定流程協作: 調查階段是流程中的平行分支, 三個代理各自查詢後把結果交給彙整代理; 代理之間不自由對話.
 
 **對象**: 企業. **需要的模組**: M0 至 M8. **建議先完成**: [E2 資安告警分流](/examples/e2-alert-triage), 本範例沿用它的動作分級, 隔離原則與核准流程.
 
@@ -89,7 +89,7 @@ E2 處理的是「每則告警要不要處理」. 確定是事件之後, 分析�
 [所有代理, OPA 決策紀錄, MCP gateway] --> [稽核區: OTel Collector] --> [Langfuse, 既有 SIEM]
 ```
 
-三個調查代理只有唯讀工具, 即使讀到注入內容, 最多只能多查幾次資料, 而且受配額限制; 能改變系統狀態的只有彙整代理, 它看不到原始紀錄, 只看到檢查過的欄位 (設計建議, 信心: 中高).
+三個調查代理只有唯讀工具, 即使讀到注入內容, 最多只能多查幾次資料, 而且受配額限制; 能改變系統狀態的只有彙整代理, 它看不到原始紀錄, 只看到檢查過的欄位 (推論, 信心: 中).
 
 ## 設定要點
 
@@ -105,7 +105,7 @@ E2 處理的是「每則告警要不要處理」. 確定是事件之後, 分析�
 | 彙整代理 | `lead` | `k-lead` | `ticket.create`, `edr.isolate_host` | A1, A2 |
 
 - **金鑰**: 每個代理在 LiteLLM 各發一把虛擬金鑰, 各設 `rpm_limit` 與 `tpm_limit`; MCP 伺服器的可用範圍也依金鑰設定, 每把金鑰只列該代理需要的伺服器 (做法見 M8.5 節與 M7.2 節).
-- **agent_id 的來源**: 由主流程依節點設定填入, 不取自模型輸出, 也不取自其他代理傳來的內容. 這是白名單能發揮作用的前提 (設計建議, 信心: 高).
+- **agent_id 的來源**: 由主流程依節點設定填入, 不取自模型輸出, 也不取自其他代理傳來的內容. 這是白名單能發揮作用的前提 (推論, 信心: 高).
 - **情資查詢不外送**: `ti.lookup` 只查內部情資平台. 若改查外部服務, 查詢的 IP, 網域與雜湊值會離開內網, 須先依組織的資料外送規定評估 (推論, 信心: 中).
 
 ### 主流程: 平行分派與彙整
@@ -141,7 +141,7 @@ graph = builder.compile(checkpointer=checkpointer)
 ```
 
 - **reducer**: 官方文件說明, 沒有指定 reducer 的欄位, 每次更新都會覆蓋原值 (來源: LangGraph 文件 Graph API). 三個代理同時寫入 `findings`, 所以要用 `operator.add` 累加.
-- **錯誤處理**: 官方 Graph API 頁面沒有說明平行分支之一出錯時其他分支的結果如何處理. 整理者以 langgraph 1.2.17 在本機 CPU 測試: 不攔截例外時, 整次 `invoke` 會拋出例外, 彙整節點不會執行; 已完成的分支結果仍存在 checkpointer, 排除問題後以同一個 `thread_id` 呼叫 `graph.invoke(None, config)` 恢復, 只會重跑失敗的分支, 再進入彙整節點 (測試結果, 非官方文件說明). 本範例在節點內攔截例外, 回傳「該代理失敗」的紀錄, 讓彙整代理在報告中註明缺少哪一項, 不讓單一代理的錯誤中斷整次調查 (設計建議, 信心: 中).
+- **錯誤處理**: 官方 Graph API 頁面沒有說明平行分支之一出錯時其他分支的結果如何處理. 整理者以 langgraph 1.2.17 在本機 CPU 測試: 不攔截例外時, 整次 `invoke` 會拋出例外, 彙整節點不會執行; 已完成的分支結果仍存在 checkpointer, 排除問題後以同一個 `thread_id` 呼叫 `graph.invoke(None, config)` 恢復, 只會重跑失敗的分支, 再進入彙整節點 (測試結果, 非官方文件說明). 本範例在節點內攔截例外, 回傳「該代理失敗」的紀錄, 讓彙整代理在報告中註明缺少哪一項, 不讓單一代理的錯誤中斷整次調查 (推論, 信心: 中).
 - **人工核准**: `lead_node` 內的處置動作沿用 E2 的 `interrupt()` 寫法, 工具呼叫一律放在 `interrupt()` 之後; 只有最外層的圖需要 checkpointer (見 M8.5 節).
 
 ### 代理之間的結果: 固定欄位與程式檢查
@@ -160,7 +160,7 @@ graph = builder.compile(checkpointer=checkpointer)
 }
 ```
 
-`validate_finding()` 的檢查項目 (設計建議, 信心: 中高):
+`validate_finding()` 的檢查項目 (推論, 信心: 中):
 
 1. 只能有上列欄位; `agent` 必須等於呼叫它的節點, 不採信模型自報的身分.
 2. `verdict` 與 `confidence` 必須是列舉值之一.
@@ -172,7 +172,7 @@ graph = builder.compile(checkpointer=checkpointer)
 
 ### OPA 政策: 代理白名單與全域配額
 
-在 E2 的政策加上兩個條件: 工具必須在該代理的白名單內, 以及所有調查加總的呼叫量不超過全域配額. 預設拒絕不變. 兩種計數都含本次呼叫在內 (呼叫前先加 1), 因此以 `<=` 比較, 和 E2 一致 (依 OPA 官方文件的語法撰寫, 未實機驗證):
+在 E2 的政策加上兩個條件: 工具必須在該代理的白名單內, 以及所有調查加總的呼叫量不超過全域配額. 預設拒絕, 決策值, 等級寫法與欄位都和 E2 相同. 兩種計數都含本次呼叫在內 (呼叫前先加 1), 因此以 `>` 判定超量 (依 OPA 官方文件的語法撰寫, 未實機驗證):
 
 ```rego
 package agent.tools
@@ -181,47 +181,44 @@ default decision := "deny"
 
 tier := data.tiers[input.tool]
 
-critical if input.target in data.critical_assets
+touches_critical_asset if {
+	tier != "A0"
+	input.args.target in data.critical_assets
+}
 
-within_quota if input.call_count <= data.quota[input.tool]
+over_quota if input.call_count > data.quota[input.tool]
 
 agent_ok if input.tool in data.agent_tools[input.agent_id]
 
 within_global if input.global_count <= data.global_quota[input.tool]
 
-ok if {
+base_ok if {
+	tier
 	agent_ok
 	within_global
+	not over_quota
 }
 
 decision := "allow" if {
-	ok
-	tier == 0
-	within_quota
+	base_ok
+	tier in {"A0", "A1"}
+	not touches_critical_asset
 }
 
-decision := "allow" if {
-	ok
-	tier == 1
-	within_quota
-	not critical
+decision := "review" if {
+	base_ok
+	tier == "A2"
+	not touches_critical_asset
 }
 
-decision := "dual_review" if {
-	ok
-	tier == 2
-	not critical
+decision := "approval" if {
+	base_ok
+	tier == "A3"
 }
 
-decision := "human_approval" if {
-	ok
-	tier == 3
-}
-
-decision := "human_approval" if {
-	ok
-	tier >= 1
-	critical
+decision := "approval" if {
+	base_ok
+	touches_critical_asset
 }
 ```
 
@@ -229,8 +226,8 @@ decision := "human_approval" if {
 
 ```json
 {
-  "tiers": {"siem.query": 0, "edr.query": 0, "ti.lookup": 0,
-            "ticket.create": 1, "edr.isolate_host": 2},
+  "tiers": {"siem.query": "A0", "edr.query": "A0", "ti.lookup": "A0",
+            "ticket.create": "A1", "edr.isolate_host": "A2"},
   "quota": {"siem.query": 30, "edr.query": 30, "ti.lookup": 50, "ticket.create": 3},
   "global_quota": {"siem.query": 100, "edr.query": 100, "ti.lookup": 200,
                    "ticket.create": 20, "edr.isolate_host": 5},
@@ -243,14 +240,14 @@ decision := "human_approval" if {
 ```
 
 - **單次配額與全域配額**: `quota` 管一次調查 (一個 `thread_id`) 內的次數; `global_quota` 管所有同時進行的調查加總, 例如每分鐘的次數.
-- **全域計數**: OPA 不保存狀態, 計數由呼叫端維護. 可用 Redis 以「工具 + 分鐘」為鍵, 每次呼叫前以原子遞增 (`INCR`, 並設到期時間) 取得目前次數, 放進 `input.global_count` (設計建議, 信心: 中高). Redis 無法連線時視為超過配額, 寧可停下查詢 (推論, 信心: 中).
+- **全域計數**: OPA 不保存狀態, 計數由呼叫端維護. 可用 Redis 以「工具 + 分鐘」為鍵, 每次呼叫前以原子遞增 (`INCR`, 並設到期時間) 取得目前次數, 放進 `input.global_count` (推論, 信心: 中). Redis 無法連線時視為超過配額, 寧可停下查詢 (推論, 信心: 中).
 - **兩次判定**: MCP gateway 端再判定一次 (見 M7.2 節), 避免主流程程式出錯時繞過政策.
 
 ### 容量: 三個代理同時送出請求
 
 - 同時進行的請求數, 大致等於同時調查的件數, 乘以每件的代理數, 再乘以每個代理內同時送出的呼叫數 (推算, 非實測). 本範例單件就有三個代理同時呼叫模型.
 - vLLM 在 KV cache 不足時會搶佔請求, 搶佔頻繁時官方建議降低 `max_num_seqs` 或 `max_num_batched_tokens` (來源: vLLM 文件 Optimization and Tuning; 整理見 M8.5 節).
-- 導入順序: 先讓一個代理單獨跑完一件調查, 記下呼叫次數與延遲; 再改成三個代理平行, 觀察延遲與搶佔次數; 最後才開放同時處理多件調查 (設計建議, 信心: 中). 硬體估算見 [K3.4 節](/know/k3-hardware).
+- 導入順序: 先讓一個代理單獨跑完一件調查, 記下呼叫次數與延遲; 再改成三個代理平行, 觀察延遲與搶佔次數; 最後才開放同時處理多件調查 (推論, 信心: 中). 硬體估算見 [K3.4 節](/know/k3-hardware).
 - 四個代理可以共用同一個模型. 若彙整代理改用較大的模型, 同一台機器常駐多個模型的做法見 M1.11 節.
 
 ### 觀測與單獨切斷
@@ -298,6 +295,7 @@ decision := "human_approval" if {
 
 ## 參考來源
 
+- 整理者實測 (2026-10-27, 本機 CPU, langgraph 1.2.17, 模型呼叫以固定回應的假函式代替): 三個分支平行執行, `operator.add` 累加三份結果; 分支未攔截例外時 `invoke` 整個拋出例外, 已完成分支的結果保留在 checkpointer, 修正後恢復只重跑失敗的分支.
 - [LangGraph 文件: Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api) (平行執行與 super-step, `Send`, reducer)
 - [LangGraph 文件: Subgraphs](https://docs.langchain.com/oss/python/langgraph/use-subgraphs)
 - [LangGraph 文件: Interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts)
