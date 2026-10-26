@@ -1,10 +1,24 @@
-# 文件手冊 POC
+# 地端 AI 手冊
 
 用 [VitePress](https://vitepress.dev/) 建置的文件網站, 左側選單, 右側內容, 部署在 GitHub Pages.
 
-## 網址
+網址: `https://githubuser03.github.io/docs-handbook-poc/`
 
-`https://githubuser03.github.io/docs-handbook-poc/`
+## 內容結構
+
+七個選單群組, 共 20 章與 6 個參考資料頁. 每章頂端標示等級 (● 必要, ○ 依情境, ◇ 進階或選讀) 與狀態 (大綱, 草稿, 已審閱).
+
+| 群組 | 章 |
+|---|---|
+| 一、入門概念 | 1 至 3 |
+| 二、評估選擇 | 4 至 7 |
+| 三、架設部署 | 8 至 11 |
+| 四、應用擴充 | 12 至 14 |
+| 五、訓練微調 | 15 至 17 |
+| 六、維運更新 | 18 至 20 |
+| 參考資料 | 版本與安全公告, 授權速查, 硬體價格, 效能實測, 模型建議, 術語對照 |
+
+寫作規範見 [STYLE.md](STYLE.md).
 
 ## 發布原則: PR 核准後才上線
 
@@ -14,12 +28,14 @@ GitHub Pages 從 `main` 分支的 `/docs` 資料夾發布. 所有修改都在其
 
 ```
 content/                    # 手冊原始檔 (要修改的地方)
-├── .vitepress/config.mts   # 網站設定 (左側選單、搜尋、標題)
+├── .vitepress/config.mts   # 網站設定 (左側選單, 搜尋, 標題)
 ├── index.md                # 首頁
-├── guide/                  # 手冊章節
-├── examples/               # 範例頁
+├── intro/ select/ deploy/  # 各群組的章節
+├── apply/ train/ ops/
+├── ref/                    # 參考資料頁 (版本, 授權, 價格, 術語)
 └── public/                 # 圖片等靜態檔案
 docs/                       # build 後的網站檔案 (自動產生, 勿手動修改)
+STYLE.md                    # 寫作規範
 ```
 
 ## 修改流程
