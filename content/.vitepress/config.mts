@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 
 // GitHub Pages 的網址是 https://<帳號>.github.io/<repo 名稱>/,
 // 所以 base 必須和 repo 名稱一致. 改 repo 名稱時, 這裡要跟著改.
-const base = '/docs-handbook-poc/'
+const base = '/lanai-handbook/'
 
 // 中文沒有空格分詞, 用瀏覽器內建的 Intl.Segmenter 斷詞, 讓站內搜尋找得到中文關鍵字.
 // 這個函式會被序列化送到瀏覽器執行, 所以不能引用函式外的變數.
@@ -13,7 +13,7 @@ const tokenize = (text: string) =>
 
 export default defineConfig({
   lang: 'zh-Hant-TW',
-  title: '地端 AI 手冊',
+  title: '地端 LAN-AI 自建手冊',
   description: '地端 AI 的概念, 硬體選擇, 架設, 訓練與維運',
   base,
   // build 結果輸出到 repo 根目錄的 docs/, GitHub Pages 從 main 分支的 /docs 發布
