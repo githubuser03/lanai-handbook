@@ -4,14 +4,32 @@
 - 等級: ○ 依情境, 符合條件才讀
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: llama-swap 授權 (訓練資料內資訊, 可能已過時); 另有一個 LiteLLM 漏洞據報預定於 2026-10-27 公開 (原引的 SOCRadar 文章未見此說法, 來源待補), 本章發布前須重新查證; M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令未實機驗證; Keycloak 的 Google Hosted Domain 欄位是否在登入時強制檢查網域, 須在測試環境驗證; Google 身分提供者的回呼網址格式來自社群論壇 (二手來源), 以主控台顯示為準; Open WebUI 的 `AIOHTTP_CLIENT_SSL_CERT_FILE` 是否涵蓋 OIDC 請求未確認; Langfuse `AUTH_KEYCLOAK_ISSUER` 的值為依 OIDC 慣例的推論
+- 待查證: llama-swap 授權 (訓練資料內資訊, 可能已過時); 另有一個 LiteLLM 漏洞據報預定於 2026-10-27 公開 (原引的 SOCRadar 文章未見此說法, 來源待補), 本章發布前須重新查證; M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令未實機驗證; Keycloak 的 Google Hosted Domain 欄位是否在登入時強制檢查網域, 須在測試環境驗證; Google 身分提供者的回呼網址格式來自社群論壇 (二手來源), 以主控台顯示為準; Open WebUI 的 `AIOHTTP_CLIENT_SSL_CERT_FILE` 是否涵蓋 OIDC 請求未確認; Langfuse `AUTH_KEYCLOAK_ISSUER` 的值為依 OIDC 慣例的推論; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 單機單人不需要閘道. 只有多模型輪替而沒有多人治理需求時, 用 llama-swap 就夠. LiteLLM 有納入評估, 但不列為預設, 原因是一年內兩度成為供應鏈入侵的入口, 且集中保存上游金鑰 (信心: 高). 符合 M5.1 節的條件時, 閘道放在獨立的閘道區, 成為唯一保存 API 金鑰的地方; 帳號則交給身分驗證伺服器統一管理.
 
 **這一塊在圖上的位置**: VM 閘道區的 LiteLLM 與 VM 入口區的 Keycloak. **前置模組**: M1, M2. **完成後的狀態**: 每位使用者或每個應用各有一把虛擬金鑰與配額, 同事用同一組帳號登入所有介面.
 
+本章處理兩件事. 第一件是模型閘道: 所有程式要找模型時, 都先經過同一個入口, 由它決定誰能用, 能用多少, 送到哪個模型. 可以想成公司總機: 外線不直接打到每個分機, 而是由總機轉接並記錄. 第二件是身分驗證: 讓同事用一組帳號登入所有介面, 離職時只要停用一次. 可以想成一張員工證通行全公司的門禁, 不必每扇門各發一把鑰匙.
+
+::: tip 本章常見名詞
+| 詞 | 意思 |
+|---|---|
+| 閘道 (gateway) | 擋在模型前面的統一入口, 負責驗證金鑰, 計算配額與轉送請求 |
+| API 金鑰 | 程式呼叫服務時出示的一串密碼; 虛擬金鑰是閘道自己發的金鑰, 背後對應真正的上游金鑰 |
+| 配額 (quota) 與速率限制 (rate limit) | 限制每把金鑰在一段時間內能送多少請求或花多少錢 |
+| 反向代理 (reverse proxy) | 站在服務前面接收連線, 再轉給後端的程式, 例如 Nginx, Caddy |
+| 身分驗證伺服器 | 集中管理帳號與登入的服務, 本章以 Keycloak 為例 |
+| SSO (單一登入) | 登入一次後, 其他串接的系統不必再輸入帳密 |
+| OIDC (OpenID Connect) | 各系統向身分驗證伺服器確認「這個人是誰」的標準協定 |
+| realm 與 client | Keycloak 的用語; realm 是一組獨立的帳號空間, client 是一個要串接登入的應用程式 |
+| 供應鏈入侵 | 攻擊者不直接攻擊使用者, 而是在軟體發布流程中放入惡意程式, 使用者安裝更新時一併裝入 |
+:::
+
 ## M5.1 何時不需要閘道
+
+閘道多一層, 就多一台要維護與修補的服務, 也多一個集中存放金鑰的目標. 因此先判斷是否真的需要, 人少且只有一個介面時, 直接連推論引擎比較單純.
 
 Ollama, llama-server 與 LM Studio 都已提供與 OpenAI 相容的 API, 介面可以直接連推論引擎 (信心: 高).
 
@@ -30,17 +48,23 @@ Ollama, llama-server 與 LM Studio 都已提供與 OpenAI 相容的 API, 介面�
 
 ## M5.2 llama-swap: 多模型輪替
 
+一張顯示卡的記憶體通常只夠放一個模型. 想輪流使用對話模型與嵌入模型時, 需要一個程式依請求自動卸下目前的模型, 換上需要的模型. 可以想成只有一個爐口的廚房, 由同一位廚師依點單換鍋.
+
 llama-swap 是 Go 撰寫的單一執行檔, 以 YAML 設定, 依請求中的 model 欄位自動啟停 llama-server 或 vLLM. 它相容 OpenAI 與 Anthropic API, 並支援 API 金鑰. 2026 年持續發版, Go 模組在 2026-08-24 仍有更新 (來源: libraries.io 與多篇設定教學彙整; 授權為 MIT 屬訓練資料內資訊, 可能已過時, 請以官方儲存庫核對).
 
 適用情境是一張顯示卡要輪流載入對話模型與嵌入模型, 也就是硬體等級 B, D, E (信心: 中高). 它只做模型切換, 不做多租戶治理, 因此風險等級低於完整閘道.
 
 ## M5.3 LiteLLM 的使用條件與限制
 
+LiteLLM 是常見的開源模型閘道, 能統一接地端與雲端模型, 並發放虛擬金鑰與設定配額. 功能完整, 但它集中保存所有上游金鑰, 一旦被入侵, 損失也集中, 所以本節先說明現況與事件, 再列出採用時要做的防護.
+
 ### 現況
 
 LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權, SSO 等功能屬企業版 (來源: Maxim AI 與 TechJack Solutions 的比較文). Socket 的 PyPI 頁面顯示 litellm 1.107.0 的週下載量為 22,948,819 次.
 
 ### 2026 年兩次供應鏈事件
+
+下表兩起事件都不是 LiteLLM 程式本身的漏洞, 而是攻擊者進入發布流程, 讓使用者下載到遭竄改的版本.
 
 | 日期 | 事件 | 來源 |
 |---|---|---|
@@ -73,6 +97,8 @@ LiteLLM 的問題不在程式碼品質, 而在它是集中保存金鑰的高價�
 閘道延遲的公開數字互相矛盾 (約 1 至 5ms, 約 8ms, 約 40ms), 且全部來自競品廠商, 無法交叉驗證. 本機推論的生成時間以秒計, 因此延遲對單機使用者不是重點 (信心: 中, 屬推論).
 
 ## M5.4 身分驗證伺服器 (Keycloak)
+
+系統一多, 每個系統各自建帳號, 停用帳號時就容易漏掉. 身分驗證伺服器把帳號集中在一處, 其他系統登入時都來這裡確認身分. Keycloak 是常見的開源選擇, 支援 OIDC, 也能串接公司既有的 AD 或 Google 帳號.
 
 本節設定依 Keycloak, Open WebUI, Langfuse 與 LiteLLM 官方文件整理, 未實機驗證. 主機名稱 (`sso.example.internal`, `ai.example.internal`) 與 realm 名稱為佔位值.
 
@@ -138,6 +164,8 @@ Nginx 的前綴比對採最長符合, 因此 `/realms/master/` 會優先於 `/re
 
 ### 建立 realm 與 OIDC client
 
+這一步在 Keycloak 裡開一個放員工帳號的空間 (realm), 再為每個要串接登入的系統登記一筆資料 (client). 登記後, Keycloak 才知道登入成功時要把使用者送回哪個網址.
+
 使用者不要放在 `master` realm; `master` 只供管理用途, 並依上述建議只限內部存取 (推論, 依官方對外路徑建議). 步驟依 Keycloak 入門文件與 Open WebUI 的 Keycloak 文件整理:
 
 1. 在管理主控台點選 **Manage realms**, 再點 **Create realm**, 輸入 realm 名稱 (例如 `company`) 後建立 (來源: Keycloak 文件 Getting started with Docker).
@@ -149,6 +177,8 @@ Nginx 的前綴比對採最長符合, 因此 `/realms/master/` 會優先於 `/re
 7. 在 client 的憑證頁籤複製 secret, 供下一步使用.
 
 ### Open WebUI 的 OIDC 設定
+
+Keycloak 端登記完成後, 換到 Open WebUI 這一端, 告訴它要去哪裡確認身分, 以及登記時拿到的 client ID 與 secret. 下列設定寫在 Open WebUI 的環境變數檔.
 
 依 Open WebUI 官方 SSO 與 Keycloak 文件整理的環境變數 (未實機驗證):
 
@@ -190,6 +220,8 @@ JWT_EXPIRES_IN=8h
 每個系統各建一個 client, 不要共用 client secret (推論, 信心: 中高).
 
 ### 串接公司既有帳號
+
+公司若已經有 AD, LDAP 或 Google Workspace, 可以讓 Keycloak 直接沿用這些帳號, 不必再建一份. 這樣人事異動只在原本的帳號系統處理一次.
 
 **LDAP 或 AD (user federation)**: 在 realm 的 **User Federation** 點選 **Add LDAP providers** 設定 (來源: Keycloak Server Administration Guide). 官方文件的重點如下:
 
@@ -247,9 +279,13 @@ curl -X POST 'http://<閘道區主機>:4000/key/block' \
 
 ## M5.5 雲端與地端並用: 路由, 備援與資料外送控制
 
+有些環境同時使用地端模型與雲端模型. 閘道可以決定每個請求送去哪裡 (路由), 地端故障時改送雲端 (備援). 方便之餘, 也要先決定哪些資料絕對不能離開內網.
+
 **結論**: LiteLLM 可以在同一個入口同時接地端 vLLM 與雲端模型, 並在地端故障時自動退到雲端. 但「退到雲端」等於請求內容離開內網, 因此備援要有明確的範圍. LiteLLM 官方文件提供金鑰層的 `disable_fallbacks`, 可讓特定金鑰「失敗就報錯, 不退到雲端」; 依請求標籤精確限制備援目的地的專門機制, 官方文件查無, 須自行實測 (信心: 中). 本手冊的架構中, 只有閘道區能對外連線, 所以即使設定錯誤, 地端各區也無法直接連到雲端; 控制點在閘道區的設定與防火牆.
 
 ### 設定範例
+
+下列設定檔定義一個地端模型與一個雲端模型, 並指定地端失敗時改用雲端.
 
 下列設定依 LiteLLM 官方文件的片段組合, 並非官方原樣, 模型名稱為示意, 未實機驗證. 官方文件對地端 OpenAI 相容服務有兩種寫法: `openai/` 前綴搭配 `api_base` (官方說明 `api_base` 須以 `/v1` 結尾), 以及 vLLM 專頁記載的 `hosted_vllm/` 前綴; 兩者皆為官方文件, 本手冊擇一使用 (來源: LiteLLM 文件 OpenAI-Compatible Endpoints 與 vLLM).
 
@@ -295,6 +331,8 @@ litellm_settings:
 LiteLLM 管理端的 `fallback_management` 頁面僅提供 `/fallback` 端點與預算備援, 須設定 `STORE_MODEL_IN_DB=True`, 未見依標籤限制; `enforce_fallback_model_access` 出現在 Reliability 頁面, 但官方未說明其語意, 查無 (來源: LiteLLM 文件 Fallback Management 與 Reliability).
 
 ## M5.6 驗收測試
+
+驗收的目的是確認每道關卡真的擋得住, 而不只是設定檔寫了. 以下五項測試分別檢查閘道轉送, 配額, 網路隔離, 帳號停用與備援範圍.
 
 以下指令依各官方文件整理, `curl` 為通用工具, 未實機驗證. LiteLLM 位址以官方文件範例的 4000 連接埠為例.
 
@@ -393,3 +431,4 @@ curl -sS -m 5 -H 'Authorization: Bearer <vLLM API 金鑰>' http://<推論區主�
 - [LiteLLM 文件: Reliability](https://docs.litellm.ai/docs/proxy/reliability.md)
 - [LiteLLM 文件: Tag Based Routing](https://docs.litellm.ai/docs/proxy/tag_routing)
 - [LiteLLM 文件: Fallback Management](https://docs.litellm.ai/docs/proxy/fallback_management.md)
+- 文中的類比 (公司總機, 員工證門禁, 單一爐口的廚房): 整理者所寫, 無外部來源, 不應當作技術定義引用.
