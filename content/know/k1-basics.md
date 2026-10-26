@@ -37,7 +37,7 @@ Tokenizer 的存放方式依檔案格式不同:
 
 | 格式 | Tokenizer 放在哪裡 | 來源 |
 |---|---|---|
-| Hugging Face 格式 (safetensors) | 獨立檔案, 常見為 `tokenizer.json` 與 `tokenizer_config.json`, 和 `model-*.safetensors` 權重檔放在同一個模型庫 | Hugging Face 模型庫檔案列表 (以 Qwen3-8B 為例) |
+| Hugging Face 格式 (safetensors) | 獨立檔案, 常見為 `tokenizer.json` 與 `tokenizer_config.json`, 和 `model-*.safetensors` 權重檔放在同一個模型庫 | Hugging Face 模型庫檔案列表 (以 openai/gpt-oss-20b 為例) |
 | GGUF | 和權重包在同一個檔案, 以 `tokenizer.ggml.model`, `tokenizer.ggml.tokens` 等中介資料存放; 對話範本也在檔內 (`tokenizer.chat_template`) | GGUF 規格文件 |
 
 Tokenizer 必須和權重相符. Transformers 文件提到, 類別設定不相符時會產生錯誤的 token 編號 (來源: Transformers 文件 Tokenizers). 對話範本 (chat template) 也存放在 Tokenizer 設定中; vLLM 要求模型的 Tokenizer 設定內含對話範本, 否則對話請求會失敗, 須以 `--chat-template` 另外指定 (來源: vLLM 文件 Online serving). 因此, 自行轉檔或量化的模型, 要確認 Tokenizer 與對話範本隨權重一起正確轉出.
@@ -143,7 +143,7 @@ token 編號之後, 模型以嵌入矩陣 (embedding matrix) 把每個編號對�
 - [Hugging Face Tokenizers 文件: Quicktour](https://huggingface.co/docs/tokenizers/quicktour)
 - [Hugging Face Transformers 文件: Tokenizers (fast tokenizers)](https://huggingface.co/docs/transformers/main/en/fast_tokenizers)
 - [Hugging Face Transformers 文件: GGUF](https://huggingface.co/docs/transformers/main/en/gguf)
-- [Hugging Face 模型庫檔案列表: Qwen/Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B/tree/main)
+- [Hugging Face 模型庫檔案列表: openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b/tree/main)
 - [GGUF 規格文件 (ggml-org/ggml)](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md)
 - [Vaswani 等人 (2017), Attention Is All You Need](https://arxiv.org/html/1706.03762v7)
 - [Ollama 文件: Context length](https://docs.ollama.com/context-length)

@@ -4,7 +4,7 @@
 - 等級: ○ 依情境
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: 設定步驟與指令依 Open WebUI 官方文件整理, 未實機驗證; Open WebUI 的選單名稱會隨版本調整, 操作前請以所用版本的文件核對; 繁體中文的切塊大小與 Top K 建議值尚無公開實測
+- 待查證: 設定步驟與指令依 Open WebUI 官方文件整理, 未實機驗證; Open WebUI 的選單名稱會隨版本調整, 操作前請以所用版本的文件核對; 繁體中文的切塊大小與 Top K 建議值尚無公開實測; 嵌入模型範例已更換, 數字須對照官方模型卡; Ollama 上 snowflake-arctic-embed2 標籤的檔案大小本輪未讀
 :::
 
 **結論**: 個人只要組到里程碑 1 (M0 至 M2), 再加上 M4 的檢索功能, 就能把筆記, 手冊與論文放進 Open WebUI 的知識庫, 用自然語言提問並取得附出處的回答. 不需要閘道, 身分驗證或代理. 上線前用 M4.3 節的 50 題自測法確認檢索命中率, 之後每次換模型或調整設定都重跑一次.
@@ -73,7 +73,7 @@ Open WebUI 的容器同樣加上 `--network localai` (其餘參數見 M2.2 節).
 
 **2. 在 Open WebUI 指定文件解析引擎.** 到 **Settings > Admin > Documents**, 把內容解析引擎 (Content Extraction Engine) 設為 **Docling**, Docling Server URL 填 `http://docling:5001` (這也是官方預設值). 上傳第一份文件後, 先預覽解析出的文字; 官方疑難排解頁指出, 模型「看不到」文件內容通常是解析問題, 而不是模型問題.
 
-**3. 設定嵌入模型.** 同一頁的嵌入設定選 Ollama, 模型例如 `qwen3-embedding:0.6b` 或 `bge-m3` (Ollama 模型庫的標籤). 兩者的取捨見 M4.2 節. 官方文件說明, 更換嵌入模型後必須重建所有知識庫的索引, 不同模型產生的向量不能混用.
+**3. 設定嵌入模型.** 同一頁的嵌入設定選 Ollama, 模型例如 `embeddinggemma` 或 `snowflake-arctic-embed2` (Ollama 模型庫的標籤). 兩者的取捨見 M4.2 節. EmbeddingGemma 約 300M 參數, 上下文 2,048 token, 預設標籤的檔案大小為 622MB, 授權為 Gemma Terms of Use; Snowflake Arctic Embed 2.0 (L) 為 568M 參數, 上下文最長 8,192 token, 授權為 Apache 2.0 (來源: 各模型的 Hugging Face 模型卡, Ollama 模型庫標籤頁). 多語言支援範圍請以模型卡為準: EmbeddingGemma 模型卡寫明訓練資料涵蓋 100 多種口說語言, Arctic Embed 2.0 官方部落格的評測語言為英, 法, 西, 義, 德; 兩者對繁體中文的表現都須用 M4.3 節的自建測試集確認. 官方文件說明, 更換嵌入模型後必須重建所有知識庫的索引, 不同模型產生的向量不能混用.
 
 **4. 調整切塊與檢索數量.** 官方疑難排解頁對「本機模型, 上下文 8K 以內」的建議是 Chunk Size 1000, Chunk Overlap 100, Top K 3 至 5. 同一頁也指出, Ollama 在顯示記憶體小於 24GiB 時預設上下文只有 4096 token, 建議到 **Settings > Admin > Models** 的 Advanced Params 把對話模型的上下文長度調到至少 8192. 這些值以英文文件為基礎, 繁體中文的最佳值請用 M4.3 節的測試比較 (推論, 信心: 中).
 
@@ -126,6 +126,9 @@ Open WebUI 的容器同樣加上 `--network localai` (其餘參數見 M2.2 節).
 - [Open WebUI 文件: Retrieval Augmented Generation (RAG)](https://docs.openwebui.com/features/chat-conversations/rag)
 - [Open WebUI 文件: RAG 疑難排解](https://docs.openwebui.com/troubleshooting/rag)
 - [Open WebUI 文件: Environment Variable Configuration](https://docs.openwebui.com/reference/env-configuration)
-- [Ollama 模型庫: qwen3-embedding](https://ollama.com/library/qwen3-embedding)
-- [Ollama 模型庫: bge-m3](https://ollama.com/library/bge-m3)
+- [Ollama 模型庫: embeddinggemma 標籤頁](https://ollama.com/library/embeddinggemma/tags)
+- [Ollama 模型庫: snowflake-arctic-embed2](https://registry.ollama.ai/library/snowflake-arctic-embed2)
+- [Hugging Face: google/embeddinggemma-300m](https://huggingface.co/google/embeddinggemma-300m)
+- [Hugging Face: Snowflake/snowflake-arctic-embed-l-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0)
+- [Snowflake 工程部落格: Arctic Embed 2.0](https://www.snowflake.com/en/engineering-blog/snowflake-arctic-embed-2-multilingual)
 - 站內: [M4 檢索 (RAG)](/build/m4-retrieval), [M2 使用者介面與反向代理](/build/m2-ui-proxy), [K6 安全基礎與風險控管](/know/k6-security)
