@@ -257,7 +257,7 @@ curl -X POST 'http://<閘道區主機>:4000/key/block' \
 model_list:
   - model_name: local-chat
     litellm_params:
-      model: openai/Qwen/Qwen3.6-35B-A3B
+      model: openai/google/gemma-4-31B-it
       api_base: http://vllm-a:8000/v1
       api_key: dummy
   - model_name: cloud-chat

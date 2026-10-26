@@ -231,7 +231,7 @@ macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對
 
 ### 以 Docker 執行 OpenAI 相容伺服器
 
-vLLM 官方的 Docker 範例如下 (來源: vLLM 文件 Using Docker):
+依 vLLM 官方 Docker 範例整理如下, 模型以 Hugging Face 上的小型測試模型為例 (來源: vLLM 文件 Using Docker):
 
 ```bash
 docker run --runtime nvidia --gpus all \
@@ -240,7 +240,7 @@ docker run --runtime nvidia --gpus all \
     -p 8000:8000 \
     --ipc=host \
     vllm/vllm-openai:latest \
-    --model Qwen/Qwen3-0.6B
+    --model HuggingFaceTB/SmolLM2-360M-Instruct
 ```
 
 `--ipc=host` (或改用 `--shm-size`) 讓容器使用主機的共用記憶體; vLLM 底層的 PyTorch 以共用記憶體在行程間交換資料, 張量平行推論特別需要 (來源同上).
@@ -308,7 +308,7 @@ docker run -d --name vllm --restart always \
 要讓模型自行決定是否呼叫工具 (`tool_choice` 為 `auto`), 須同時設定兩個參數 (來源: vLLM 文件 Tool Calling 與 CLI serve):
 
 - `--enable-auto-tool-choice`: 啟用自動工具選擇, 預設 False.
-- `--tool-call-parser <名稱>`: 依模型選擇解析器, 從模型輸出中擷取工具呼叫. 文件列出的解析器包含 `hermes`, `mistral`, `llama3_json`, `pythonic`, `deepseek_v3`, `openai`, `qwen3_xml` 等.
+- `--tool-call-parser <名稱>`: 依模型選擇解析器, 從模型輸出中擷取工具呼叫. 文件列出的解析器包含 `hermes`, `mistral`, `llama3_json`, `pythonic`, `openai` 等.
 
 部分模型另需 `--chat-template` 指定能處理 `tool` 角色訊息的對話範本, vLLM 的 examples 目錄提供了範本檔. 官方範例如下 (來源: vLLM 文件 Tool Calling):
 
@@ -416,3 +416,4 @@ vLLM 官方文件沒有「多模型輪替」功能 (查無). 輪替的實際延�
 - [NVIDIA: RTX PRO 6000 Blackwell 工作站 GPU](https://www.nvidia.com/en-us/products/workstations/professional-desktop-gpus/rtx-pro-6000/)
 - [NVIDIA RTX PRO 6000 Blackwell Server Edition 規格表 (Akamai 託管)](https://www.akamai.com/site/en/documents/corporate/nvidia-rtx-pro-6000-blackwell-server-edition-datasheet.pdf)
 - [vLLM 論壇: 2 vLLM containers on a single GPU](https://discuss.vllm.ai/t/2-vllm-containers-on-a-single-gpu/608/2) (二手來源, 社群討論)
+- [Hugging Face: HuggingFaceTB/SmolLM2-360M-Instruct 模型卡](https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct)
