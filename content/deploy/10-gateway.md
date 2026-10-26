@@ -23,7 +23,7 @@ Ollama, llama-server 與 LM Studio 都已提供與 OpenAI 相容的 API, 介面�
 
 - 介面直連推論引擎
 - 用 llama-swap 處理模型切換
-- 在反向代理 (Caddy) 上做基本驗證與速率限制
+- 在反向代理 (Nginx 或 Caddy) 上做基本驗證與速率限制. Nginx 的速率限制 (`limit_req`) 為標準模組; Caddy 標準版不內建, 須另裝 caddy-ratelimit 外掛並重新編譯 (來源: 第三方教學, 待對照官方文件)
 - 使用介面本身的使用者與權限管理 (Open WebUI, LibreChat)
 
 ## 10.2 llama-swap: 多模型輪替

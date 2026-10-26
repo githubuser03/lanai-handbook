@@ -16,63 +16,39 @@
 
 ## 最終目標架構
 
-下圖是手冊涵蓋的完整架構. 多數讀者只會用到其中一部分: 最小組合只需要 ● 標示的元件加上維運, 其餘依需求逐層加入 (第 3 章, 第 9 章).
+下圖是手冊涵蓋的完整部署架構, 相當於第 9.3 節的進階組合. 多數讀者只會用到其中一部分: 單人只需要 ● 標示的元件, 小團隊再加 ○, ◇ 只在多人共用且有人每週維運時才加 (第 3 章, 第 9 章).
 
-```mermaid
-%%{init: {'theme': 'neutral', 'flowchart': {'nodeSpacing': 22, 'rankSpacing': 40}}}%%
-flowchart TB
-  U["使用者裝置<br/>瀏覽器或桌面 App"]
-  CLOUD["雲端 API<br/>(可選)"]
+![地端 AI 部署架構: 雲端, 地端, 使用者端三區, 標示實體主機, VM, 設備與各連線協定](content/public/images/architecture.svg)
 
-  subgraph HOST["主機或機房內網: 公網沒有任何連接埠轉發"]
-    direction LR
-    N1["● 存取控制<br/>Tailscale 或<br/>只綁 127.0.0.1"]
-    N2["○ Caddy<br/>HTTPS, 驗證<br/>速率限制"]
-    UI["● 使用者介面<br/>Open WebUI<br/>LibreChat<br/>AnythingLLM 擇一"]
-    AG["◇ 代理服務<br/>LangGraph<br/>寫入須人工確認"]
-    MCP["◇ MCP 伺服器容器<br/>非 root, 唯讀<br/>限制對外連線"]
-    SBX["◇ 程式碼沙箱<br/>無網路<br/>資源上限"]
-    DOC["○ 可信文件<br/>資料夾"]
-    PARSE["○ Docling<br/>文件解析"]
-    VDB["○ 向量庫<br/>Qdrant 等"]
-    GW["○ 閘道<br/>LiteLLM 或 Bifrost<br/>虛擬金鑰與配額"]
-    SW["○ 模型切換<br/>llama-swap"]
-    INF["● 推論引擎<br/>Ollama / llama.cpp<br/>LM Studio<br/>對話與嵌入模型"]
+**讀圖方式**
 
-  end
+- **由下往上**: 使用者只從內網連入反向代理, 經介面呼叫模型閘道, 再到推論伺服器. 公網沒有任何連接埠轉發.
+- **三種底色**: 珊瑚色接觸不可信內容, 紫色是可信控制區, 米色是基礎設施.
+- **框線**: 粗框是實體主機, 細框是 VM, 點線框是設備, 虛線大框是區域.
+- **方塊寫法**: 上方是要安裝的軟體, 下方是角色; 「等」表示可換成同類產品.
 
-  OPS["● 維運: 橫跨所有層, 所有組合都要有<br/>每週備份資料卷與設定<br/>版本鎖定, 升級與回退<br/>機密管理 (.env 權限 600)<br/>每週檢查安全公告<br/>○ 評估: promptfoo 測試集"]
+**圖上各元件的關鍵設定**
 
-  U --> N1 --> N2 --> UI
-  UI --> AG
-  AG --> MCP
-  AG --> SBX
-  UI --> GW
-  AG --> GW
-  GW --> SW --> INF
-  UI -.->|"最小組合直連"| INF
-  DOC --> PARSE --> VDB
-  UI --> VDB
-  GW -.-> CLOUD
-  INF ~~~ OPS
+| 元件 | 角色 | 關鍵設定 |
+|---|---|---|
+| Nginx 或 Caddy | 反向代理伺服器 | 只接受內網連線; Nginx 內建速率限制, Caddy 須另裝外掛 |
+| Keycloak | 身分驗證伺服器 | 以 OIDC 提供單一登入, 可串接公司既有帳號 |
+| LiteLLM | 模型閘道 | 每位使用者或每個應用各一把虛擬金鑰, 設配額; 上游金鑰只放在閘道區 |
+| vLLM | 推論伺服器 | 只接受閘道連線; 個人或低階硬體改用 Ollama 或 llama.cpp |
+| LangGraph | 代理流程控制 | 寫入與刪除需人工核准; 斷路器與單次工具配額 |
+| OPA | 政策引擎 | 預設拒絕; 關鍵資產清單; 對外連線白名單 |
+| 自建程式 + 本地模型 | 隔離模型 | 只讀不可信內容, 沒有任何工具, 只輸出固定欄位的 JSON |
+| MCP gateway | 工具閘道 | 工具白名單與第二次政策判定; 規模小時可由 LiteLLM 兼任 |
+| Docker + gVisor | 程式碼沙箱 | 無網路, 唯讀, 非 root, 資源上限, 每次執行後刪除 |
+| n8n | 流程自動化 | 只經 MCP gateway 呼叫工具, 本身不保管外部系統金鑰 |
+| ModelScan 等, NFS 共享 | 模型入庫檢查與存放 | 模型來源採白名單, 入庫前掃描並記錄雜湊值; 推論伺服器以唯讀方式掛載 |
+| Langfuse, OTel, Prometheus | 可觀測與稽核平台 | 保存提示與回應, 須設定存取權限與保存期限; 紀錄轉送既有 SIEM |
 
-  classDef must fill:#e6e6e6,stroke:#222,stroke-width:2px,color:#111
-  classDef opt fill:#ffffff,stroke:#555,stroke-width:1px,color:#111
-  classDef adv fill:#ffffff,stroke:#555,stroke-width:1px,stroke-dasharray:5 3,color:#111
-  class N1,UI,INF,OPS must
-  class N2,GW,SW,DOC,PARSE,VDB opt
-  class AG,MCP,SBX adv
-  style HOST fill:#fafafa,stroke:#888
-```
+**補充說明**
 
-| 標示 | 意義 |
-|---|---|
-| ● 灰底粗框 | 必要, 所有組合都需要 |
-| ○ 白底實線 | 依情境才加, 條件見各章章首 |
-| ◇ 白底虛線 | 進階, 須有人每週維運 |
-| 虛線箭頭 | 選用路徑: 最小組合由介面直連推論引擎; 雲端 API 只經閘道連出 |
-
-圖中的元件名稱為舉例, 版本與替代方案見[參考資料](https://githubuser03.github.io/docs-handbook-poc/ref/versions). 各層的選擇條件見第 3 章與第 9 章.
+- Open WebUI 內建的程式碼執行 (Jupyter 引擎) 與外掛 (Tools, Functions) 都在伺服器端執行, 不能取代程式碼沙箱. 建議關閉 Jupyter 引擎, 外掛只限管理者匯入; 若啟用 Open Terminal, 部署在 VM 工具區.
+- 圖中「*」的連線 (介面呼叫 LangGraph) 沒有現成接法, 須自建轉接.
+- 圖中的產品為舉例, 版本與替代方案見[參考資料](https://githubuser03.github.io/docs-handbook-poc/ref/versions). 圖由 `scripts/gen-architecture.py` 產生, 修改圖面請改腳本後執行 `npm run diagram`.
 
 ## 目前狀態 (資料基準日 2026-10-26)
 
