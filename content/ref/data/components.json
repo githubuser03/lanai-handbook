@@ -344,7 +344,7 @@
     {
       "component": "MCP 相關",
       "cve": "CVE-2025-49596, CVE-2025-6514 等",
-      "summary": "見[第 13.3 節](/apply/13-workflow-agent-mcp)",
+      "summary": "見[第 13.3 節](/build/m7-tools-sandbox)",
       "source_name": "The Hacker News, JFrog",
       "source_url": null,
       "source_type": "secondary",

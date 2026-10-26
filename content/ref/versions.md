@@ -60,7 +60,7 @@
 | AnythingLLM | CVE-2026-48116 | 代理檔案搜尋技能參數注入 RCE, CVSS 7.5; 公告未列修補版本 | vdf.ai (2026-10 查證) |
 | Langflow | CVE-2026-0768 | CVSS 9.8, 未驗證即以 root 執行程式碼, 自 2026-08-29 起觀測到持續利用 | VulnCheck |
 | n8n | CVE-2026-21858 | CVSS 10.0, 未驗證, 1.121.0 修補 | VulnCheck |
-| MCP 相關 | CVE-2025-49596, CVE-2025-6514 等 | 見[第 13.3 節](/apply/13-workflow-agent-mcp) | The Hacker News, JFrog |
+| MCP 相關 | CVE-2025-49596, CVE-2025-6514 等 | 見[第 13.3 節](/build/m7-tools-sandbox) | The Hacker News, JFrog |
 
 <!-- data:other_cves:end -->
 

@@ -40,7 +40,7 @@ OSI (Open Source Initiative) 定義的開源授權不得對使用方式設限. �
 | Qwen3-Embedding | Apache 2.0 | 來源: 研究 2 |
 | EmbeddingGemma | Gemma 條款 | - |
 
-其餘模型授權於第 4 章整理, 該章尚在撰寫中.
+其餘模型授權於 K4 整理, 該章尚在撰寫中.
 
 ## 授權疊加
 

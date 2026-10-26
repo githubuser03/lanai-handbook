@@ -20,9 +20,9 @@ export default defineConfig({
   outDir: '../docs',
   cleanUrls: true,
 
-  // 網站首頁直接顯示第 1 章 (網址 / 對應 intro/01-usage.md), 不另做封面頁
+  // 網站首頁直接顯示「使用說明」(網址 / 對應 start/usage.md), 不另做封面頁
   rewrites: {
-    'intro/01-usage.md': 'index.md'
+    'start/usage.md': 'index.md'
   },
   lastUpdated: true,
 
@@ -35,23 +35,72 @@ export default defineConfig({
     // 上方導覽列
     nav: [
       { text: '從這裡開始', link: '/' },
+      { text: '架構地圖', link: '/start/map' },
+      { text: '應用範例', link: '/examples/' },
       { text: '決策參考', link: '/decide/summary' },
-      { text: '分層圖', link: '/intro/03-layers' },
       { text: '參考資料', link: '/ref/versions' }
     ],
 
-    // 左側選單: 每個 items 就是一個章節群組
+    // 左側選單: 以架構圖為終點, 先懂底層知識, 再逐一組裝模組, 最後看應用範例
     sidebar: [
       {
-        text: '一、入門概念',
+        text: '從這裡開始',
         items: [
-          { text: '1. 使用說明與自我檢測', link: '/' },
-          { text: '2. 人工智慧的基本概念', link: '/intro/02-basics' },
-          { text: '3. 地端 AI 分層與預設組合', link: '/intro/03-layers' }
+          { text: '使用說明與學習路線', link: '/' },
+          { text: '架構地圖: 最終要組出什麼', link: '/start/map' }
+        ]
+      },
+      {
+        text: '第一部 底層知識',
+        items: [
+          { text: 'K1 模型如何運作', link: '/know/k1-basics' },
+          { text: 'K2 量化與記憶體需求', link: '/know/k2-quantization' },
+          { text: 'K3 硬體選購', link: '/know/k3-hardware' },
+          { text: 'K4 模型與軟體授權', link: '/know/k4-licenses' },
+          { text: 'K5 工具呼叫, MCP 與代理', link: '/know/k5-tools-agents' },
+          { text: 'K6 安全基礎與風險控管', link: '/know/k6-security' }
+        ]
+      },
+      {
+        text: '第二部 模組化組裝',
+        items: [
+          { text: '組裝總覽與里程碑', link: '/build/overview' },
+          { text: 'M0 基礎環境', link: '/build/m0-foundation' },
+          { text: 'M1 推論伺服器', link: '/build/m1-inference' },
+          { text: 'M2 使用者介面與反向代理', link: '/build/m2-ui-proxy' },
+          { text: 'M3 模型入庫與存放', link: '/build/m3-model-intake' },
+          { text: 'M4 檢索 (RAG)', link: '/build/m4-retrieval' },
+          { text: 'M5 模型閘道與身分驗證', link: '/build/m5-gateway-identity' },
+          { text: 'M6 可觀測, 稽核與評估', link: '/build/m6-observability' },
+          { text: 'M7 工具與沙箱', link: '/build/m7-tools-sandbox' },
+          { text: 'M8 代理與治理', link: '/build/m8-agent-governance' },
+          { text: 'M9 流程自動化', link: '/build/m9-automation' }
+        ]
+      },
+      {
+        text: '第三部 應用範例',
+        items: [
+          { text: '範例總覽', link: '/examples/' },
+          { text: 'P1 問自己的文件', link: '/examples/p1-docs-qa' },
+          { text: 'P2 程式撰寫助理', link: '/examples/p2-coding' },
+          { text: 'P3 會議記錄摘要', link: '/examples/p3-meeting-notes' },
+          { text: 'E1 內部知識庫問答', link: '/examples/e1-knowledge-base' },
+          { text: 'E2 資安告警分流', link: '/examples/e2-alert-triage' },
+          { text: 'E3 合約與法規文件比對', link: '/examples/e3-document-compare' },
+          { text: 'E4 每週報告自動化', link: '/examples/e4-weekly-report' }
+        ]
+      },
+      {
+        text: '第四部 維運',
+        items: [
+          { text: 'O1 備份與還原', link: '/ops/backup' },
+          { text: 'O2 版本鎖定與升級', link: '/ops/versioning' },
+          { text: 'O3 安全公告與事件處理', link: '/ops/advisories' }
         ]
       },
       {
         text: '決策參考',
+        collapsed: true,
         items: [
           { text: '一頁決策摘要', link: '/decide/summary' },
           { text: '該不該自架決策樹', link: '/decide/should-self-host' },
@@ -62,49 +111,17 @@ export default defineConfig({
         ]
       },
       {
-        text: '二、評估選擇',
+        text: '延伸主題: 訓練微調',
+        collapsed: true,
         items: [
-          { text: '4. 模型與軟體授權判讀', link: '/select/04-licenses' },
-          { text: '5. 量化與記憶體需求估算', link: '/select/05-quantization' },
-          { text: '6. 工具呼叫能力判讀', link: '/select/06-tool-calling' },
-          { text: '7. 硬體選購', link: '/select/07-hardware' }
-        ]
-      },
-      {
-        text: '三、架設部署',
-        items: [
-          { text: '8. 第一次在本機執行模型', link: '/deploy/08-first-run' },
-          { text: '9. 三種參考架構', link: '/deploy/09-architectures' },
-          { text: '10. 閘道與模型切換', link: '/deploy/10-gateway' },
-          { text: '11. 安全與風險控管', link: '/deploy/11-security' }
-        ]
-      },
-      {
-        text: '四、應用擴充',
-        items: [
-          { text: '12. 檢索增強生成 (RAG)', link: '/apply/12-rag' },
-          { text: '13. 工作流程, 代理與 MCP', link: '/apply/13-workflow-agent-mcp' },
-          { text: '14. 評估與回歸測試', link: '/apply/14-evaluation' }
-        ]
-      },
-      {
-        text: '五、訓練微調',
-        items: [
-          { text: '15. 是否需要訓練的判斷', link: '/train/15-decide' },
-          { text: '16. 微調實作與部署', link: '/train/16-finetune' },
-          { text: '17. 從零開始預訓練', link: '/train/17-pretrain' }
-        ]
-      },
-      {
-        text: '六、維運更新',
-        items: [
-          { text: '18. 備份與還原', link: '/ops/18-backup' },
-          { text: '19. 版本鎖定與升級流程', link: '/ops/19-versioning' },
-          { text: '20. 安全公告與事件處理', link: '/ops/20-advisories-incidents' }
+          { text: 'T1 是否需要訓練的判斷', link: '/train/t1-decide' },
+          { text: 'T2 微調實作與部署', link: '/train/t2-finetune' },
+          { text: 'T3 從零開始預訓練', link: '/train/t3-pretrain' }
         ]
       },
       {
         text: '參考資料',
+        collapsed: true,
         items: [
           { text: '元件版本與安全公告', link: '/ref/versions' },
           { text: '授權速查', link: '/ref/licenses' },
