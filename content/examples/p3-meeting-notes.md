@@ -4,12 +4,26 @@
 - 等級: ○ 依情境
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: whisper.cpp 與 OpenCC 指令依官方 README 整理, 未實機驗證; Whisper 對台灣華語, 中英夾雜與專有名詞的辨識準確度無公開基準; Open WebUI 內建語音轉文字是否支援直接上傳錄音檔, 官方文件未說明; 長逐字稿的分段長度建議屬推論
+- 待查證: whisper.cpp 與 OpenCC 指令依官方 README 整理, 未實機驗證; Whisper 對台灣華語, 中英夾雜與專有名詞的辨識準確度無公開基準; Open WebUI 內建語音轉文字是否支援直接上傳錄音檔, 官方文件未說明; 長逐字稿的分段長度建議屬推論; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 里程碑 1 (M0 至 M2) 加上一個可地端執行的語音轉文字程式, 就能把會議錄音整理成摘要, 決議與待辦清單. 本頁以 whisper.cpp (MIT 授權) 搭配 OpenAI Whisper 模型 (程式碼與權重皆為 MIT 授權) 為例, 錄音與逐字稿都不離開本機. 模型產生的摘要一律由記錄者核對後才寄給與會者, 尤其是決議, 負責人與期限.
 
 **對象**: 個人. **需要的模組**: M1, M2.
+
+::: tip 本頁常見名詞
+| 詞 | 意思 |
+|---|---|
+| 語音轉文字 (speech-to-text) | 把錄音轉成文字的程式; 本頁用 Whisper 模型 |
+| whisper.cpp | 用 C/C++ 重新實作的 Whisper 執行程式, 可在一般電腦上離線轉錄 |
+| ffmpeg | 常用的影音格式轉換工具 |
+| 終端機 (terminal) | 以文字輸入指令操作電腦的視窗; 本頁的 `bash` 區塊都在這裡執行 |
+| OpenCC | 開源的簡繁轉換工具, 可同時替換兩岸不同的常用詞 |
+| 提示範本 (prompt template) | 事先寫好的固定指示, 使用時只要填入逐字稿等內容 |
+| 上下文長度 (context length) | 模型一次能處理的文字量上限; 逐字稿太長會超出 |
+
+完整詞彙見[術語對照](/ref/glossary).
+:::
 
 ## 情境
 
@@ -27,6 +41,8 @@
 | 語音轉文字程式 (不屬於任何模組) | - | 例如 whisper.cpp, 在本機把錄音轉成文字檔 |
 
 ## 流程
+
+錄音先轉成逐字稿, 必要時轉成台灣用字, 記錄者校對專有名詞後, 再交給對話模型依固定格式整理; 最後由記錄者核對並自己寄出. 下圖由上而下對應這五個步驟.
 
 ```
 [會議錄音: 手機或電腦錄製的 m4a, mp3]  (錄音前取得與會者同意)
@@ -63,7 +79,7 @@
 - 名稱有 `.en` 的是純英文模型, 中文會議要選多語模型 (例如 `small`, `medium`, `large-v3-turbo`).
 - whisper.cpp README 列出的大致需求: `small` 磁碟 466MiB, 記憶體約 852MB; `medium` 1.5GiB, 約 2.1GB; `large` 2.9GiB, 約 3.9GB. `large-v3-turbo` 的模型檔為 1.5GiB. OpenAI 說明 turbo 是 large-v3 的加速版本, 準確度略降.
 
-**2. 轉換與轉錄.**
+**2. 轉換與轉錄.** 下列指令在終端機依序執行三件事: 下載轉錄模型, 把錄音轉成 whisper-cli 能讀的格式, 再輸出逐字稿.
 
 ```bash
 # 下載模型 (在 whisper.cpp 目錄中執行)
@@ -143,3 +159,4 @@ opencc -c s2twp.json -i meeting.txt -o meeting-tw.txt
 - [Open WebUI 文件: Environment Variable Configuration (WHISPER_MODEL)](https://docs.openwebui.com/reference/env-configuration)
 - [Open WebUI 文件: RAG 疑難排解 (Ollama 預設上下文)](https://docs.openwebui.com/troubleshooting/rag)
 - 站內: [M1 推論伺服器](/build/m1-inference)
+- 文中的類比 (速記員與助理): 整理者所寫, 無外部來源, 不應當作技術定義引用.

@@ -6,6 +6,8 @@
 
 ## OSI 開源與「原始碼公開」
 
+授權是作者對使用方式訂下的規則. 「開源」在業界有明確的定義, 看得到原始碼不等於開源.
+
 OSI (Open Source Initiative) 定義的開源授權不得對使用方式設限. 授權對使用方式有限制者, 原始碼雖然公開, 但不屬於 OSI 開源. 以 n8n 為例, 其授權檔 (Sustainable Use License) 規定軟體只能用於自身內部業務或非商業用途, 與 OSI 開源定義第 6 條 (授權不得限制特定使用領域) 不符. n8n 官方文件亦自述 "according to the Open Source Initiative (OSI), open source licenses can't include limitations on use, so we do not call ourselves open source" (此句引自先前整理, docs.n8n.io 原頁本輪未能擷取, 來源待補).
 
 本手冊對這類專案稱「原始碼公開」, 不稱「開源」.
@@ -42,8 +44,10 @@ OSI (Open Source Initiative) 定義的開源授權不得對使用方式設限. �
 | Snowflake Arctic Embed L v2.0 | Apache 2.0 | Snowflake 發布, 約 5.7 億參數, 模型卡標示可免費商用 |
 | EmbeddingGemma | Gemma Terms of Use | Google 發布, 約 3 億參數; 須接受條款才能下載. 條款要點: 散布時須轉遞使用限制並附條款全文; Google 不主張對輸出內容的權利 |
 | Gemma-3-TAIDE-12b-Chat-2602 | (Gemma 版次)-TAIDE 模型授權條款 | 基底為 google/gemma-3-12b-pt; 須接受條款才能下載; 條款全文在外部連結, 商用條件本輪未擷取, 來源待補 |
+| llama-nemotron-rerank-1b-v2 | OpenMDW-1.1, 另附 Llama 3.2 Community License | NVIDIA 發布的重排序模型, 以 Llama-3.2-1B 微調; 模型卡標示可商用. Llama 3.2 授權條款本輪未擷取, 對外提供服務前請讀全文 |
+| mmarco-mMiniLMv2-L12-H384-v1 | Apache 2.0 | cross-encoder 發布的多語言重排序模型, 以機器翻譯的 MS MARCO 訓練 |
 
-其餘模型授權於 K4 整理, 該章尚在撰寫中.
+其餘模型授權見 [K4](/know/k4-licenses).
 
 ## 授權疊加
 
@@ -74,6 +78,8 @@ OSI (Open Source Initiative) 定義的開源授權不得對使用方式設限. �
 
 模型授權 (官方授權頁與模型卡):
 
+- [Hugging Face 模型卡: nvidia/llama-nemotron-rerank-1b-v2](https://huggingface.co/nvidia/llama-nemotron-rerank-1b-v2)
+- [Hugging Face 模型卡: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1](https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1/blob/265d6fb9678e8fc6b1adeda526533b2a1f1a7f07/README.md)
 - [Llama 4 Community License Agreement](https://dev.meta.ai/llama/llama4/license), [Llama Guard 4 模型卡](https://huggingface.co/meta-llama/Llama-Guard-4-12B), [Llama Prompt Guard 2 模型卡](https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-86M)
 - [Gemma Terms of Use](https://ai.google.dev/gemma/terms), [EmbeddingGemma 模型卡](https://huggingface.co/google/embeddinggemma-300m)
 - [Snowflake Arctic Embed L v2.0 模型卡](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0)

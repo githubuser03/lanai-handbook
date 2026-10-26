@@ -4,16 +4,30 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: M2.3 節 Nginx 與 Caddy 設定範例, M2.4 節驗收指令皆未實機驗證; 在 Open WebUI 前疊加基本驗證是否與其 `Authorization` 標頭衝突, 未實機確認; 瀏覽器介面的對話請求是否都經過 `/api/chat/completions`, 未確認; caddy-ratelimit 的維護狀態與設定語法僅依其 README (非 Caddy 官方模組)
+- 待查證: M2.3 節 Nginx 與 Caddy 設定範例, M2.4 節驗收指令皆未實機驗證; 在 Open WebUI 前疊加基本驗證是否與其 `Authorization` 標頭衝突, 未實機確認; 瀏覽器介面的對話請求是否都經過 `/api/chat/completions`, 未確認; caddy-ratelimit 的維護狀態與設定語法僅依其 README (非 Caddy 官方模組); 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 介面讓使用者能在瀏覽器裡和模型對話, 反向代理讓連線加密, 並在介面前面多一道驗證與流量控制. 單人單機只需要介面, 而且只綁 127.0.0.1; 要讓內網其他人連入時, 才在前面加反向代理.
 
 **這一塊在圖上的位置**: VM 入口區的 Open WebUI 與 Nginx 或 Caddy. **前置模組**: M1. **完成後的狀態**: 里程碑 1 完成, 可以在瀏覽器裡和本機模型對話.
 
+M1 的推論伺服器只能用指令操作; 這一章裝上一般人熟悉的聊天畫面. 介面像餐廳的外場與菜單, 讓客人不必走進廚房就能點菜. 反向代理則像門口的接待櫃台: 所有客人都先到櫃台, 櫃台確認對方是內部人員, 才帶到座位, 外人不會直接走進用餐區.
+
+::: tip 本章常見名詞
+| 詞 | 意思 |
+|---|---|
+| 使用者介面 (UI) | 在瀏覽器或桌面 App 裡和模型對話的畫面, 例如 Open WebUI, AnythingLLM |
+| 反向代理 (reverse proxy) | 站在服務前面統一接收連線, 再轉給後面服務的程式, 例如 Nginx, Caddy |
+| TLS 與 HTTPS | TLS 是加密連線的協定; 網址開頭是 https 時, 傳輸內容就經過加密 |
+| 憑證與 CA | 憑證證明「這個網站就是它聲稱的那一個」; CA (憑證機構) 是簽發憑證的單位, 瀏覽器要信任 CA 才會接受它簽的憑證 |
+| 速率限制 (rate limit) | 限制同一來源在一段時間內的請求次數, 避免單一使用者占滿資源 |
+| 基本驗證 (basic auth) | 瀏覽器跳出帳號密碼視窗的簡易登入方式 |
+| WebSocket 與串流 | 讓伺服器把回答一段一段即時送回瀏覽器的連線方式, 回答因此能逐字出現 |
+:::
+
 ## M2.1 選擇介面
 
-等級 A 與 C 建議用 AnythingLLM 桌面版, 其他等級用 Open WebUI 單一容器. 不加閘道, 代理框架與 MCP.
+介面決定使用者看到的畫面與操作方式. AnythingLLM 桌面版像一般軟體一樣下載安裝即可使用; Open WebUI 以 Docker 容器執行, 透過瀏覽器操作, 之後要多人共用也比較容易. 等級 A 與 C 建議用 AnythingLLM 桌面版, 其他等級用 Open WebUI 單一容器. 不加閘道, 代理框架與 MCP. 下圖是單人使用時的連線關係:
 
 ```
 [瀏覽器 / 桌面 App]
@@ -27,12 +41,14 @@
 
 ## M2.2 用 Docker 執行介面時的連接埠與位址
 
+容器有自己的一套網路. 主機上的服務要讓容器內連得到, 容器內的服務也要選擇是否開放到主機上, 這兩個方向都容易設錯.
+
 用容器跑介面時, 有兩件事容易做錯 (指令未實機驗證, 依下列官方文件整理):
 
 1. **發布連接埠時要指定 127.0.0.1.** Docker 官方文件指出, `-p 8080:80` 會綁定在主機的任一位址, 要限制只有主機本身能存取, 須寫成 `-p 127.0.0.1:8080:80` (來源: Docker 文件 Port publishing and mapping). 此外, Docker 官方文件說明 Docker 與 ufw 的防火牆規則運作方式不相容, 已發布的連接埠可能不受 ufw 規則限制 (來源: Docker 文件 Packet filtering and firewalls). 因此「用 ufw 擋住」不能當作唯一防線, 發布時就要綁定 127.0.0.1.
 2. **容器內的 127.0.0.1 指的是容器自己.** 要從容器連到主機上的 Ollama, Open WebUI 官方文件建議使用 `host.docker.internal`, 並在 Linux 加上 `--add-host=host.docker.internal:host-gateway` (來源: Open WebUI 文件 Quick Start).
 
-範例 (以 Open WebUI 官方 Quick Start 的指令為基礎, 僅把發布位址改為 127.0.0.1, 並固定版本標籤):
+範例 (以 Open WebUI 官方 Quick Start 的指令為基礎, 僅把發布位址改為 127.0.0.1, 並固定版本標籤). 這段指令啟動 Open WebUI 容器: 只在本機的 3000 連接埠提供服務, 讓容器連得到主機上的 Ollama, 把對話與設定存在名為 `open-webui` 的資料卷, 並產生一把登入用的加密金鑰:
 
 ```bash
 docker run -d -p 127.0.0.1:3000:8080 \
@@ -59,7 +75,7 @@ Open WebUI 文件中標為 `ConfigVar` 的環境變數只在第一次啟動時�
 
 ## M2.3 加上反向代理 (內網多人連入時)
 
-內網其他人要連入時, 在介面前面放一台反向代理. 反向代理負責 TLS 加密, 來源網段限制, 基本驗證與速率限制; 介面本身改為只接受反向代理的連線. 本節設定依下列官方文件整理, 未實機驗證.
+只有自己使用時, 介面綁在 127.0.0.1 就夠安全. 要讓辦公室或家裡其他裝置連入時, 連線會經過區域網路, 這時需要加密, 也需要控管誰能連. 內網其他人要連入時, 在介面前面放一台反向代理. 反向代理負責 TLS 加密, 來源網段限制, 基本驗證與速率限制; 介面本身改為只接受反向代理的連線. 本節設定依下列官方文件整理, 未實機驗證.
 
 ### Nginx 與 Caddy 的取捨
 
@@ -83,6 +99,8 @@ Open WebUI 官方文件列出幾個容易漏掉的設定:
 
 ### 內網憑證的兩種來源
 
+HTTPS 需要一張憑證, 讓瀏覽器確認連到的確實是這台伺服器. 公開網站的憑證由公開 CA 簽發; 只在內網使用的伺服器, 通常改用下列兩種來源.
+
 1. **公司內部憑證機構**: 公司已有內部 CA 時, 向它申請伺服器憑證, 憑證的主體別名 (SAN) 要涵蓋使用者輸入的主機名稱. 公司配發的裝置通常已信任公司根憑證, 使用者端不需額外設定 (推論, 信心: 中).
 2. **Caddy 內部 CA (`tls internal`)**: Caddy 會用本機的內部 CA 簽發憑證. 根憑證預設效期 3600 天 (10 年), 中繼憑證 7 天, 網站憑證 12 小時, 由 Caddy 自動更新 (來源: Caddy 文件 tls). 根憑證存在 Caddy 資料目錄的 `pki/authorities/local` 之下. Caddy 只會嘗試把根憑證裝進本機的信任清單, 在容器內或以非特權使用者執行時可能失敗; 其他裝置要由系統管理者自行安裝根憑證 (來源: Caddy 文件 Automatic HTTPS). 資料目錄必須持續保存, 不能當成快取 (來源: Caddy 文件 Conventions). 容器重建後若資料目錄遺失, Caddy 會產生新的根憑證, 所有裝置都要重新安裝 (推論).
 
@@ -90,7 +108,7 @@ Open WebUI 官方文件列出幾個容易漏掉的設定:
 
 ### 只接受內網網段, 介面不直接對外
 
-建議同時做三層限制:
+目標是讓使用者只能經由反向代理進入, 而且只有內網的裝置進得來. 建議同時做三層限制:
 
 1. **介面只對反向代理開放.** 反向代理與 Open WebUI 放在同一個 Docker 自訂網路時, Open WebUI 不必發布連接埠: Docker 官方文件說明, bridge 網路上的容器連接埠, 主機與同網路的其他容器都能存取, 但主機外部無法存取 (來源: Docker 文件 Port publishing and mapping). 反向代理裝在主機上時, 則以 `-p 127.0.0.1:3000:8080` 發布 (見 M2.2 節). 同一份文件也提醒, Docker Engine 28.0.0 之前的版本, 同一個 L2 網段的主機可以連到發布在 localhost 的連接埠, 因此 Docker Engine 至少要 28.0.0.
 2. **反向代理只接受內網網段.** Nginx 以 `allow` 與 `deny` 限制, 規則由上往下比對, 第一條符合者生效 (來源: nginx.org ngx_http_access_module). Caddy 以 `remote_ip` 比對直接連線端的位址; 前面還有其他代理時, 改用 `client_ip` 並設定 `trusted_proxies`; `private_ranges` 代表所有私有 IPv4 與 IPv6 網段 (來源: Caddy 文件 Request matchers). 建議寫明實際網段, 不要直接放行所有私有網段 (推論).
@@ -103,6 +121,8 @@ Open WebUI 官方文件列出幾個容易漏掉的設定:
 Open WebUI 有自己的帳號與登入. 在它前面再疊一層基本驗證時, 瀏覽器與 Open WebUI 前端都會用到 `Authorization` 標頭, 可能互相衝突 (推論, 信心: 中, 須實機驗證). 本手冊建議, 基本驗證只用在沒有自帶登入的服務, 例如讓內部腳本經反向代理呼叫 llama-server 的 API (見 M5.1 節). Open WebUI 本身則依賴介面帳號, 多人時再改用單一登入 (M5.4 節).
 
 ### 最小設定範例: Nginx
+
+下列設定檔讓 Nginx 在內網位址的 443 連接埠提供 HTTPS, 只接受 192.168.10.0/24 網段, 把請求轉給 Open WebUI, 並對對話請求加上速率限制. 檔案中的註解說明各段的作用.
 
 依 nginx.org 的 limit_req, auth_basic, access, WebSocket proxying, HTTPS 文件與 Open WebUI 的 Nginx 範例整理, 未實機驗證. 主機名稱, 網段與路徑為佔位值.
 
@@ -172,6 +192,8 @@ server {
 
 ### 最小設定範例: Caddy
 
+Caddy 的設定檔較短, 下列範例做到和上面 Nginx 範例相近的效果 (速率限制除外).
+
 依 caddyserver.com 的 reverse_proxy, tls, basic_auth 與 Request matchers 文件整理, 未實機驗證.
 
 ```caddy
@@ -219,6 +241,8 @@ rate_limit {
 這個模組不是 Caddy 官方模組, 採用前須自行評估維護狀態, 並把它納入版本追蹤 (見 O2) (推論, 信心: 中).
 
 ## M2.4 驗收測試
+
+驗收分成兩類: 該通的路要通 (內網使用者能順利對話), 不該通的路要擋住 (直接連介面, 外部網段, 超量請求). `curl` 是在終端機送出網頁請求的工具, `openssl s_client` 用來檢查伺服器送出的憑證.
 
 以下步驟以 Nginx 範例的主機名稱與網段為例. `curl`, `nmap` 與 `openssl` 為通用工具, 指令未實機驗證.
 
@@ -310,3 +334,4 @@ nmap -p- 192.168.10.5
 - [Caddy 文件: http.handlers.rate_limit 模組頁](https://caddyserver.com/docs/modules/http.handlers.rate_limit)
 - [GitHub: mholt/caddy-ratelimit](https://github.com/mholt/caddy-ratelimit)
 - [llama.cpp server README](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
+- 文中的類比 (餐廳外場與菜單, 接待櫃台): 整理者所寫, 無外部來源, 不應當作技術定義引用.

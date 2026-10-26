@@ -4,14 +4,31 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: TAIDE 授權條款全文 (Hugging Face 頁面須登入同意後才能閱讀, 本輪未讀); Gemma 4 授權檔原文 (本輪依 Google 開源部落格與 Gemma 條款頁的指引, 未直接讀授權檔); NVIDIA Open Model License 與 Mistral AI Research License 的要點為整理者依授權全文歸納, 非逐條對照; 模型範例已更換, 授權標示須對照各模型的 Hugging Face 頁面; 量化或轉檔版本是否沿用原模型授權為推論; 本章不構成法律意見
+- 待查證: TAIDE 授權條款全文 (Hugging Face 頁面須登入同意後才能閱讀, 本輪未讀); Gemma 4 授權檔原文 (本輪依 Google 開源部落格與 Gemma 條款頁的指引, 未直接讀授權檔); NVIDIA Open Model License 與 Mistral AI Research License 的要點為整理者依授權全文歸納, 非逐條對照; 模型範例已更換, 授權標示須對照各模型的 Hugging Face 頁面; 量化或轉檔版本是否沿用原模型授權為推論; 本章不構成法律意見; 文中的類比為整理者所寫, 不代表技術或法律上完全等同
 :::
 
 **結論**: 模型與軟體的授權各自獨立, 要分開檢查. 模型授權分兩類: Apache 2.0, MIT 這類通用開源授權, 以及 Llama, Gemma (Gemma 4 以前), NVIDIA Nemotron, Mistral Large, TAIDE 這類自訂授權; 後者常附使用政策, 標示, 規模門檻或用途限制. 軟體則要分清楚 OSI 開源與「原始碼公開」: n8n, Open WebUI, Dify 的原始碼都看得到, 但授權對使用方式設有限制. 個人與內部使用通常不受影響, 一旦對外提供服務, 最嚴格的條款決定能做什麼 (信心: 中). 每個模型入庫時就把授權記下來 (見 [M3](/build/m3-model-intake)), 之後才查得到.
 
+::: tip 本章常見名詞
+| 詞 | 意思 |
+|---|---|
+| 授權 (license) | 著作權人允許別人怎麼使用作品的條件 |
+| 權重 | 模型訓練出來的大量數字, 也就是模型檔本身 (見 [K1](/know/k1-basics)) |
+| OSI 開源 | 符合 Open Source Initiative 開源定義的授權, 不得限制使用的人或用途 |
+| 原始碼公開 (source-available) | 原始碼看得到, 但授權對使用方式設有限制 |
+| 自訂授權 | 模型或軟體發布者自己撰寫的授權條款, 例如 Llama, Gemma Terms of Use |
+| gated model | 須先登入並同意條款才能下載的模型 |
+| AGPL | 一種開源授權, 透過網路提供修改版服務時也要提供原始碼 |
+| 散布 | 把軟體或模型檔交給組織以外的人, 例如公開下載或隨產品出貨 |
+
+完整詞彙見[術語對照](/ref/glossary).
+:::
+
 本章說明判讀方法; 各元件的授權明細見[授權速查](/ref/licenses), 對外服務前的檢查清單見[授權紅旗](/decide/license-flags). 授權條款會改版, 正式使用前請以各專案的授權原文為準, 有疑義時請洽法律顧問.
 
 ## K4.1 模型授權: 通用開源授權與自訂授權
+
+授權可以想成租屋契約: 房子 (模型) 可以住, 但契約會寫明能不能轉租, 能不能拿來開店, 門口要不要掛房東指定的招牌. 免費下載不代表沒有條件, 條件都寫在授權裡.
 
 模型的權重也有授權. 同一個模型家族的不同尺寸或不同世代, 授權可能不同, 因此要逐一看模型頁面, 不能只看家族名稱. 例如 Hugging Face 上 Mistral-7B-Instruct-v0.3 標示 Apache 2.0, 同一家公司的 Mistral-Large-Instruct-2411 標示 `mrl` (Mistral AI Research License), 模型頁說明只允許非商業的使用與修改 (來源: 各模型的 Hugging Face 頁面).
 
@@ -33,6 +50,8 @@ Gemma 是授權會變動的例子. Google 開源部落格說明 Gemma 4 是 Gemm
 
 ## K4.2 權重來源與檔案格式決定信任程度
 
+下載模型和下載軟體一樣, 要先看來源. 同一款軟體可以從官網下載, 也可能出現在來路不明的下載站; 模型也是如此, 而且模型檔在某些格式下, 載入時就會執行程式.
+
 同一個模型可能有官方發布, 社群轉檔, 社群量化等多個版本. 信任程度由高到低大致是: 官方組織帳號發布的原始權重, 知名發布者的轉檔或量化版本, 來源不明的上傳 (信心: 中高, 屬一般經驗).
 
 判斷來源時可以看三件事:
@@ -41,11 +60,13 @@ Gemma 是授權會變動的例子. Google 開源部落格說明 Gemma 4 是 Gemm
 - **衍生關係**: 模型卡的 `base_model` 欄位標示衍生自哪個模型, `base_model_relation` 可標示為 `finetune`, `adapter`, `quantized` 或 `merge` (來源: Hugging Face 文件 Model cards). 量化或轉檔版本的授權應回到原模型確認; 轉檔不會讓授權變寬鬆 (推論, 信心: 中).
 - **存取條件**: 部分模型是 gated model, 使用者要先同意與作者分享聯絡資訊才能下載; 作者可設為人工核准, 也可隨時撤銷存取 (來源: Hugging Face 文件 Gated models). Llama 3.1 等模型即採此方式 (來源: meta-llama/Llama-3.1-8B-Instruct 模型頁).
 
-檔案格式也影響風險. pickle 格式 (常見副檔名 `.bin`, `.pt`) 在載入時可以執行任意 Python 程式; Hugging Face 會掃描上傳的 pickle 檔並標示可疑的 import, 但官方自承掃描「並非百分之百可靠」, 使用者須自行確認 (來源: Hugging Face 文件 Pickle scanning). 因此優先選用 safetensors 或 GGUF, 避免來源不明的 pickle 檔. 入庫掃描與雜湊紀錄的做法見 [M3](/build/m3-model-intake).
+檔案格式也影響風險. pickle 是 Python 用來儲存資料物件的格式; pickle 格式 (常見副檔名 `.bin`, `.pt`) 在載入時可以執行任意 Python 程式; Hugging Face 會掃描上傳的 pickle 檔並標示可疑的 import, 但官方自承掃描「並非百分之百可靠」, 使用者須自行確認 (來源: Hugging Face 文件 Pickle scanning). 因此優先選用 safetensors 或 GGUF, 避免來源不明的 pickle 檔. 入庫掃描與雜湊紀錄的做法見 [M3](/build/m3-model-intake).
 
 **對應架構圖**: 雲端模型來源到入庫檢查主機 (ModelAudit 等) 的那一段.
 
 ## K4.3 OSI 開源與「原始碼公開」的差異
+
+開源與原始碼公開的差別, 可以想成兩種公開的食譜: 一種公開後任何人都能拿去開店販售; 另一種雖然也公開, 但只准在家裡煮, 或開店前要先取得同意. 兩種都看得到食譜, 能做的事卻不同.
 
 OSI (Open Source Initiative) 的開源定義要求授權不得歧視任何人或團體, 也不得限制在特定領域使用; 授權也不得限制任何人販售或贈送軟體 (來源: The Open Source Definition 第 1, 5, 6 條). 只要授權對使用方式或對象設限, 即使原始碼公開, 也不屬於 OSI 開源. 本手冊對這類專案稱「原始碼公開」(source-available), 不稱「開源」.
 
@@ -68,6 +89,8 @@ n8n 官方 FAQ 對「內部業務」的界線有具體說明: 顧問在自己的
 
 ## K4.4 授權疊加: 最嚴格的條款決定能做什麼
 
+授權疊加可以想成一趟要轉乘好幾段交通工具的旅程: 每一段的行李規定都要遵守, 最後能帶多少行李, 由規定最嚴的那一段決定.
+
 一套系統由多個元件與模型組成時, 每一份授權都要同時遵守, 因此限制最多的那一份決定整套系統能做什麼 (信心: 中). 同一個專案內也可能有多份授權, 例如 n8n 的 `.ee.` 檔案, LiteLLM 的 `enterprise/` 目錄 (見[授權速查](/ref/licenses)).
 
 三種使用情境的差異如下 (整理者推論, 信心: 中):
@@ -85,6 +108,8 @@ AGPL 值得單獨留意. AGPL v3 第 13 條要求: 修改過的程式若讓使�
 **對應架構圖**: 整張圖. 對外服務時, 入口區 (Open WebUI), 自動化區 (n8n) 與推論區載入的模型是最常出現限制的位置 (推論, 信心: 中).
 
 ## K4.5 入庫時記錄授權
+
+入庫時記錄授權, 可以想成購物時保存收據與當時的條款: 日後條款改版, 仍能證明取得時適用的是哪一版.
 
 授權會改版, 模型頁面也可能更新, 因此要在入庫當下記錄當時的授權. Hugging Face 模型庫以模型卡 (README.md) 開頭的 YAML 中介資料 `license` 欄位標示授權, 例如 `apache-2.0`, `mit`, `llama3.1`, `gemma`; 自訂授權標為 `license: other`, 以 `license_name` 命名, 並把全文放在模型庫的 `LICENSE` 檔 (來源: Hugging Face 文件 Licenses).
 
@@ -132,3 +157,4 @@ AGPL 值得單獨留意. AGPL v3 第 13 條要求: 修改過的程式若讓使�
 - [Dify 儲存庫 LICENSE](https://github.com/langgenius/dify/blob/main/LICENSE)
 - [LM Studio 部落格: LM Studio is free for use at work](https://www.lmstudio.ai/blog/free-for-work)
 - [LM Studio App Terms of Use](https://lmstudio.ai/app-terms)
+- 文中的類比 (租屋契約, 兩種公開的食譜, 轉乘的行李規定, 保存收據): 整理者所寫, 無外部來源, 不應當作技術或法律定義引用.

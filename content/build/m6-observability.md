@@ -4,14 +4,32 @@
 - 等級: ● 必要 (測試集); ○ 依情境 (追蹤平台)
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: promptfoo 實際設定語法與收購案完成日期; OpenTelemetry GenAI 語意規範的最新狀態; M6.4 與 M6.5 節的 Langfuse, OTel Collector, Prometheus 設定與指令未實機驗證; Langfuse 開源版的組織層級角色範圍, 以及 OTLP 端點是否接收指標與日誌, 官方文件未寫明; llama-server `/metrics` 是否受 `--api-key` 保護未確認; Open WebUI OTel 軌跡的欄位內容未確認; OPA 政策判定紀錄的送出方式待 M8 定案
+- 待查證: promptfoo 實際設定語法與收購案完成日期; OpenTelemetry GenAI 語意規範的最新狀態; M6.4 與 M6.5 節的 Langfuse, OTel Collector, Prometheus 設定與指令未實機驗證; Langfuse 開源版的組織層級角色範圍, 以及 OTLP 端點是否接收指標與日誌, 官方文件未寫明; llama-server `/metrics` 是否受 `--api-key` 保護未確認; Open WebUI OTel 軌跡的欄位內容未確認; OPA 政策判定紀錄的送出方式待 M8 定案; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 初階讀者不需要追蹤平台, 需要的是一份 30 至 100 題的固定測試集. 每次換模型, 換提示或升級元件時跑一次, 就能回答「變好還是變壞」(信心: 高). 多人共用之後, 再加上可觀測與稽核平台, 記錄誰在什麼時候讓 AI 做了什麼.
 
 **這一塊在圖上的位置**: VM 稽核區的 Langfuse, OTel Collector, Prometheus, 以及既有 SIEM. **前置模組**: M5. **完成後的狀態**: 每次換模型或升級都能用測試集比較結果; 每次模型與工具呼叫都留下紀錄.
 
+本章分兩層. 第一層是測試集: 一份固定的考卷, 每次換模型或改設定都考一次, 用分數判斷系統變好或變壞. 第二層是可觀測與稽核: 多人共用後, 系統要留下紀錄, 事後才能查出誰在什麼時候問了什麼, 模型回了什麼, 花了多久. 可以想成行車紀錄器加上儀表板, 平常看儀表板知道車況, 出事時調紀錄器還原經過.
+
+::: tip 本章常見名詞
+| 詞 | 意思 |
+|---|---|
+| 測試集 | 一組固定的問題與期望答案, 用來比較不同版本的表現 |
+| 可觀測 (observability) | 從紀錄與指標看出系統內部發生什麼事的能力 |
+| 軌跡 (trace) | 一次請求從進入到完成的完整紀錄, 包含每一個步驟 |
+| 指標 (metrics) | 隨時間變化的數值, 例如排隊請求數, 回應延遲 |
+| 日誌 (log) | 系統逐筆寫下的事件文字紀錄 |
+| OpenTelemetry (OTel) 與 OTLP | 收集軌跡, 指標與日誌的開放標準; OTLP 是它傳送資料的協定 |
+| Collector | OpenTelemetry 的收集程式, 把各處送來的紀錄整理後分送到不同目的地 |
+| SIEM | 資安事件管理平台, 集中保存與搜尋各系統的日誌 |
+| Prometheus, Grafana, Alertmanager | 分別負責抓取指標, 畫成儀表板, 以及超過門檻時發出通知 |
+:::
+
 ## M6.1 30 至 100 題測試集的設計
+
+模型回答的好壞很難只憑感覺判斷, 換了模型之後, 某些題目變好, 另一些題目可能變差. 固定一份題目反覆測, 才能看出整體差異.
 
 最少需要三件事:
 
@@ -32,11 +50,15 @@ T2 微調後的驗證, 沿用同一份測試集.
 
 ## M6.2 promptfoo 實作
 
+promptfoo 的用途是把測試集自動跑一遍, 並比較不同模型或提示的結果, 省去逐題手動貼上的工作.
+
 promptfoo 是命令列工具, 不需要常駐服務, 採 MIT 授權. OpenAI 於 2026-03-09 宣布收購, 官方聲明 "remains open source under MIT" (來源: 研究 2 引用之官方聲明). 收購案的完成日期未能確認; 長期所有權變動屬鎖定風險, 須持續追蹤 (信心: 中).
 
 設定檔語法會隨版本變動, 本章不放未經核對的範例, 實作步驟待依官方文件逐步驗證後補上.
 
 ## M6.3 追蹤平台何時值得裝
+
+追蹤平台會記下每一次模型呼叫的細節, 方便除錯與稽核, 但本身也要吃不少記憶體與維運時間. 下表列出常見工具的授權與資源需求, 供判斷是否值得投入.
 
 | 工具 | 授權 / 狀態 | 自架資源 |
 |---|---|---|
@@ -48,6 +70,8 @@ promptfoo 是命令列工具, 不需要常駐服務, 採 MIT 授權. OpenAI 於 
 Langfuse 光 ClickHouse 最低就要 8GiB, 會與模型搶記憶體, 因此對硬體等級 A 至 D 不划算 (信心: 高, 依官方最低需求推論). 多人環境且有專人維運時, 才值得評估.
 
 ## M6.4 可觀測與稽核平台
+
+多人共用後, 需要一套能回答「發生了什麼事」的紀錄系統. 本節的做法是讓各服務把紀錄送到同一個收集點, 再分送到兩個地方: 一份給 Langfuse 看模型呼叫的細節, 一份給公司既有的 SIEM 做資安稽核. 服務的健康狀態則由 Prometheus 定期抓取, 異常時發出警示.
 
 三個元件分工不同: Langfuse 存放每次模型呼叫的軌跡 (提示, 回應, token 數, 延遲, 代理每一步), OpenTelemetry Collector 負責收集紀錄並分送到 Langfuse 與既有 SIEM, Prometheus 與 Grafana 處理服務指標與警示. 本節設定依官方文件整理, 未實機驗證.
 
@@ -68,6 +92,8 @@ Langfuse 光 ClickHouse 最低就要 8GiB, 會與模型搶記憶體, 因此對�
 
 ### Langfuse 自架要點
 
+Langfuse 是專門記錄模型呼叫的開源平台, 每一筆提示, 回應, token 數與耗時都能在介面上逐筆查看.
+
 **需要的服務**: Langfuse 官方架構包含六個元件: Langfuse Web (介面與 API), Langfuse Worker (非同步處理事件), PostgreSQL (交易資料), ClickHouse (存放軌跡, observation 與評分), Redis 或 Valkey (佇列與快取), S3 相容的物件儲存 (保存所有進來的事件與大型匯出) (來源: Langfuse 文件 Self-hosting). 各元件的最低資源見 M6.3 節.
 
 **部署方式**: 官方把 Docker Compose 定位為本機使用與測試, 標示為單一 VM, 沒有高可用, 擴充與備份; 正式環境的選項為 Kubernetes (Helm) 與各雲端平台 (來源: 同上). 依官方 Docker Compose 文件, 步驟為 `git clone https://github.com/langfuse/langfuse.git`, 進入目錄後修改所有標示 `# CHANGEME` 的機密值, 再執行 `docker compose up`. 介面在 3000 連接埠; worker (3030), MinIO 主控台 (9091) 與資料庫只綁 127.0.0.1 (來源: Langfuse 文件 Docker Compose). 本手冊的稽核區若採 Docker Compose, 須自行排程備份 PostgreSQL, ClickHouse 與 MinIO 的資料卷 (見 O1) (推論, 信心: 中).
@@ -86,6 +112,8 @@ Langfuse 光 ClickHouse 最低就要 8GiB, 會與模型搶記憶體, 因此對�
 
 ### OpenTelemetry Collector
 
+Collector 的角色像郵件分揀中心: 各服務只要把紀錄寄到同一個地址, 由它決定哪些送 Langfuse, 哪些送 SIEM. 日後要加新的目的地, 只改 Collector 的設定, 不必逐一修改每個服務.
+
 **基本觀念** (來源: OpenTelemetry 文件 Collector configuration):
 
 - receivers 從一個或多個來源收集遙測資料; processors 在送出前轉換資料; exporters 把資料送到一個或多個後端.
@@ -96,7 +124,7 @@ Langfuse 光 ClickHouse 最低就要 8GiB, 會與模型搶記憶體, 因此對�
 
 **otlp_http exporter**: 官方 README 指出, 這個 exporter 已由 `otlphttp` 改名為 `otlp_http`, 舊名稱暫時保留為別名, 未來會移除 (來源: GitHub opentelemetry-collector, OTLP HTTP Exporter README). 依 Collector 變更紀錄, 改名發生在 v0.144.0; 使用更早版本時, 設定中要寫 `otlphttp` (來源: opentelemetry-collector CHANGELOG). `endpoint` 是基底網址, 送軌跡時會自動加上 `/v1/traces`; 也可用 `traces_endpoint` 直接指定完整網址. 預設編碼為 protobuf, 預設啟用 gzip 壓縮 (來源: 同上 README). 自訂標頭使用 HTTP 客戶端共用設定的 `headers` 欄位 (來源: confighttp README).
 
-**最小設定範例** (依 OpenTelemetry Collector 文件與 Langfuse 的 Collector 範例整理, 未實機驗證):
+**最小設定範例** (依 OpenTelemetry Collector 文件與 Langfuse 的 Collector 範例整理, 未實機驗證). 這份設定檔讓 Collector 接收各服務送來的軌跡與日誌, 軌跡同時送 Langfuse 與 SIEM, 日誌只送 SIEM:
 
 ```yaml
 # otelcol.yaml (未實機驗證)
@@ -153,6 +181,8 @@ service:
 
 ### Prometheus 與 Grafana
 
+Prometheus 每隔幾秒向各服務詢問一次目前的數值 (例如有幾個請求在排隊), 存成時間序列; Grafana 把這些數值畫成圖; Alertmanager 在數值超過門檻時寄信或發通知. 三者合起來, 就是系統的儀表板與警報器.
+
 **各推論引擎的指標來源**:
 
 | 元件 | 指標端點 | 重點指標 | 注意事項 |
@@ -164,7 +194,7 @@ service:
 
 **網路例外**: 推論區原則上只接受閘道區連線. Prometheus 要抓取 vLLM 指標時, `/metrics` 與推論端點共用同一個連接埠, 而且有多個不需金鑰的端點 (見 M5.6 節), 因此只對 Prometheus 主機的單一 IP 開放這個連接埠, 並記錄這條例外 (推論, 信心: 中).
 
-**prometheus.yml 範例** (依 Prometheus 設定文件的欄位整理, 未實機驗證):
+**prometheus.yml 範例** (依 Prometheus 設定文件的欄位整理, 未實機驗證). 這份設定指定每 15 秒抓取一次 vLLM 與 LiteLLM 的指標, 並把警示交給 Alertmanager:
 
 ```yaml
 global:
@@ -220,7 +250,7 @@ groups:
 
 ## M6.5 驗收測試
 
-以下步驟依各官方文件整理, 未實機驗證.
+驗收時以實際操作確認紀錄真的留下, 警示真的送達, 權限真的擋住. 以下步驟依各官方文件整理, 未實機驗證.
 
 **1. 一次對話能在 Langfuse 看到完整軌跡**
 
@@ -278,3 +308,4 @@ groups:
 - [Prometheus 文件: Alertmanager configuration](https://prometheus.io/docs/alerting/latest/configuration/)
 - [Alertmanager README](https://github.com/prometheus/alertmanager/blob/main/README.md)
 - [Grafana 文件: Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/)
+- 文中的類比 (固定考卷, 行車紀錄器與儀表板, 郵件分揀中心): 整理者所寫, 無外部來源, 不應當作技術定義引用.

@@ -4,16 +4,33 @@
 - 等級: ◇ 進階
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: 本章指令與設定檔依官方文件整理, 未實機執行; MCP 授權規範細節未逐條驗證; M7.1 節事件表多為二手來源; ToolHive vMCP 的命令列操作步驟未核對; `thv run` 以摘要值指定映像的寫法未見官方示範; Open WebUI 連 LiteLLM 時能否設定 `x-litellm-api-key` 標頭未核對; Open Terminal 能否以 gVisor 執行未驗證; gVisor 效能額外負擔未實測
+- 待查證: 本章指令與設定檔依官方文件整理, 未實機執行; MCP 授權規範細節未逐條驗證; M7.1 節事件表多為二手來源; ToolHive vMCP 的命令列操作步驟未核對; `thv run` 以摘要值指定映像的寫法未見官方示範; Open WebUI 連 LiteLLM 時能否設定 `x-litellm-api-key` 標頭未核對; Open Terminal 能否以 gVisor 執行未驗證; gVisor 效能額外負擔未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 工具讓模型能讀寫系統, 也是風險最集中的地方. 所有工具都放在獨立的 VM 工具區, 經同一個工具閘道 (MCP gateway) 呼叫; 會執行程式碼的工具一律放進沙箱. 工具只有幾個時, 可以由 LiteLLM 兼任工具閘道.
 
 **這一塊在圖上的位置**: VM 工具區 (MCP 伺服器, Docker + gVisor) 與閘道區的 MCP gateway. **前置模組**: M5, M6. **完成後的狀態**: 介面與代理都能透過同一個工具閘道呼叫已審核的工具, 每次呼叫都留下紀錄.
 
+到前一章為止, 模型只會讀與寫文字. 接上工具之後, 模型可以查資料庫, 讀檔案, 甚至執行程式碼, 能做的事變多, 出錯時的影響也變大. 本章的做法是三層把關: 工具先審核再上架, 所有呼叫經同一個工具閘道檢查與記錄, 會執行程式碼的工具關進沙箱. 沙箱可以想成化學實驗室的密閉操作箱: 實驗在箱內進行, 就算出狀況, 也不會波及箱外.
+
+::: tip 本章常見名詞
+| 詞 | 意思 |
+|---|---|
+| 工具 (tool) | 讓模型能呼叫的外部功能, 例如查工單, 讀檔案, 執行程式 |
+| MCP (Model Context Protocol) | 模型與工具之間的共通連接規格; 提供工具的程式稱為 MCP 伺服器 |
+| 工具閘道 (MCP gateway) | 所有工具呼叫的單一入口, 負責白名單, 授權與紀錄 |
+| 工具投毒 (tool poisoning) | 在工具描述中藏入指令, 誘導模型做出原本不該做的事 |
+| rug pull | 工具上架時正常, 之後改版偷換成惡意內容 |
+| 容器 (container) | 把程式與執行環境包在一起, 和主機其他部分隔開執行; 本手冊以 Docker 執行 |
+| 沙箱 (sandbox) | 隔離執行不可信程式碼的環境, 程式碼在裡面出錯或作惡, 都碰不到外面 |
+| gVisor (`runsc`) | 在容器與主機核心之間再加一層攔截的隔離技術 |
+| Cedar | ToolHive 用來寫授權規則的政策語言 |
+| stdio 與 Streamable HTTP | MCP 的兩種連線方式; 前者是同一台機器上的程式直接對接, 後者經網路連線 |
+:::
+
 ## M7.1 MCP 伺服器的審核與沙箱化
 
-已公開的事件顯示風險真實存在:
+MCP 伺服器多半由第三方開發, 安裝一個 MCP 伺服器, 等於讓一段外部程式碼在自己的機器上執行, 並讓模型依它的描述行動. 因此上架前要像審核外包廠商一樣, 先確認來源, 版本與權限. 已公開的事件顯示風險真實存在:
 
 | 日期 | 事件 | 來源 |
 |---|---|---|
@@ -37,6 +54,8 @@
 
 ## M7.2 架設工具閘道 (MCP gateway)
 
+工具一多, 如果每個介面與代理各自直接連工具, 權限與紀錄就會分散在各處. 工具閘道把所有呼叫集中到一個入口, 可以想成大樓的收發室: 每件包裹都要登記, 確認收件人有權收, 才轉送出去.
+
 工具閘道負責三件事: 只放行白名單內的工具, 依呼叫者身分授權, 並為每次呼叫留下紀錄. 它也是代理的第二道政策判定點: LangGraph 在呼叫前已經查過一次 OPA (見 M8.2 節), 工具閘道再依自己的授權規則判定一次, 任何一道不通過就不執行 (信心: 中高, 屬縱深防禦的設計原則).
 
 ### 擺放方式
@@ -58,6 +77,8 @@ ToolHive 的命令列工具 `thv` 會在本機的容器執行環境 (Docker, Pod
 
 ### ToolHive 的部署要點
 
+ToolHive 是管理 MCP 伺服器的開源工具, 會把每個 MCP 伺服器包進獨立容器, 並在前面加上身分驗證, 授權與紀錄.
+
 ToolHive 採 Apache 2.0 授權, 提供命令列工具, 桌面版, Kubernetes operator 與 registry server (來源: ToolHive GitHub). 下列要點依官方 `thv run` 參考文件整理.
 
 | 要點 | 做法 | 依據 |
@@ -72,7 +93,7 @@ ToolHive 採 Apache 2.0 授權, 提供命令列工具, 桌面版, Kubernetes ope
 | 可觀測 | `--otel-endpoint` 指向稽核區的 OTel Collector; 取樣率預設 0.1 | thv run 參考 |
 | 機密 | `--secret` 從 ToolHive 的機密管理取值並設為環境變數, 不把金鑰寫在指令中 | thv run 參考 |
 
-**範例** (依官方文件組合, 未實機驗證; `<...>` 為佔位符):
+**範例** (依官方文件組合, 未實機驗證; `<...>` 為佔位符). 這段指令啟動一個 MCP 伺服器容器, 並一次套用驗證, 授權, 網路限制, 稽核與紀錄送出的設定:
 
 ```bash
 thv run \
@@ -126,6 +147,8 @@ ToolHive 的網路隔離靠注入 `HTTP_PROXY` 與 `HTTPS_PROXY` 環境變數, �
 
 ### 以 LiteLLM 兼任的條件
 
+已經部署 LiteLLM 的環境, 可以讓它順便擔任工具閘道, 少裝一套系統. 代價是權限控管較粗, 以下列出適用條件與必要設定.
+
 LiteLLM 的 MCP gateway 提供單一端點, 支援 Streamable HTTP, SSE 與 stdio 三種傳輸, 並可依金鑰, 團隊或組織控管可用的 MCP 伺服器 (來源: LiteLLM MCP 文件). 符合下列條件時, 可由 LiteLLM 兼任圖上閘道區的 MCP gateway, 不另裝 vMCP (推論, 信心: 中):
 
 1. 已經依 M5.3 節的判斷部署 LiteLLM, 並有人追蹤其安全公告. LiteLLM 的 MCP 路由本身出過多個 CVE (見 M7.1 節).
@@ -146,9 +169,13 @@ LiteLLM 只負責轉送與授權, 不會把 MCP 伺服器放進隔離容器; MCP
 
 ## M7.3 架設程式碼沙箱 (Docker + gVisor)
 
+模型寫出的程式碼無法事先保證安全, 可能有錯誤, 也可能受提示注入影響而做出不該做的事. 因此程式碼一律在沙箱中執行, 每次用一個全新的容器, 跑完就丟. 一般 Docker 容器與主機共用核心, gVisor 在兩者之間多加一層攔截, 隔離更嚴.
+
 讓模型執行程式碼時, 程式碼一律在 VM 工具區內, 以 gVisor 的 `runsc` 執行環境啟動用完即刪的容器. gVisor 提供系統呼叫層的隔離, 在 K6.3 節的沙箱分級中屬於進階層級.
 
 ### 安裝 gVisor
+
+這一步在工具區的 VM 上安裝 gVisor 的執行程式 `runsc`, 並讓 Docker 能使用它.
 
 官方提供 apt 套件庫與直接下載兩種方式 (來源: gVisor 安裝文件). 以 apt 安裝時, 先匯入簽章金鑰與套件庫設定 (完整指令見官方頁面), 再執行:
 
@@ -184,7 +211,7 @@ docker run --runtime=runsc --rm hello-world
 
 ### 啟動參數
 
-每次執行都用新容器, 結束即刪除. 下列參數的說明取自 Docker 官方 `docker container run` 參考與 none 網路驅動文件:
+啟動參數決定沙箱的牆有多厚: 能不能連網, 能不能寫檔, 能用多少記憶體與 CPU. 每次執行都用新容器, 結束即刪除. 下列參數的說明取自 Docker 官方 `docker container run` 參考與 none 網路驅動文件:
 
 | 參數 | 官方說明 | 用途 |
 |---|---|---|
@@ -199,7 +226,7 @@ docker run --runtime=runsc --rm hello-world
 | `--cpus` | CPU 數量 | 限制 CPU 用量 |
 | `--pids-limit` | 調整容器的行程數上限 | 防止 fork 炸彈 |
 
-**範例** (未實機驗證; 數值為示意, 依工作負載調整):
+**範例** (未實機驗證; 數值為示意, 依工作負載調整). 這段指令以 gVisor 啟動一個不能連網, 根目錄唯讀, 非 root 身分且有資源上限的容器, 執行 `/work/main.py` 後自動刪除:
 
 ```bash
 docker run --rm \
@@ -224,6 +251,8 @@ gVisor 官方文件說明, 可經 nvproxy 支援部分 NVIDIA GPU (來源: gViso
 
 ### 以小型 MCP 伺服器包裝沙箱
 
+模型不應該直接操作 Docker, 否則等於握有整台主機的控制權. 做法是在中間放一支只會「執行程式碼」的小程式, 由它負責啟動沙箱, 計時與收回結果.
+
 模型不直接呼叫 Docker, 而是呼叫一支小型 MCP 伺服器 (例如提供 `run_python` 一個工具). 流程如下 (推論, 信心: 中):
 
 ```
@@ -240,6 +269,8 @@ gVisor 官方文件說明, 可經 nvproxy 支援部分 NVIDIA GPU (來源: gViso
 這支伺服器需要呼叫 Docker, 等同擁有主機的高權限. Open WebUI 官方文件也提醒, 掛載 `/var/run/docker.sock` 等於讓容器完全控制主機的 Docker (來源: Open Terminal 安全文件). 因此沙箱 MCP 伺服器只接受工具閘道的連線, 本身不接觸其他系統的憑證, 而且只開放「執行程式碼」這一個工具 (推論, 信心: 中高).
 
 ## M7.4 讓 Open WebUI 使用同一組工具
+
+Open WebUI 本身也有工具與程式碼執行功能. 若讓它另走一套, 前面建立的閘道與沙箱就形同虛設, 所以本節把它接到同一個工具閘道, 並關掉內建的舊式執行引擎.
 
 **連接工具閘道**: Open WebUI 從 v0.6.31 起原生支援 MCP, 但只支援 Streamable HTTP; stdio 與 SSE 伺服器須經 mcpo 轉成 OpenAPI 端點 (來源: Open WebUI MCP 文件). 設定路徑為 Admin Settings → External Tools → 「+ (Add Server)」, Type 選 MCP (Streamable HTTP), 填入閘道區的工具閘道網址與驗證資訊後儲存. 官方頁面提及需要時可用 OAuth 2.1; 以 LiteLLM 兼任時, 需要的 `x-litellm-api-key` 標頭能否在此畫面設定, 本輪未核對. 官方頁面也提醒, 瀏覽器端的多人部署會增加攻擊面 (CORS, CSRF, 使用者隔離), 對外開放前須檢視驗證, 代理與速率限制政策.
 
@@ -279,6 +310,8 @@ docker run -d \
 工具區的 IP 位址只接受入口區 Open WebUI 的連線 (推論, 信心: 中高). Open Terminal 容器能否改以 `--runtime=runsc` 執行, 官方文件未說明, 本輪未驗證.
 
 ## M7.5 驗收測試
+
+驗收的重點是故意做不該做的事, 確認每一道牆都擋得住.
 
 下列測試全部通過後, 才讓介面與代理使用工具 (測試清單為整理者建議, 未實機驗證).
 
@@ -334,3 +367,4 @@ docker run -d \
 - [Open WebUI 文件: Open Terminal 安裝](https://docs.openwebui.com/features/open-terminal/setup/installation)
 - [Open WebUI 文件: 連接 Open Terminal](https://docs.openwebui.com/features/open-terminal/setup/connecting)
 - [Open WebUI 文件: Open Terminal 安全建議](https://docs.openwebui.com/features/open-terminal/advanced/security.md)
+- 文中的類比 (化學實驗室的密閉操作箱, 大樓收發室, 審核外包廠商): 整理者所寫, 無外部來源, 不應當作技術定義引用.

@@ -4,12 +4,27 @@
 - 等級: ○ 依情境
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: 設定步驟與指令依 Open WebUI 官方文件整理, 未實機驗證; Open WebUI 的選單名稱會隨版本調整, 操作前請以所用版本的文件核對; 繁體中文的切塊大小與 Top K 建議值尚無公開實測; 嵌入模型範例已更換, 數字須對照官方模型卡; Ollama 上 snowflake-arctic-embed2 標籤的檔案大小本輪未讀
+- 待查證: 設定步驟與指令依 Open WebUI 官方文件整理, 未實機驗證; Open WebUI 的選單名稱會隨版本調整, 操作前請以所用版本的文件核對; 繁體中文的切塊大小與 Top K 建議值尚無公開實測; 嵌入模型範例已更換, 數字須對照官方模型卡; Ollama 上 snowflake-arctic-embed2 標籤的檔案大小本輪未讀; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 個人只要組到里程碑 1 (M0 至 M2), 再加上 M4 的檢索功能, 就能把筆記, 手冊與論文放進 Open WebUI 的知識庫, 用自然語言提問並取得附出處的回答. 不需要閘道, 身分驗證或代理. 上線前用 M4.3 節的 50 題自測法確認檢索命中率, 之後每次換模型或調整設定都重跑一次.
 
 **對象**: 個人. **需要的模組**: M1, M2, M4.
+
+::: tip 本頁常見名詞
+| 詞 | 意思 |
+|---|---|
+| 里程碑 (milestone) | 本手冊把組裝分成三個階段, 每個階段結束時系統都能獨立使用; 定義見[組裝總覽](/build/overview) |
+| 知識庫 (knowledge) | Open WebUI 裡存放文件的地方, 文件放進去後會整理成可搜尋的段落 |
+| 檢索增強生成 (Retrieval-Augmented Generation, RAG) | 先從文件找出相關段落, 再把段落連同問題交給模型回答的做法 |
+| 嵌入模型 (embedding model) 與向量 | 嵌入模型把一段文字轉成一串數字, 這串數字稱為向量; 意思相近的段落, 向量也相近 |
+| 切塊 (chunk) | 把長文件切成較短的段落, 檢索時以段落為單位 |
+| Top K | 每次提問時取回最相關的前幾段 (K 段) |
+| Docker 與資料卷 (volume) | Docker 把程式和它需要的環境包成容器執行; 資料卷是容器存放資料的位置, 容器重建時資料仍會保留 |
+| 127.0.0.1 | 代表「這台電腦自己」的網址; 服務只綁這個位址時, 其他電腦連不進來 |
+
+完整詞彙見[術語對照](/ref/glossary).
+:::
 
 ## 情境
 
@@ -30,6 +45,8 @@
 硬體等級 A 與 C (16GB) 的讀者, [組裝總覽](/build/overview)建議改用 AnythingLLM 桌面版; 本頁以 Open WebUI 說明, 概念相同.
 
 ## 流程
+
+整個流程分成兩段. 第一段是匯入: 系統把文件轉成文字, 切成段落, 再替每個段落算出向量存起來, 這一步只在新增文件時做. 第二段是提問: 系統把問題也轉成向量, 找出最接近的幾段原文, 交給對話模型寫出回答. 下圖的箭頭表示資料往哪裡送.
 
 ```
 匯入文件 (一次性, 之後有新文件再補)
@@ -61,7 +78,7 @@
 
 以下依 Open WebUI 與 Ollama 官方文件整理, 未實機驗證.
 
-**1. 啟動 Docling 解析服務.** Open WebUI 官方文件提供的 CPU 版映像為 `quay.io/docling-project/docling-serve`, 服務埠為 5001; NVIDIA 顯示卡另有 `docling-serve-cu128` 映像. 依 M2.2 節的建議, 讓 Docling 與 Open WebUI 共用同一個 Docker 網路, 不發布 Docling 的連接埠:
+**1. 啟動 Docling 解析服務.** Docling 負責把 PDF, Word 這類檔案轉成純文字與表格, 模型才讀得到內容. Open WebUI 官方文件提供的 CPU 版映像為 `quay.io/docling-project/docling-serve`, 服務埠為 5001; NVIDIA 顯示卡另有 `docling-serve-cu128` 映像. 依 M2.2 節的建議, 讓 Docling 與 Open WebUI 共用同一個 Docker 網路, 不發布 Docling 的連接埠. 下列指令先建立名為 `localai` 的內部網路, 再在這個網路裡啟動 Docling:
 
 ```bash
 docker network create localai
@@ -73,15 +90,15 @@ Open WebUI 的容器同樣加上 `--network localai` (其餘參數見 M2.2 節).
 
 **2. 在 Open WebUI 指定文件解析引擎.** 到 **Settings > Admin > Documents**, 把內容解析引擎 (Content Extraction Engine) 設為 **Docling**, Docling Server URL 填 `http://docling:5001` (這也是官方預設值). 上傳第一份文件後, 先預覽解析出的文字; 官方疑難排解頁指出, 模型「看不到」文件內容通常是解析問題, 而不是模型問題.
 
-**3. 設定嵌入模型.** 同一頁的嵌入設定選 Ollama, 模型例如 `embeddinggemma` 或 `snowflake-arctic-embed2` (Ollama 模型庫的標籤). 兩者的取捨見 M4.2 節. EmbeddingGemma 約 300M 參數, 上下文 2,048 token, 預設標籤的檔案大小為 622MB, 授權為 Gemma Terms of Use; Snowflake Arctic Embed 2.0 (L) 為 568M 參數, 上下文最長 8,192 token, 授權為 Apache 2.0 (來源: 各模型的 Hugging Face 模型卡, Ollama 模型庫標籤頁). 多語言支援範圍請以模型卡為準: EmbeddingGemma 模型卡寫明訓練資料涵蓋 100 多種口說語言, Arctic Embed 2.0 官方部落格的評測語言為英, 法, 西, 義, 德; 兩者對繁體中文的表現都須用 M4.3 節的自建測試集確認. 官方文件說明, 更換嵌入模型後必須重建所有知識庫的索引, 不同模型產生的向量不能混用.
+**3. 設定嵌入模型.** 嵌入模型決定系統如何判斷「兩段文字意思接近」, 可以想成替每個段落在一張意思地圖上標座標, 提問時找座標最近的段落. 同一頁的嵌入設定選 Ollama, 模型例如 `embeddinggemma` 或 `snowflake-arctic-embed2` (Ollama 模型庫的標籤). 兩者的取捨見 M4.2 節. EmbeddingGemma 約 300M 參數, 上下文 2,048 token, 預設標籤的檔案大小為 622MB, 授權為 Gemma Terms of Use; Snowflake Arctic Embed 2.0 (L) 為 568M 參數, 上下文最長 8,192 token, 授權為 Apache 2.0 (來源: 各模型的 Hugging Face 模型卡, Ollama 模型庫標籤頁). 多語言支援範圍請以模型卡為準: EmbeddingGemma 模型卡寫明訓練資料涵蓋 100 多種口說語言, Arctic Embed 2.0 官方部落格的評測語言為英, 法, 西, 義, 德; 兩者對繁體中文的表現都須用 M4.3 節的自建測試集確認. 官方文件說明, 更換嵌入模型後必須重建所有知識庫的索引, 不同模型產生的向量不能混用.
 
-**4. 調整切塊與檢索數量.** 官方疑難排解頁對「本機模型, 上下文 8K 以內」的建議是 Chunk Size 1000, Chunk Overlap 100, Top K 3 至 5. 同一頁也指出, Ollama 在顯示記憶體小於 24GiB 時預設上下文只有 4096 token, 建議到 **Settings > Admin > Models** 的 Advanced Params 把對話模型的上下文長度調到至少 8192. 這些值以英文文件為基礎, 繁體中文的最佳值請用 M4.3 節的測試比較 (推論, 信心: 中).
+**4. 調整切塊與檢索數量.** 切塊大小決定每個段落多長, 重疊 (overlap) 讓相鄰段落共用一小段文字, 避免一句話剛好被切斷; Top K 決定每次取回幾段交給模型. 官方疑難排解頁對「本機模型, 上下文 8K 以內」的建議是 Chunk Size 1000, Chunk Overlap 100, Top K 3 至 5. 同一頁也指出, Ollama 在顯示記憶體小於 24GiB 時預設上下文只有 4096 token, 建議到 **Settings > Admin > Models** 的 Advanced Params 把對話模型的上下文長度調到至少 8192. 這些值以英文文件為基礎, 繁體中文的最佳值請用 M4.3 節的測試比較 (推論, 信心: 中).
 
 **5. 建立知識庫.** 到 **Workspace > Knowledge** 建立知識庫, 用 **Add Content** 上傳檔案或整個資料夾. 官方文件另有 **Sync directory** 功能, 可以增量同步本機資料夾. 建議依主題分成幾個知識庫 (例如「工作手冊」「研究論文」), 方便提問時指定範圍.
 
 **6. 提問時指定知識庫.** 在對話框輸入 `#` 選擇知識庫; 或到 **Workspace > Models > Edit** 建立一個專用模型 (例如「我的文件助理」) 並附加知識庫. 官方文件說明, 模型若沒有限定知識庫, 會搜尋該使用者可存取的所有知識.
 
-**7. 提示範本.** 在 **Settings > Admin > Documents** 可以改寫 RAG 範本. 官方文件規定以 CONTEXT 佔位符 (以兩層大括號包住, 寫法見下方範例) 標示檢索內容的位置; 不要加 QUERY 佔位符, 因為使用者的問題會自動附在後面, 加了會重複出現. 範例:
+**7. 提示範本.** 提示範本是系統每次附在問題前面, 交給模型的固定說明, 檢索到的段落會填進範本裡的指定位置. 在 **Settings > Admin > Documents** 可以改寫 RAG 範本. 官方文件規定以 CONTEXT 佔位符 (以兩層大括號包住, 寫法見下方範例) 標示檢索內容的位置; 不要加 QUERY 佔位符, 因為使用者的問題會自動附在後面, 加了會重複出現. 範例:
 
 ```
 請只根據下列參考資料回答問題, 使用繁體中文.
@@ -132,3 +149,4 @@ Open WebUI 的容器同樣加上 `--network localai` (其餘參數見 M2.2 節).
 - [Hugging Face: Snowflake/snowflake-arctic-embed-l-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0)
 - [Snowflake 工程部落格: Arctic Embed 2.0](https://www.snowflake.com/en/engineering-blog/snowflake-arctic-embed-2-multilingual)
 - 站內: [M4 檢索 (RAG)](/build/m4-retrieval), [M2 使用者介面與反向代理](/build/m2-ui-proxy), [K6 安全基礎與風險控管](/know/k6-security)
+- 文中的類比 (圖書館員, 意思地圖): 整理者所寫, 無外部來源, 不應當作技術定義引用.

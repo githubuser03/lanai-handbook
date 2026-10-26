@@ -4,14 +4,32 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: 本章所有指令依官方文件整理, 尚未在實機執行; llama.cpp 與 LM Studio 的操作步驟本輪未核對, 僅列定位; 標示「推論」的段落未有官方文件依據; M1.10 節的 vLLM 指令依官方文件改寫, 未實機驗證, 以 `Authorization: Bearer` 標頭帶金鑰的寫法未找到 vLLM 官方 curl 範例; vLLM 映像在唯讀模型目錄與 `HF_HUB_OFFLINE=1` 下能否完整離線啟動, 本輪未驗證
+- 待查證: 本章所有指令依官方文件整理, 尚未在實機執行; llama.cpp 與 LM Studio 的操作步驟本輪未核對, 僅列定位; 標示「推論」的段落未有官方文件依據; M1.10 節的 vLLM 指令依官方文件改寫, 未實機驗證, 以 `Authorization: Bearer` 標頭帶金鑰的寫法未找到 vLLM 官方 curl 範例; vLLM 映像在唯讀模型目錄與 `HF_HUB_OFFLINE=1` 下能否完整離線啟動, 本輪未驗證; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 初階讀者以 Ollama 完成第一次對話最快: 安裝, 執行一行指令, 即可開始. 完成後再依[組裝總覽](/build/overview)加上介面 (M2). 本章也整理上線前常遺漏的五項工作: GPU 驅動確認, 模型下載驗證, 離線安裝, 日誌, 以及參數調校. 多人同時使用時改用 vLLM, 見 M1.10 節.
 
 **這一塊在圖上的位置**: VM 推論區的 vLLM (個人或低階硬體用 Ollama 或 llama.cpp). **前置模組**: M0. **完成後的狀態**: 本機模型可以回答問題, 並以 OpenAI 相容 API 提供給其他元件.
 
+推論伺服器是整套系統的廚房: 模型檔是食譜與食材, 推論伺服器負責把它們放上爐子 (載入記憶體), 接單 (接收問題) 並出菜 (產生回答). 介面, 閘道與代理都只是外場, 最後都要把單子送進這個廚房. 這一章先讓廚房開火, 確認做得出一道菜.
+
+::: tip 本章常見名詞
+| 詞 | 意思 |
+|---|---|
+| 推論伺服器 (inference server) | 把模型載入記憶體, 接收問題並產生回答的服務 |
+| Ollama, llama.cpp, vLLM | 三種常見的推論伺服器; Ollama 最容易上手, vLLM 適合多人同時使用 |
+| 命令列 (終端機) | 以輸入文字指令操作電腦的視窗, macOS 的「終端機」, Windows 的 PowerShell 都屬於此類 |
+| OpenAI 相容 API | 沿用 OpenAI 公開的請求格式; 支援這個格式的程式, 換一個推論伺服器也能直接使用 |
+| 環境變數 | 啟動程式前預先設定的參數, 程式啟動時讀取 |
+| systemd | Linux 管理背景服務的機制, 負責開機自動啟動與重新啟動服務 |
+| 校驗碼 (checksum) | 由檔案內容算出的一串固定字元; 檔案只要差一個位元, 校驗碼就不同 |
+| revision (commit hash) | 模型庫某一次版本的固定編號, 用來確保下載的是同一份檔案 |
+| 日誌 (log) | 服務執行時寫下的紀錄, 出問題時先看這裡 |
+:::
+
 ## M1.1 Ollama, llama.cpp 與 LM Studio 的選擇
+
+三個工具都能在本機跑模型, 差別在操作方式與可調整的程度. 第一次架設建議從 Ollama 開始, 熟悉之後再視需要換成其他工具.
 
 | 工具 | 定位 | 適用讀者 | 本章是否提供步驟 |
 |---|---|---|---|
@@ -23,17 +41,21 @@
 
 ## M1.2 用 Ollama 完成第一次對話
 
+這一節從安裝到第一次對話, 只需要幾個步驟. Ollama 裝好後會在背景執行一個服務, 之後用 `ollama` 開頭的指令操作.
+
 ### 安裝
 
 | 系統 | 做法 | 系統需求 (來源: Ollama 文件) |
 |---|---|---|
 | macOS | 下載 `ollama.dmg`, 把應用程式拖曳到「應用程式」資料夾 | macOS Sonoma (v14) 以上; Apple M 系列可用 GPU, x86 僅 CPU |
 | Windows | 執行 `OllamaSetup.exe`, 不需要系統管理員權限 | Windows 10 22H2 以上; 二進位安裝至少 4GB 磁碟空間; NVIDIA 驅動 551.61 以上 |
-| Linux | `curl -fsSL https://ollama.com/install.sh \| sh` | 見 8.4 節 |
+| Linux | `curl -fsSL https://ollama.com/install.sh \| sh` | 見 M1.4 節 |
 
-Linux 的一行安裝指令會直接執行從網路下載的腳本. 受管制的環境, 建議改用 8.6 節的手動安裝, 並先檢視內容.
+Linux 的一行安裝指令會直接執行從網路下載的腳本. 受管制的環境, 建議改用 M1.6 節的手動安裝, 並先檢視內容.
 
 ### 第一次對話
+
+在終端機輸入下列指令, 把 `<模型名稱>` 換成要使用的模型:
 
 ```bash
 ollama run <模型名稱>
@@ -42,6 +64,8 @@ ollama run <模型名稱>
 指令會先下載模型, 再進入對話; 輸入 `/bye` 離開 (來源: Ollama 文件 Quickstart). 模型名稱請從 Ollama 官方模型庫 (ollama.com 網站) 選擇, 並依 [K2](/know/k2-quantization)確認記憶體放得下.
 
 ### 常用管理指令
+
+下列指令用來管理已下載的模型與服務.
 
 | 指令 | 用途 |
 |---|---|
@@ -56,13 +80,15 @@ ollama run <模型名稱>
 
 ### 確認服務可用
 
-Ollama 預設只綁定 `127.0.0.1` 的 11434 連接埠 (來源: Ollama FAQ). 下列指令可確認 API 回應 (範例格式依 Ollama 文件的 `/api/generate` 用法, 欄位以官方文件為準):
+其他程式 (例如 M2 的介面) 是透過 API 和 Ollama 溝通, 所以除了能在終端機對話, 也要確認 API 有回應. Ollama 預設只綁定 `127.0.0.1` 的 11434 連接埠 (來源: Ollama FAQ), 也就是只有同一台電腦連得到. 下列指令送出一個問題給 API, 有回傳文字即代表服務可用 (範例格式依 Ollama 文件的 `/api/generate` 用法, 欄位以官方文件為準):
 
 ```bash
 curl http://localhost:11434/api/generate -d '{"model": "<模型名稱>", "prompt": "你好", "stream": false}'
 ```
 
 ## M1.3 確認安裝結果的最短檢核
+
+裝好之後, 用下列四項確認服務真的可用, 而且只有自己連得到.
 
 - [ ] `ollama -v` 顯示版本 (Linux 手動安裝頁面以此驗證), 並記錄到版本紀錄 ([O2](/ops/versioning))
 - [ ] `ollama run` 能完成一次回答
@@ -71,7 +97,7 @@ curl http://localhost:11434/api/generate -d '{"model": "<模型名稱>", "prompt
 
 ## M1.4 GPU 驅動確認
 
-未確認驅動時, 模型可能自動改用 CPU 執行, 速度差距很大, 且不易察覺 (信心: 高, 屬一般經驗).
+GPU (顯示卡) 是讓模型跑得快的關鍵, 但作業系統要裝對驅動程式, 推論伺服器才看得到它. 未確認驅動時, 模型可能自動改用 CPU 執行, 速度差距很大, 且不易察覺 (信心: 高, 屬一般經驗).
 
 | 平台 | 條件 | 確認方式 |
 |---|---|---|
@@ -91,7 +117,7 @@ curl http://localhost:11434/api/generate -d '{"model": "<模型名稱>", "prompt
 
 ## M1.5 模型下載與驗證
 
-模型檔是第三方提供的大型二進位資料, 下載後應確認「檔案完整」與「來源可信」兩件事, 兩者不同 (信心: 高).
+下載模型和下載任何軟體一樣, 要確認拿到的是完整, 正確, 來源可信的檔案. 可以想成收包裹: 校驗碼確認包裹在運送途中沒有被拆過, 但寄件人是不是可信, 要另外看寄件地址 (發布者帳號). 模型檔是第三方提供的大型二進位資料, 下載後應確認「檔案完整」與「來源可信」兩件事, 兩者不同 (信心: 高).
 
 | 驗證事項 | 做法 |
 |---|---|
@@ -99,7 +125,7 @@ curl http://localhost:11434/api/generate -d '{"model": "<模型名稱>", "prompt
 | 版本可追溯 | 下載時指定 revision (commit hash), 不使用會變動的 main |
 | 檔案完整 | 比對校驗碼 |
 
-**Hugging Face 的做法** (來源: Hugging Face 文件 CLI guide):
+**Hugging Face 的做法** (來源: Hugging Face 文件 CLI guide): Hugging Face 是最大的開放模型下載平台, `hf` 是它的命令列工具. 第一行下載指定版本的檔案, 第二行比對本機檔案與平台上的校驗碼.
 
 ```bash
 # 下載指定檔案, 並指定 revision
@@ -124,22 +150,22 @@ hf cache verify <組織/模型庫>
 | 校驗結果 | |
 | 使用者與用途 | |
 
-**匯入 Ollama**: 本機的 GGUF 檔以 Modelfile 匯入. Modelfile 內寫 `FROM /path/to/file.gguf`, 再執行 `ollama create <名稱>` (來源: Ollama 文件 Import).
+**匯入 Ollama**: 本機的 GGUF 檔以 Modelfile 匯入. Modelfile 是一份短短的文字設定檔, 告訴 Ollama 模型檔在哪裡. Modelfile 內寫 `FROM /path/to/file.gguf`, 再執行 `ollama create <名稱>` (來源: Ollama 文件 Import).
 
 ## M1.6 離線安裝
 
-適用於不能連網的環境. 以下步驟中, 標示「推論」者尚未有官方文件說明, 請先在測試環境確認.
+有些環境基於保密要求不能連網. 做法是先在能連網的電腦準備好所有檔案, 確認校驗碼後, 再以隨身碟等媒體搬進去. 適用於不能連網的環境. 以下步驟中, 標示「推論」者尚未有官方文件說明, 請先在測試環境確認.
 
 **準備 (在可連網的機器)**:
 
 1. **Ollama 程式**: Linux 下載 `ollama-linux-amd64.tar.zst` (AMD 另需 `ollama-linux-amd64-rocm.tar.zst`); Windows 下載 `OllamaSetup.exe`; macOS 下載 `ollama.dmg` (來源: Ollama 文件各平台頁).
 2. **模型**: 兩種做法.
    - 在可連網機器 `ollama pull` 後, 複製模型目錄到離線機器. 模型目錄位置: macOS `~/.ollama/models`, Linux `/usr/share/ollama/.ollama/models`, Windows `C:\Users\%username%\.ollama\models`, 可用 `OLLAMA_MODELS` 指定 (來源: Ollama FAQ). 直接複製目錄是否可用屬推論, 信心: 中.
-   - 下載 GGUF 檔, 在離線機器用 Modelfile 匯入 (見 8.5 節).
+   - 下載 GGUF 檔, 在離線機器用 Modelfile 匯入 (見 M1.5 節).
 3. **容器映像**: 在可連網機器用 `docker pull` 取得固定版本映像, 再以 `docker save` 匯出, 離線機器以 `docker load` 匯入 (Docker 指令的通用做法, 未實機驗證).
 4. **校驗碼**: 為每個檔案產生 SHA-256, 複製到離線機器後重新計算並比對 (如 `sha256sum`).
 
-**Linux 手動安裝** (來源: Ollama 文件 Linux):
+**Linux 手動安裝** (來源: Ollama 文件 Linux): 下列三行依序解壓縮程式, 建立專門執行 Ollama 的系統帳號, 再把目前登入的帳號加入 `ollama` 群組.
 
 ```bash
 sudo tar x -C /usr -f ollama-linux-amd64.tar.zst   # 解壓縮到 /usr (指令形式為依官方範例改寫)
@@ -157,7 +183,7 @@ sudo usermod -a -G ollama $(whoami)
 
 ## M1.7 日誌
 
-發生問題時, 應先查看日誌. 位置如下 (來源: Ollama 文件 Troubleshooting):
+日誌是服務的工作日記, 記錄啟動, 載入模型與發生的錯誤. 發生問題時, 應先查看日誌. 位置如下 (來源: Ollama 文件 Troubleshooting):
 
 | 環境 | 查看方式 |
 |---|---|
@@ -176,7 +202,7 @@ sudo usermod -a -G ollama $(whoami)
 
 ## M1.8 參數調校
 
-Ollama 以環境變數設定. 預設值與用途如下 (來源: Ollama FAQ):
+預設值已經能用, 這一節只在有明確需求時才需要調整, 例如要讓其他裝置連入, 或要讓模型一次讀更長的內容. Ollama 以環境變數設定. 預設值與用途如下 (來源: Ollama FAQ):
 
 | 環境變數 | 預設值 | 用途與調整原則 |
 |---|---|---|
@@ -185,9 +211,9 @@ Ollama 以環境變數設定. 預設值與用途如下 (來源: Ollama FAQ):
 | `OLLAMA_NUM_PARALLEL` | 1 | 每個模型同時處理的請求數. 所需記憶體隨它與上下文長度的乘積增加 |
 | `OLLAMA_MAX_LOADED_MODELS` | GPU 數量 x 3 (CPU 推論為 3) | 可同時載入的模型數 |
 | `OLLAMA_MAX_QUEUE` | 512 | 忙碌時的排隊上限, 超過時回應 503 |
-| `OLLAMA_MODELS` | 見 8.6 節 | 模型存放目錄; Linux 標準安裝須讓 `ollama` 使用者有讀寫權限: `sudo chown -R ollama:ollama <directory>` |
+| `OLLAMA_MODELS` | 見 M1.6 節 | 模型存放目錄; Linux 標準安裝須讓 `ollama` 使用者有讀寫權限: `sudo chown -R ollama:ollama <directory>` |
 
-**Linux 以 systemd 設定環境變數**:
+**Linux 以 systemd 設定環境變數**: 第一行開啟服務的設定編輯畫面, 加入環境變數後存檔; 後兩行讓系統重新讀取設定並重新啟動 Ollama.
 
 ```bash
 systemctl edit ollama.service
@@ -203,16 +229,20 @@ macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對
 
 ## M1.9 常見錯誤排除
 
+下表列出常見現象與處理方式; 查不到原因時, 先看 M1.7 節的日誌.
+
 | 現象 | 可能原因 | 處理 |
 |---|---|---|
-| 載入失敗或速度極慢 | 記憶體不足, 模型退回 CPU | 換較小的模型或量化, 或降低上下文 (K2); 確認 GPU (8.4 節) |
+| 載入失敗或速度極慢 | 記憶體不足, 模型退回 CPU | 換較小的模型或量化, 或降低上下文 (K2); 確認 GPU (M1.4 節) |
 | 下載中斷 | 網路不穩 | 重新執行 `ollama pull`; Hugging Face 中斷留下的 `.incomplete` 檔可用 `hf cache prune` 清除 |
 | 連接埠衝突 | 11434 已有其他程式占用 | Linux 可用 `ss -ltnp` 查詢占用的程式 (通用指令, 未驗證) |
 | 回應 503 | 排隊已滿 | 檢視 `OLLAMA_MAX_QUEUE` 與使用人數 |
 | 模型目錄權限錯誤 | `ollama` 使用者無權限 | `sudo chown -R ollama:ollama <directory>` |
-| 休眠後改用 CPU | NVIDIA 驅動模組狀態異常 | 見 8.4 節 |
+| 休眠後改用 CPU | NVIDIA 驅動模組狀態異常 | 見 M1.4 節 |
 
 ## M1.10 多人共用時改用 vLLM
+
+Ollama 適合一個人用; 多人同時提問時, 回答會排隊. vLLM 會把同時進來的多個問題一起處理, 可以想成餐廳從一次炒一盤, 改成一鍋同時炒多份. 代價是設定較多, 也只支援 Linux.
 
 多人同時使用, 或需要 Prometheus 指標與更廣的 GPU 支援時, 推論區改用 vLLM 的 OpenAI 相容伺服器. 個人或低階硬體仍以 Ollama 或 llama.cpp 為首選 (選型判斷為本手冊的架構決定, 信心: 中高). vLLM 的安全前提是「只有閘道區連得到它」: 它的 API 金鑰只保護部分路徑, 不能當作唯一防線.
 
@@ -231,7 +261,7 @@ macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對
 
 ### 以 Docker 執行 OpenAI 相容伺服器
 
-依 vLLM 官方 Docker 範例整理如下, 模型以 Hugging Face 上的小型測試模型為例 (來源: vLLM 文件 Using Docker):
+依 vLLM 官方 Docker 範例整理如下, 模型以 Hugging Face 上的小型測試模型為例 (來源: vLLM 文件 Using Docker). 這段指令以容器啟動 vLLM, 使用全部 GPU, 並把 Hugging Face 的下載快取目錄掛進容器:
 
 ```bash
 docker run --runtime nvidia --gpus all \
@@ -280,6 +310,8 @@ docker run -d --name vllm --restart always \
 
 ### 加固: API 金鑰只是縱深防禦
 
+縱深防禦是指設好幾道防線, 不依賴單一一道. 這一節說明 vLLM 的 API 金鑰只能當其中一道, 主要防線仍是 M0 的網路限制.
+
 **`--api-key` 的保護範圍有限**. vLLM 文件 Security 指出, `--api-key` (或 `VLLM_API_KEY`) 只套用到 `/v1`, `/v2`, `/inference` 與 `/cohere` 開頭的路徑, 並明確建議不要只靠它保護 vLLM. 即使設定了金鑰, 下列端點仍不需驗證 (來源: vLLM 文件 Security):
 
 - `/invocations`: SageMaker 相容端點, 與 `/v1` 端點走相同的推論功能
@@ -304,6 +336,8 @@ docker run -d --name vllm --restart always \
 **版本**: 本手冊的研究整理以 0.11.1 為最低版本 (2025 年多個遠端執行程式碼等級的漏洞). 2026-08 公告的 GHSA-3c86-2m5g-59q7 修補版為 0.28.0 (來源: vLLM GitHub Security Advisory), 因此依目前公告, 至少要 0.28.0. vLLM 公告更新頻繁, 請訂閱 GitHub Security Advisories, 並以[版本頁](/ref/versions)與 [O3](/ops/advisories) 為準.
 
 ### 工具呼叫解析器與對話範本要和模型一起鎖定
+
+工具呼叫是指模型回答時, 改為輸出「要呼叫哪個工具, 帶什麼參數」的固定格式文字. 每個模型的格式略有不同, 所以 vLLM 要用對應的解析器把它讀出來, 並用對話範本把對話內容排成模型看得懂的格式.
 
 要讓模型自行決定是否呼叫工具 (`tool_choice` 為 `auto`), 須同時設定兩個參數 (來源: vLLM 文件 Tool Calling 與 CLI serve):
 
@@ -334,7 +368,7 @@ vllm serve meta-llama/Llama-3.1-8B-Instruct \
 
 ### Prometheus 指標
 
-vLLM 的 OpenAI 相容伺服器在 `/metrics` 端點提供 Prometheus 格式的指標, 例如 `vllm:num_requests_running` (執行中的請求數), `vllm:kv_cache_usage_perc` (KV cache 使用率, 1 代表 100%), `vllm:time_to_first_token_seconds` (首個 token 延遲的直方圖) (來源: vLLM 文件 Metrics). 稽核區的 Prometheus 定期抓取這個端點 (見 [M6](/build/m6-observability)). `/metrics` 不受 API 金鑰保護, 而且包含模型, 吞吐量與佇列等資訊 (來源: vLLM 文件 Security), 防火牆只開放給稽核區.
+Prometheus 是開源的監控系統, 會定期向各服務讀取數值 (指標), 例如目前有多少請求在處理. vLLM 的 OpenAI 相容伺服器在 `/metrics` 端點提供 Prometheus 格式的指標, 例如 `vllm:num_requests_running` (執行中的請求數), `vllm:kv_cache_usage_perc` (KV cache 使用率, 1 代表 100%), `vllm:time_to_first_token_seconds` (首個 token 延遲的直方圖) (來源: vLLM 文件 Metrics). 稽核區的 Prometheus 定期抓取這個端點 (見 [M6](/build/m6-observability)). `/metrics` 不受 API 金鑰保護, 而且包含模型, 吞吐量與佇列等資訊 (來源: vLLM 文件 Security), 防火牆只開放給稽核區.
 
 ### 驗收測試
 
@@ -358,16 +392,18 @@ curl http://<推論區位址>:8000/metrics
 
 ## M1.11 同一台機器常駐多個模型
 
-**結論**: 同機常駐 3 個約 35B 的模型時, 先確認權重加上 KV 快取放得進顯示記憶體 (估算見 K3.4 節), 再選擇服務方式. 多併發且要穩定常駐, 建議每個模型各跑一個 vLLM 行程, 前面由 LiteLLM 分流 (M5.5 節); 低併發的小團隊可用 Ollama 或 llama-swap 依需求載入與卸載. 不建議把「單一 vLLM 伺服器同時服務多個模型」當作選項, 因為 vLLM 官方 FAQ 說明單一 OpenAI 相容伺服器不支援同時服務多個模型, 建議以多個實例加路由層處理 (來源: vLLM 文件 FAQ).
+「常駐」是指模型一直載入在顯示記憶體中, 隨時可以回答, 不必每次重新載入. 顯示記憶體有限, 一台機器要同時常駐多個模型時, 要先規劃記憶體怎麼分.
+
+**結論**: 同機常駐 3 個約 35B 的模型時, 先確認權重加上 KV cache放得進顯示記憶體 (估算見 K3.4 節), 再選擇服務方式. 多併發且要穩定常駐, 建議每個模型各跑一個 vLLM 行程, 前面由 LiteLLM 分流 (M5.5 節); 低併發的小團隊可用 Ollama 或 llama-swap 依需求載入與卸載. 不建議把「單一 vLLM 伺服器同時服務多個模型」當作選項, 因為 vLLM 官方 FAQ 說明單一 OpenAI 相容伺服器不支援同時服務多個模型, 建議以多個實例加路由層處理 (來源: vLLM 文件 FAQ).
 
 | 方式 | 官方說法 | 優點 | 限制 | 適用情境 |
 |---|---|---|---|---|
 | 每個模型一個 vLLM 行程, 以 `--gpu-memory-utilization` 分配 | 該參數是「單一實例的使用上限」, 預設 0.92, 同一張卡上有其他 vLLM 實例也無妨, 例如兩個實例各設 0.5 (來源: vLLM 文件 Engine Arguments) | 模型常駐, 沒有切換延遲; 各模型可獨立重啟 | 比例須手動配置, 總和須小於 1; vLLM 論壇 (二手來源) 有回報指出 V1 引擎在同卡啟動第二個行程常因記憶體剖析失敗, 與官方說明有出入, 須實測啟動順序 | 多併發, 3 個模型都要常駐 |
-| 同上, 改用 `--kv-cache-memory-bytes` 直接指定 KV 快取大小 | 設定後會忽略 `--gpu-memory-utilization`, 且只在同一張卡, 啟動時空閒記憶體相同的前提下有效 (來源: vLLM 文件 Engine Arguments) | 避開比例配置的剖析問題 | 須自行換算每個模型需要的 KV 快取 (K3.4 節) | 同卡多行程啟動不穩時的替代做法 (推論, 信心: 中) |
+| 同上, 改用 `--kv-cache-memory-bytes` 直接指定 KV cache大小 | 設定後會忽略 `--gpu-memory-utilization`, 且只在同一張卡, 啟動時空閒記憶體相同的前提下有效 (來源: vLLM 文件 Engine Arguments) | 避開比例配置的剖析問題 | 須自行換算每個模型需要的 KV cache (K3.4 節) | 同卡多行程啟動不穩時的替代做法 (推論, 信心: 中) |
 | NVIDIA MIG 硬體切分 | RTX PRO 6000 Blackwell Server Edition 規格表列「最多 4 個 24GB 的 MIG」; Workstation Edition 的 PNY 規格表列 4x24GB, 2x48GB, 1x96GB 的切分 (來源: NVIDIA 規格 PDF 與 PNY 規格表; NVIDIA 官網的 Workstation 頁面僅在 Max-Q 段落提到最多 4 個隔離實例, 未明確對應各版本) | 硬體層隔離, 一個行程異常不影響其他 | 切分檔位固定; 24GB 的切片放不下 FP8 的 35B 模型 (約 35GB); 3 個實例的混合檔位 (例如 48+24+24) 查無資料 | 多個小模型 (嵌入模型, 7B 級); 35B 級模型建議 2 個 48GB 的切片 |
 | Ollama 依需求載入 | `OLLAMA_MAX_LOADED_MODELS` 預設為 GPU 數量乘以 3, 記憶體足夠才會同時載入; 新模型必須完整放進顯示記憶體; `OLLAMA_KEEP_ALIVE` 預設 5 分鐘 (來源: Ollama 文件 FAQ) | 設定最簡單, 閒置時自動卸載 | 輪替時須重新載入; 併發與批次處理效率不如 vLLM (整理者判斷, 無官方數字) | 小團隊, 低併發 |
 | llama-swap 依需求載入 | 預設同一時間只執行一個模型; 以群組的 `swap`, `exclusive`, `persistent` 設定可讓多個模型同時常駐; `healthCheckTimeout` 預設 120 秒, 請求會等到端點就緒 (來源: llama-swap 文件 Configuration) | 可混用 vLLM, llama.cpp 等後端 | 官方未提供切換延遲的實測數字; 冷啟動時間以健康檢查逾時上限為界 | 模型數量多於記憶體, 使用頻率不高 |
-| vLLM sleep mode | Level 1 把權重移到 CPU 記憶體並丟棄 KV 快取, Level 2 兩者都丟棄; 伺服器模式須設 `VLLM_SERVER_DEV_MODE=1` 並加 `--enable-sleep-mode`, 端點為 `/sleep`, `/wake_up`, `/is_sleeping`; 官方警告這是開發用端點, 不得對使用者開放 (來源: vLLM 文件 Sleep Mode) | 不須重啟行程, 官方稱喚醒比完整重新載入快 (無秒數) | 並非為模型輪替設計, 文件未談多模型; Level 1 須有足夠的 CPU 記憶體容納權重 | 同一模型的間歇釋放, 不建議作為多模型方案 |
+| vLLM sleep mode | Level 1 把權重移到 CPU 記憶體並丟棄 KV cache, Level 2 兩者都丟棄; 伺服器模式須設 `VLLM_SERVER_DEV_MODE=1` 並加 `--enable-sleep-mode`, 端點為 `/sleep`, `/wake_up`, `/is_sleeping`; 官方警告這是開發用端點, 不得對使用者開放 (來源: vLLM 文件 Sleep Mode) | 不須重啟行程, 官方稱喚醒比完整重新載入快 (無秒數) | 並非為模型輪替設計, 文件未談多模型; Level 1 須有足夠的 CPU 記憶體容納權重 | 同一模型的間歇釋放, 不建議作為多模型方案 |
 
 vLLM 官方文件沒有「多模型輪替」功能 (查無). 輪替的實際延遲取決於儲存讀取速度, 引擎初始化與 CUDA graph 建立, 須在自己的硬體上實測, 本手冊不提供估計值.
 
@@ -417,3 +453,4 @@ vLLM 官方文件沒有「多模型輪替」功能 (查無). 輪替的實際延�
 - [NVIDIA RTX PRO 6000 Blackwell Server Edition 規格表 (Akamai 託管)](https://www.akamai.com/site/en/documents/corporate/nvidia-rtx-pro-6000-blackwell-server-edition-datasheet.pdf)
 - [vLLM 論壇: 2 vLLM containers on a single GPU](https://discuss.vllm.ai/t/2-vllm-containers-on-a-single-gpu/608/2) (二手來源, 社群討論)
 - [Hugging Face: HuggingFaceTB/SmolLM2-360M-Instruct 模型卡](https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct)
+- 文中的類比 (廚房, 收包裹, 一次炒一盤與一鍋炒多份): 整理者所寫, 無外部來源, 不應當作技術定義引用.
