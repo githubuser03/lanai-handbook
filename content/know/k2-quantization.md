@@ -3,8 +3,8 @@
 ::: info 本章屬性
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: 4 位元量化的實際位元數與品質損失依格式與模型而異, 本章只給估算方法, 不給單一數字; 範例數字為假設架構的算術結果, 非特定模型; KV cache 公式引自二手來源 (Sebastian Raschka 文章), 未對照推論引擎原始碼; 「總需求不超過可用記憶體八成」為整理者推論, 無來源; Apple Silicon 統一記憶體的說明為一般性描述 (來源待補); 放不下顯示記憶體時速度變慢的幅度未引用實測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 資料基準日: 2026-10-27
+- 待查證: 4 位元量化的實際位元數與品質損失依格式與模型而異, 本章只給估算方法, 不給單一數字; 範例數字為假設架構的算術結果, 非特定模型; KV cache 公式以 PagedAttention 與 GQA 論文核對, 未對照各推論引擎原始碼 (FP8 等壓縮格式會改變每個元素的位元組數); 「總需求不超過可用記憶體八成」為整理者推論, 無來源; 放不下顯示記憶體時速度變慢的幅度未引用實測; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 模型需要的記憶體約等於「權重大小 + 上下文暫存 (KV cache) + 執行開銷」, 三項都能事先估算. 權重大小是「參數量 x 每個參數的位元數 ÷ 8」; 實際下載前, 以模型頁面標示的檔案大小為準 (信心: 高, 屬算術, 開銷比例屬推論).
@@ -35,7 +35,7 @@
 | 8 位元 | 1 位元組 | 約 8GB |
 | 4 位元 | 0.5 位元組 | 約 4GB |
 
-上表為算術結果 (80 億參數 x 位元組數), 用來示範估算, 非特定模型的實測值. 實際的 4 位元格式因為還存放縮放係數等資料, 檔案通常略大於標稱值 (推論, 信心: 中). 例如 llama.cpp 文件對 Llama-3.1-8B 列出的 Q4_K_M 約為每個權重 4.89 位元, Q8_0 約為 8.50 位元 (來源: llama.cpp quantize README). 請以下載頁顯示的檔案大小為準.
+上表為算術結果 (80 億參數 x 位元組數), 用來示範估算, 非特定模型的實測值. 實際的 4 位元格式因為還存放縮放係數等資料, 檔案通常略大於標稱值 (推論, 信心: 中). 例如 llama.cpp (開源的推論引擎, 也附有量化工具) 的文件對 Llama-3.1-8B 列出的 Q4_K_M 約為每個權重 4.89 位元, Q8_0 約為 8.50 位元 (來源: llama.cpp quantize README). 請以下載頁顯示的檔案大小為準.
 
 **品質損失怎麼判斷**: 損失程度因模型與任務而異, 公開評測多半只涵蓋特定基準, 不能代表自己的任務. 較可靠的做法是對同一個模型的兩個量化等級, 各跑一次 [M6](/build/m6-observability)的測試集, 再選擇「品質夠用的最小檔案」(信心: 中高).
 
@@ -48,7 +48,7 @@
 | GGUF | 供 GGML 系列推論引擎使用的單一檔案格式, 內含中繼資料與張量, 規格涵蓋 Q4_0, Q8_0, Q4_K 等量化型別; 量化版本常以此發布 (來源: GGUF 規格文件, Hugging Face Transformers 文件) |
 | safetensors | 權重常見的發布格式, Hugging Face 文件稱其為相對於 pickle 的安全儲存格式; pickle 載入時可能執行任意程式碼 (來源: Hugging Face safetensors 文件, Hugging Face Pickle scanning 文件; 見 [M1.5 節](/build/m1-inference)) |
 
-Ollama 匯入 GGUF 時不會自動量化; 若要自行量化, 須先用 llama.cpp 的 `llama-quantize` 等工具處理 (來源: Ollama 文件 Import).
+Ollama (M1 介紹的推論伺服器) 匯入 GGUF 時不會自動量化; 若要自行量化, 須先用 llama.cpp 的 `llama-quantize` 等工具處理 (來源: Ollama 文件 Import).
 
 ## K2.2 估算步驟
 
@@ -73,7 +73,7 @@ KV cache 可以想成模型邊讀邊做的筆記: 已經讀過的內容先記下
 
 模型在對話過程中, 會把已處理的內容暫存為 KV cache. 上下文越長, 占用越大, 且與長度成正比.
 
-**估算公式** (信心: 高, 屬算術; 公式形式見 Sebastian Raschka 的 KV cache 計算文章, 二手來源):
+**估算公式** (信心: 高, 屬算術): PagedAttention 論文以 OPT-13B 為例, 每個 token 的 KV cache 為「2 (key 與 value) x 5120 (隱藏維度) x 40 (層數) x 2 (FP16 的位元組數)」, 約 800KB. 採用分組查詢注意力 (GQA) 的模型, key 與 value 的頭數少於查詢的頭數, 因此把隱藏維度換成「KV 頭數 x 每頭維度」(來源: PagedAttention 論文第 3 節; GQA 論文摘要; 換算為整理者推導). 再乘上上下文長度, 就是一段對話的用量:
 
 KV cache 位元組數 ≈ 2 x 層數 x KV 頭數 x 每頭維度 x 上下文長度 x 每個元素的位元組數
 
@@ -98,7 +98,10 @@ KV cache 位元組數 ≈ 2 x 層數 x KV 頭數 x 每頭維度 x 上下文長�
 - [Hugging Face 文件: safetensors](https://huggingface.co/docs/safetensors/index)
 - [Hugging Face 文件: Pickle scanning](https://huggingface.co/docs/hub/security-pickle)
 - [Hugging Face 模型卡: openai/gpt-oss-20b (總參數與啟用參數)](https://huggingface.co/openai/gpt-oss-20b)
-- [Sebastian Raschka: KV cache calculations (二手來源, 公式形式)](https://sebastianraschka.com/llm-architecture-gallery/kv-cache-calculations)
+- [Kwon 等人, Efficient Memory Management for Large Language Model Serving with PagedAttention (arXiv 2309.06180), 第 3 節 KV cache 大小計算](https://arxiv.org/pdf/2309.06180)
+- [Ainslie 等人, GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints (arXiv 2305.13245)](https://arxiv.org/abs/2305.13245)
+- [Sebastian Raschka: KV cache calculations (二手來源, 公式形式與上列論文一致)](https://sebastianraschka.com/llm-architecture-gallery/kv-cache-calculations)
+- [Apple WWDC20: Explore the new system architecture of Apple silicon Macs (統一記憶體架構, CPU 與 GPU 使用同一份記憶體)](https://developer.apple.com/videos/play/wwdc2020/10686?time=115)
 - [Ollama 文件: Context length (預設上下文與 `OLLAMA_CONTEXT_LENGTH`)](https://docs.ollama.com/context-length)
 - [Ollama 文件: FAQ (`OLLAMA_NUM_PARALLEL` 預設值與記憶體隨之增加)](https://docs.ollama.com/faq)
 - [Ollama 文件: Import (匯入 GGUF 不會自動量化)](https://docs.ollama.com/import)

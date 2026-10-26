@@ -3,8 +3,8 @@
 ::: info 本章屬性
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: 上下文長度對回應速度的實際影響依引擎與硬體而異, 本章只寫定性描述; 推論伺服器的定位比較為整理者歸納; 「本機與雲端的取捨」各面向屬推論, 未引用實測資料; Ollama 預設上下文長度的說法 (M1.8 節與 Ollama 現行文件) 不一致, 待 M1 對照; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 資料基準日: 2026-10-27
+- 待查證: 上下文長度對回應速度的實際影響依引擎與硬體而異, 本章只寫定性描述; 推論伺服器的定位比較為整理者歸納; 「本機與雲端的取捨」各面向屬推論, 未引用實測資料; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 模型是一大批訓練出來的數字 (權重), 推論伺服器 (inference server) 是把這批數字載入記憶體, 並讓其他程式可以呼叫的服務. 輸入的文字會先被切成小片段 (token), 模型逐段算出下一個片段, 再接成完整回答. 「問自己的文件」另外需要一個嵌入模型 (embedding model), 負責依意思找出相關段落. 地端模型和雲端模型一樣帶著訓練時學到的知識, 也可能記住部分訓練資料; 兩者的差別在「在哪裡跑, 輸入交給誰」, 不在「知道什麼」. 地端不必然優於雲端, 取捨見 K1.8 節與[一頁決策摘要](/decide/summary).
@@ -41,7 +41,7 @@
 
 token 是模型處理文字的最小單位. 模型不直接讀「字」, 而是讀一串 token 編號: 一個 token 可能是一個英文單字, 單字的一部分, 一個標點, 或一至數個中文字, 切法依模型而定.
 
-上下文長度 (context length) 是模型一次能處理的 token 上限, 包含輸入與已產生的輸出. Ollama 文件的定義是「模型在記憶體中能存取的最大 token 數」, 並說明加大上下文會增加執行模型所需的記憶體 (來源: Ollama 文件 Context length). 記憶體的估算方式見 [K2](/know/k2-quantization) 的 KV cache 一節.
+上下文長度 (context length) 是模型一次能處理的 token 上限, 包含輸入與已產生的輸出. Ollama 是在本機載入模型並提供 API 的推論伺服器 (見 [M1](/build/m1-inference)), 它的文件把上下文長度定義為「模型在記憶體中能存取的最大 token 數」, 並說明加大上下文會增加執行模型所需的記憶體 (來源: Ollama 文件 Context length). 記憶體的估算方式見 [K2](/know/k2-quantization) 的 KV cache 一節. Ollama 的預設上下文長度與調整方式見 [M1](/build/m1-inference) 的 M1.8 節.
 
 上下文越長, 回應通常越慢. 原因是 Transformer 架構 (目前主流語言模型採用的設計) 的自注意力 (self-attention) 機制, 讓模型讀每個新片段時, 都要回頭和前面的片段對照; 每層運算量隨序列長度的平方增加, 也就是內容長度加倍, 對照的工作量約變成四倍 (來源: Vaswani 等人 2017 年論文 Table 1). 輸入越長, 模型開始輸出第一個字之前要算的就越多. 實際的速度差距依推論引擎, 硬體與快取機制而異, 本章不給單一數字 (推論, 信心: 中). 實務上的做法是: 上下文只開到任務需要的長度, 並用 [M6](/build/m6-observability) 的耗時紀錄比較前後差異.
 
@@ -51,7 +51,7 @@ token 是模型處理文字的最小單位. 模型不直接讀「字」, 而是�
 
 電腦只會算數字, 所以文字進到模型前, 要先經過兩道轉換. 第一道由 Tokenizer 負責: 它像一本切詞規則加編號表, 把句子切成 token, 再為每個 token 找出編號. 第二道由模型內部的嵌入矩陣負責: 它把每個編號換成一串數字, 這串數字可以想成這個片段在一張「意思地圖」上的座標, 意思相近的片段, 座標也靠得近. 模型之後的所有運算, 都在這些座標上進行.
 
-Tokenizer 是把文字切成 token, 再對應成編號的規則. 它不在權重裡, 而是和權重一起發布的另一份設定. Hugging Face Tokenizers 程式庫的範例中, 同一段文字編碼後會得到兩組結果: `tokens` 是切分後的片段, `ids` 是每個片段在詞彙表中的編號 (來源: Hugging Face Tokenizers 文件 Quicktour).
+Tokenizer 是把文字切成 token, 再對應成編號的規則. 它不在權重裡, 而是和權重一起發布的另一份設定. Hugging Face 是發布與下載開放模型的平台, 它維護的 Tokenizers 程式庫專門處理切 token; 該程式庫的範例中, 同一段文字編碼後會得到兩組結果: `tokens` 是切分後的片段, `ids` 是每個片段在詞彙表中的編號 (來源: Hugging Face Tokenizers 文件 Quicktour).
 
 Tokenizer 的存放方式依檔案格式 (模型檔的包裝方式) 不同:
 
@@ -62,7 +62,7 @@ Tokenizer 的存放方式依檔案格式 (模型檔的包裝方式) 不同:
 
 簡單說, safetensors 是「權重和 Tokenizer 分開放的資料夾」, GGUF 是「全部包成一個檔案」. 常見的 Ollama 與 llama.cpp 使用 GGUF 格式 (推論, 信心: 中高; 各引擎支援的格式見 [M1](/build/m1-inference)).
 
-Tokenizer 必須和權重相符. Transformers 文件提到, 類別設定不相符時會產生錯誤的 token 編號 (來源: Transformers 文件 Tokenizers). 對話範本 (chat template) 是規定「使用者說的話」和「模型說的話」各用什麼標記包起來的固定格式, 也存放在 Tokenizer 設定中; vLLM 要求模型的 Tokenizer 設定內含對話範本, 否則對話請求會失敗, 須以 `--chat-template` 另外指定 (來源: vLLM 文件 Online serving). 因此, 自行轉檔或量化的模型, 要確認 Tokenizer 與對話範本隨權重一起正確轉出.
+Tokenizer 必須和權重相符. Transformers (Hugging Face 用來載入與執行模型的 Python 程式庫) 的文件提到, 類別設定不相符時會產生錯誤的 token 編號 (來源: Transformers 文件 Tokenizers). 對話範本 (chat template) 是規定「使用者說的話」和「模型說的話」各用什麼標記包起來的固定格式, 也存放在 Tokenizer 設定中; vLLM 要求模型的 Tokenizer 設定內含對話範本, 否則對話請求會失敗, 須以 `--chat-template` 另外指定 (來源: vLLM 文件 Online serving). 因此, 自行轉檔或量化的模型, 要確認 Tokenizer 與對話範本隨權重一起正確轉出.
 
 token 編號之後, 模型以嵌入矩陣 (embedding matrix) 把每個編號對應成一個向量, 也就是一串固定長度的數字. 這個矩陣是權重的一部分, 由訓練學出來: Transformer 原始論文以「學習而得的嵌入」把輸入與輸出 token 轉成固定維度的向量 (來源: Vaswani 等人 2017 年論文第 3.4 節). 模型各層的運算都以這些向量為輸入, 最後再換回 token 編號, 由 Tokenizer 還原成文字.
 
@@ -168,7 +168,7 @@ Carlini 等人 2021 年發表於 USENIX Security (資安學術會議) 的論文,
 
 完整判斷見[一頁決策摘要](/decide/summary), [決策樹](/decide/should-self-host)與[成本試算表](/decide/tco).
 
-**在架構圖上的位置**: 閘道區的 LiteLLM 同時連接地端推論區與雲端 API, 是混合做法的切換點 (見 [M5](/build/m5-gateway-identity)).
+**在架構圖上的位置**: 閘道區的 LiteLLM 是模型閘道: 各程式的請求先送到這裡, 再轉給地端推論區或雲端 API, 因此是混合做法的切換點 (見 [M5](/build/m5-gateway-identity)).
 
 ## 參考來源
 

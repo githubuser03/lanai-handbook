@@ -3,13 +3,13 @@
 ::: info 本章屬性
 - 等級: ● 必要
 - 狀態: 可閱讀 (指令未實機驗證)
-- 資料基準日: 2026-10-26
+- 資料基準日: 2026-10-27
 - 待查證: M2.3 節 Nginx 與 Caddy 設定範例, M2.4 節驗收指令皆未實機驗證; 在 Open WebUI 前疊加基本驗證是否與其 `Authorization` 標頭衝突, 未實機確認; 瀏覽器介面的對話請求是否都經過 `/api/chat/completions`, 未確認; caddy-ratelimit 的維護狀態與設定語法僅依其 README (非 Caddy 官方模組); 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 介面讓使用者能在瀏覽器裡和模型對話, 反向代理讓連線加密, 並在介面前面多一道驗證與流量控制. 單人單機只需要介面, 而且只綁 127.0.0.1; 要讓內網其他人連入時, 才在前面加反向代理.
 
-**這一塊在圖上的位置**: VM 入口區的 Open WebUI 與 Nginx 或 Caddy. **前置模組**: M1. **完成後的狀態**: 里程碑 1 完成, 可以在瀏覽器裡和本機模型對話.
+**這一塊在圖上的位置**: VM 入口區的 Open WebUI (對話介面) 與 Nginx 或 Caddy (反向代理). **前置模組**: M1. **完成後的狀態**: 里程碑 1 完成, 可以在瀏覽器裡和本機模型對話.
 
 M1 的推論伺服器只能用指令操作; 這一章裝上一般人熟悉的聊天畫面. 介面像餐廳的外場與菜單, 讓客人不必走進廚房就能點菜. 反向代理則像門口的接待櫃台: 所有客人都先到櫃台, 櫃台確認對方是內部人員, 才帶到座位, 外人不會直接走進用餐區.
 
@@ -18,7 +18,7 @@ M1 的推論伺服器只能用指令操作; 這一章裝上一般人熟悉的聊
 |---|---|
 | 使用者介面 (UI) | 在瀏覽器或桌面 App 裡和模型對話的畫面, 例如 Open WebUI, AnythingLLM |
 | 反向代理 (reverse proxy) | 站在服務前面統一接收連線, 再轉給後面服務的程式, 例如 Nginx, Caddy |
-| TLS 與 HTTPS | TLS 是加密連線的協定; 網址開頭是 https 時, 傳輸內容就經過加密 |
+| TLS 與 HTTPS | TLS 是加密連線的協定; HTTPS 是以 TLS 加密的 HTTP, 網址開頭是 https 時, 瀏覽器與伺服器之間的傳輸內容就經過加密 (來源: MDN) |
 | 憑證與 CA | 憑證證明「這個網站就是它聲稱的那一個」; CA (憑證機構) 是簽發憑證的單位, 瀏覽器要信任 CA 才會接受它簽的憑證 |
 | 速率限制 (rate limit) | 限制同一來源在一段時間內的請求次數, 避免單一使用者占滿資源 |
 | 基本驗證 (basic auth) | 瀏覽器跳出帳號密碼視窗的簡易登入方式 |
@@ -334,4 +334,5 @@ nmap -p- 192.168.10.5
 - [Caddy 文件: http.handlers.rate_limit 模組頁](https://caddyserver.com/docs/modules/http.handlers.rate_limit)
 - [GitHub: mholt/caddy-ratelimit](https://github.com/mholt/caddy-ratelimit)
 - [llama.cpp server README](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
+- [MDN Web Docs: HTTPS (詞彙表, 以 TLS 加密 HTTP 通訊)](https://developer.mozilla.org/docs/Glossary/https)
 - 文中的類比 (餐廳外場與菜單, 接待櫃台): 整理者所寫, 無外部來源, 不應當作技術定義引用.
