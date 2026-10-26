@@ -4,7 +4,7 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
 - 資料基準日: 2026-10-26
-- 待查證: 硬體自我檢測的查詢指令未實機驗證; 硬體等級 E, F 的規格門檻待 K3 定義
+- 待查證: 硬體自我檢測的查詢指令未實機驗證; 硬體等級 E, F 的規格門檻待 K3 定義; 硬體等級 A 至 F 的分級來自研究 1 (內部研究紀錄, 非公開來源), 無公開佐證, 來源待補
 :::
 
 **結論**: 本手冊以一張[架構圖](/start/map)為終點, 分四部帶讀者走到那裡: 第一部講懂每個元件背後的原理, 第二部一次組裝一個模組, 第三部用範例說明組好的系統能解決什麼問題, 第四部是長期維運. 先選一條學習路線, 再依路線閱讀.
@@ -68,7 +68,7 @@
 | E | 預算較高的單機配置 | 里程碑 2 (規格門檻待 K3 定義) |
 | F | 預算更高的多卡或大容量配置 | 里程碑 3 (須有人每週維運) |
 
-顯示記憶體 (或統一記憶體) 比運算速度更常決定「模型跑不跑得起來」, 估算方法見 K2. 此對應表來自研究 1 的分級, 待以第一手報價與規格核對 (信心: 中).
+顯示記憶體 (或統一記憶體) 比運算速度更常決定「模型跑不跑得起來」, 估算方法見 K2. 此對應表來自研究 1 的分級 (研究 1 為內部研究紀錄, 非公開來源), 待以第一手報價與規格核對 (信心: 中).
 
 ## 決策者: 先看這幾頁
 
@@ -111,3 +111,15 @@
 | 決策參考 | 可閱讀 (數字為試算框架, 非市場資料) |
 
 全書指令與設定範例都依官方文件整理, 尚未在實機執行. 各頁「待查證」欄列出尚未查證的事項.
+
+## 參考來源
+
+本頁的全書結構, 學習路線, 三個問題, 等級對應與完成度表是整理者的設計, 事實依據在各章; 等級 A 至 F 的分級來自研究 1 (內部研究紀錄, 非公開來源, 無公開佐證). 頁內查詢指令的出處如下, 指令均未實機驗證.
+
+- **`nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv`**: NVIDIA 官方文件說明 `--query-gpu` 接受以逗號分隔的屬性清單, `--format=csv` 輸出 CSV. 該頁未列出 `name`, `memory.total`, `driver_version` 三個屬性名稱, 並指向 `--help-query-gpu` 查詢可用屬性, 因此使用前請先在自己的機器上執行 `nvidia-smi --help-query-gpu` 核對. [NVIDIA: nvidia-smi 文件](https://docs.nvidia.com/deploy/nvidia-smi/index.html)
+- **`system_profiler SPHardwareDataType`**: 指令說明取自 Apple man page 的網路鏡像 (二手來源), 其中 `-listDataTypes` 可列出可用的資料類型; 資料類型名稱 `SPHardwareDataType` 取自第三方指令參考站 (二手來源), 請以 `system_profiler -listDataTypes` 的輸出核對. [system_profiler(8) man page (鏡像)](https://keith.github.io/xcode-man-pages/system_profiler.8.html), [ss64: system_profiler](https://ss64.com/mac/system_profiler.html)
+- **`free -h`**: man page 說明 `-h` (`--human`) 以易讀的單位顯示記憶體量. [free(1) man page](https://man7.org/linux/man-pages/man1/free.1.html)
+- **`Get-CimInstance Win32_ComputerSystem` 的 `TotalPhysicalMemory`**: Microsoft 文件說明單位為位元組; 同頁提醒在某些情況下 (例如 BIOS 保留一部分記憶體) 此值不準確, 精確值應改用 `Win32_PhysicalMemory` 的 `Capacity`. [Microsoft: Win32_ComputerSystem class](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-computersystem)
+- **Apple Silicon 採統一記憶體**: Apple 2020-11 發表 M1 的新聞稿寫明採 unified memory architecture; 各代晶片的記憶體上限與頻寬不在本頁討論範圍. [Apple Newsroom: Apple unleashes M1](https://www.apple.com/newsroom/2020/11/apple-unleashes-m1/)
+- **「顯示記憶體比運算速度更常決定模型跑不跑得起來」**: 依據是 [K2](/know/k2-quantization) 的估算算式與 [K3](/know/k3-hardware), 屬算術與整理者判斷 (信心: 高).
+- **「沒有人固定維運時只組到里程碑 1」**: 整理者建議 (推論, 信心: 中), 理由見[組裝總覽](/build/overview)與 [O3](/ops/advisories).
