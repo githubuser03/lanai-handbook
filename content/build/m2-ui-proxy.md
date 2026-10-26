@@ -4,7 +4,7 @@
 - 等級: ● 必要
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: 反向代理一節僅有大綱
+- 待查證: M2.3 節 Nginx 與 Caddy 設定範例, M2.4 節驗收指令皆未實機驗證; 在 Open WebUI 前疊加基本驗證是否與其 `Authorization` 標頭衝突, 未實機確認; 瀏覽器介面的對話請求是否都經過 `/api/chat/completions`, 未確認; caddy-ratelimit 的維護狀態與設定語法僅依其 README (非 Caddy 官方模組)
 :::
 
 **結論**: 介面讓使用者能在瀏覽器裡和模型對話, 反向代理讓連線加密, 並在介面前面多一道驗證與流量控制. 單人單機只需要介面, 而且只綁 127.0.0.1; 要讓內網其他人連入時, 才在前面加反向代理.
@@ -57,17 +57,254 @@ docker run -d -p 127.0.0.1:3000:8080 \
 
 ## M2.3 加上反向代理 (內網多人連入時)
 
-待撰寫要點:
+內網其他人要連入時, 在介面前面放一台反向代理. 反向代理負責 TLS 加密, 來源網段限制, 基本驗證與速率限制; 介面本身改為只接受反向代理的連線. 本節設定依下列官方文件整理, 未實機驗證.
 
-- Nginx 與 Caddy 的取捨: Nginx 內建速率限制; Caddy 憑證設定較簡單, 速率限制須另裝外掛
-- 內網憑證的取得方式 (公司內部憑證機構或 Caddy 的內部憑證)
-- 只接受內網網段, 介面改綁 127.0.0.1 或 Docker 內部網路
-- 基本驗證與速率限制的設定範例 (依官方文件驗證後補上)
+### Nginx 與 Caddy 的取捨
+
+| 比較事項 | Nginx | Caddy |
+|---|---|---|
+| 速率限制 | 標準模組 `ngx_http_limit_req_module` 提供 `limit_req_zone` 與 `limit_req`. 超過上限時預設回應 503, 可用 `limit_req_status` 改為 429 (來源: nginx.org) | 標準版不內建. 官方模組頁標示 `http.handlers.rate_limit` 「does not come with Caddy」, 須以 xcaddy 編譯 caddy-ratelimit 模組; 該儲存庫自述不是 Caddy 組織的官方儲存庫 (來源: caddyserver.com 模組頁, GitHub mholt/caddy-ratelimit) |
+| 基本驗證 | `auth_basic` 與 `auth_basic_user_file`; 密碼檔以 `htpasswd` 或 `openssl passwd` 產生 (來源: nginx.org) | `basic_auth` (v2.8.0 之前名為 `basicauth`), 預設 bcrypt; 不接受明文密碼, 以 `caddy hash-password` 產生雜湊 (來源: caddyserver.com) |
+| 憑證 | 自行準備憑證檔, 以 `ssl_certificate` 與 `ssl_certificate_key` 指定; 中繼憑證要接在伺服器憑證之後 (來源: nginx.org) | `tls internal` 由內建 CA 簽發; 也可用 `tls <憑證檔> <私鑰檔>` 載入公司憑證 (來源: caddyserver.com) |
+| WebSocket | 須自行設定 `Upgrade` 與 `Connection` 標頭; 後端 60 秒沒有傳資料就會關閉連線, 以 `proxy_read_timeout` 調整 (來源: nginx.org) | `reverse_proxy` 官方文件說明支援 WebSocket, 會處理 HTTP upgrade 請求; 串流連線預設沒有逾時 (來源: caddyserver.com) |
+
+**判斷 (推論, 信心: 中)**: 需要在反向代理上做速率限制, 又不想自行編譯時, 選 Nginx. 已有公司憑證, 或希望設定最少時, 選 Caddy, 速率限制改由 M5 的閘道負責.
+
+### Open WebUI 對反向代理的要求
+
+Open WebUI 官方文件列出幾個容易漏掉的設定:
+
+- **WebSocket**: Open WebUI v0.5.0 起必須支援 WebSocket. 反向代理要正確設定 `Upgrade` 與 `Connection` 標頭, 並以 HTTP/1.1 連到後端 (來源: Open WebUI 文件 Connection Errors, HTTPS using Nginx).
+- **串流緩衝**: Nginx 預設開啟的 `proxy_buffering` 會把 SSE 串流任意切段, 官方建議關閉 (來源: Open WebUI 文件 HTTPS using Nginx).
+- **CORS**: `CORS_ALLOW_ORIGIN` 預設為 `*`, 官方標示必須設定, 否則可能出現 WebSocket 問題; 值為對外網址, 多個網址以分號分隔 (來源: Open WebUI 文件 Environment Variable Configuration).
+- **對外網址**: 之後要接單一登入 (M5.4 節) 時, `WEBUI_URL` 必須在啟用 OAuth 之前設定 (來源: 同上).
+
+### 內網憑證的兩種來源
+
+1. **公司內部憑證機構**: 公司已有內部 CA 時, 向它申請伺服器憑證, 憑證的主體別名 (SAN) 要涵蓋使用者輸入的主機名稱. 公司配發的裝置通常已信任公司根憑證, 使用者端不需額外設定 (推論, 信心: 中).
+2. **Caddy 內部 CA (`tls internal`)**: Caddy 會用本機的內部 CA 簽發憑證. 根憑證預設效期 3600 天 (10 年), 中繼憑證 7 天, 網站憑證 12 小時, 由 Caddy 自動更新 (來源: Caddy 文件 tls). 根憑證存在 Caddy 資料目錄的 `pki/authorities/local` 之下. Caddy 只會嘗試把根憑證裝進本機的信任清單, 在容器內或以非特權使用者執行時可能失敗; 其他裝置要由系統管理者自行安裝根憑證 (來源: Caddy 文件 Automatic HTTPS). 資料目錄必須持續保存, 不能當成快取 (來源: Caddy 文件 Conventions). 容器重建後若資料目錄遺失, Caddy 會產生新的根憑證, 所有裝置都要重新安裝 (推論).
+
+不建議使用每台伺服器各自的自簽憑證, 再要求使用者略過瀏覽器警告. 這會讓使用者習慣忽略憑證錯誤 (推論, 信心: 中).
+
+### 只接受內網網段, 介面不直接對外
+
+建議同時做三層限制:
+
+1. **介面只對反向代理開放.** 反向代理與 Open WebUI 放在同一個 Docker 自訂網路時, Open WebUI 不必發布連接埠: Docker 官方文件說明, bridge 網路上的容器連接埠, 主機與同網路的其他容器都能存取, 但主機外部無法存取 (來源: Docker 文件 Port publishing and mapping). 反向代理裝在主機上時, 則以 `-p 127.0.0.1:3000:8080` 發布 (見 M2.2 節). 同一份文件也提醒, Docker Engine 28.0.0 之前的版本, 同一個 L2 網段的主機可以連到發布在 localhost 的連接埠, 因此 Docker Engine 至少要 28.0.0.
+2. **反向代理只接受內網網段.** Nginx 以 `allow` 與 `deny` 限制, 規則由上往下比對, 第一條符合者生效 (來源: nginx.org ngx_http_access_module). Caddy 以 `remote_ip` 比對直接連線端的位址; 前面還有其他代理時, 改用 `client_ip` 並設定 `trusted_proxies`; `private_ranges` 代表所有私有 IPv4 與 IPv6 網段 (來源: Caddy 文件 Request matchers). 建議寫明實際網段, 不要直接放行所有私有網段 (推論).
+3. **主機防火牆.** 如 M2.2 節所述, Docker 發布的連接埠可能不受 ufw 規則限制, 因此防火牆只能當作其中一層.
+
+反向代理本身的連接埠也只發布在內網介面的位址上, 例如 `-p 192.168.10.5:443:443`, 不要發布在 `0.0.0.0` (推論, 信心: 中高).
+
+### 基本驗證的適用範圍
+
+Open WebUI 有自己的帳號與登入. 在它前面再疊一層基本驗證時, 瀏覽器與 Open WebUI 前端都會用到 `Authorization` 標頭, 可能互相衝突 (推論, 信心: 中, 須實機驗證). 本手冊建議, 基本驗證只用在沒有自帶登入的服務, 例如讓內部腳本經反向代理呼叫 llama-server 的 API (見 M5.1 節). Open WebUI 本身則依賴介面帳號, 多人時再改用單一登入 (M5.4 節).
+
+### 最小設定範例: Nginx
+
+依 nginx.org 的 limit_req, auth_basic, access, WebSocket proxying, HTTPS 文件與 Open WebUI 的 Nginx 範例整理, 未實機驗證. 主機名稱, 網段與路徑為佔位值.
+
+```nginx
+# /etc/nginx/conf.d/open-webui.conf (未實機驗證)
+limit_req_zone $binary_remote_addr zone=owui_chat:10m rate=2r/s;
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 192.168.10.5:443 ssl;
+    server_name ai.example.internal;
+
+    # 伺服器憑證在前, 中繼憑證接在後面
+    ssl_certificate     /etc/nginx/tls/ai.example.internal.chained.crt;
+    ssl_certificate_key /etc/nginx/tls/ai.example.internal.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    # 只接受內網網段 (依實際網段修改), 第一條符合者生效
+    allow 192.168.10.0/24;
+    deny  all;
+
+    client_max_body_size 20M;
+
+    # 以下代理設定由各 location 繼承
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 1800;
+    proxy_send_timeout 1800;
+
+    # Open WebUI (同一個 Docker 網路, 不發布連接埠)
+    location / {
+        proxy_pass http://open-webui:8080;
+    }
+
+    # 對話請求另加速率限制, 超過時回應 429
+    location = /api/chat/completions {
+        limit_req zone=owui_chat burst=10 nodelay;
+        limit_req_status 429;
+        proxy_pass http://open-webui:8080;
+    }
+
+    # 選用: 沒有自帶登入的推論 API, 加基本驗證
+    location /inference/ {
+        auth_basic           "inference";
+        auth_basic_user_file /etc/nginx/htpasswd;
+        proxy_pass http://llama-server:8080/;
+    }
+}
+```
+
+說明:
+
+- `limit_req` 的速率與 `burst` 是示意值. 官方文件說明, 超過 `burst` 的請求會以 `limit_req_status` 回應 (預設 503). 實際值請依使用人數與 M6 的紀錄調整 (推論).
+- `/api/chat/completions` 是 Open WebUI 官方 API 文件列出的對話端點 (來源: Open WebUI 文件 API Endpoints). 瀏覽器介面送出對話時是否都經過這個路徑, 本輪未實機確認.
+- `/inference/` 的 `proxy_pass` 結尾有斜線, 轉送時會去掉 `/inference/` 前綴 (Nginx 一般行為, 此為訓練資料內資訊, 可能已過時).
+- 密碼檔以 `htpasswd` 或 `openssl passwd` 產生. 官方文件說明不加鹽的 `{SHA}` 格式只為移轉舊系統而保留, 新密碼不要使用 (來源: nginx.org ngx_http_auth_basic_module).
+
+### 最小設定範例: Caddy
+
+依 caddyserver.com 的 reverse_proxy, tls, basic_auth 與 Request matchers 文件整理, 未實機驗證.
+
+```caddy
+# Caddyfile (未實機驗證)
+ai.example.internal {
+	tls internal
+	# 改用公司憑證時:
+	# tls /etc/caddy/tls/ai.example.internal.crt /etc/caddy/tls/ai.example.internal.key
+
+	# 只接受內網網段, 其他來源直接中斷連線
+	@outside not remote_ip 192.168.10.0/24
+	abort @outside
+
+	# reverse_proxy 會處理 WebSocket 的 HTTP upgrade
+	reverse_proxy open-webui:8080
+}
+
+# 選用: 沒有自帶登入的推論 API, 加基本驗證
+inference.example.internal {
+	tls internal
+
+	@outside not remote_ip 192.168.10.0/24
+	abort @outside
+
+	basic_auth {
+		# 以 caddy hash-password 產生的 bcrypt 雜湊
+		ops <bcrypt 雜湊值>
+	}
+	reverse_proxy llama-server:8080
+}
+```
+
+需要速率限制時, 先以 xcaddy 編譯含 caddy-ratelimit 的 Caddy (`xcaddy build --with github.com/mholt/caddy-ratelimit`), 再加入 `rate_limit` 區塊; 用 Docker 時, 官方建議以 `caddy:<version>-builder` 映像建置, 再複製到 `caddy:<version>` 映像 (來源: Caddy 文件 Build from source, GitHub mholt/caddy-ratelimit). caddy-ratelimit README 的範例如下, 未實機驗證:
+
+```caddy
+rate_limit {
+	zone per_client {
+		key    {remote_host}
+		events 10
+		window 10s
+	}
+}
+```
+
+這個模組不是 Caddy 官方模組, 採用前須自行評估維護狀態, 並把它納入版本追蹤 (見 O2) (推論, 信心: 中).
 
 ## M2.4 驗收測試
 
-待撰寫要點:
+以下步驟以 Nginx 範例的主機名稱與網段為例. `curl`, `nmap` 與 `openssl` 為通用工具, 指令未實機驗證.
 
-- 從本機瀏覽器完成一次對話
-- 從內網另一台裝置只能經反向代理連入, 直接連介面的連接埠應失敗
-- 以另一台裝置掃描主機, 確認沒有多餘的開放連接埠
+**1. 從內網裝置完成一次對話**
+
+1. 在測試裝置安裝根憑證 (公司 CA, 或 Caddy 內部 CA 的根憑證).
+2. 以瀏覽器開啟 `https://ai.example.internal`, 登入後送出一則訊息.
+3. 確認回應是逐字串流出現, 而不是等很久才整段出現. 整段出現時, 檢查 `proxy_buffering` 是否已關閉.
+4. 開啟瀏覽器開發者工具, 確認主控台沒有 WebSocket 連線錯誤. 若 Open WebUI 日誌出現「is not an accepted origin」, 依官方文件調整 `CORS_ALLOW_ORIGIN` (來源: Open WebUI 文件 Environment Variable Configuration).
+
+**2. 直接連介面的連接埠應失敗**
+
+在內網另一台裝置執行:
+
+```bash
+# 直接連 Open WebUI 的連接埠, 預期連線被拒或逾時
+curl -sS -m 5 http://192.168.10.5:3000/
+# 經反向代理, 預期取得頁面 (200 或轉址)
+curl -sS -o /dev/null -w "%{http_code}\n" --cacert root.crt https://ai.example.internal/
+```
+
+**3. 不在允許網段的裝置應被拒絕**
+
+從允許網段以外的裝置連線 (或暫時把測試裝置移出 `allow` 清單). 預期 Nginx 回應 403, Caddy 直接中斷連線.
+
+**4. 速率限制生效 (Nginx)**
+
+```bash
+# 連續送出 30 個請求, 統計回應碼; 預期出現 429
+for i in $(seq 1 30); do
+  curl -s -o /dev/null -w "%{http_code}\n" --cacert root.crt \
+    -X POST https://ai.example.internal/api/chat/completions
+done | sort | uniq -c
+```
+
+未帶權杖的請求會由 Open WebUI 回應 401 等錯誤; 超過速率上限的請求則在反向代理就回應 429, 兩者會混在一起出現 (推論, 信心: 中).
+
+**5. 基本驗證生效 (若有啟用)**
+
+```bash
+# 未帶帳密, 預期 401
+curl -s -o /dev/null -w "%{http_code}\n" --cacert root.crt https://ai.example.internal/inference/health
+# 帶帳密, 預期 200
+curl -s -o /dev/null -w "%{http_code}\n" --cacert root.crt -u ops https://ai.example.internal/inference/health
+```
+
+llama-server 的 `/health` 端點不檢查 API 金鑰 (來源: llama.cpp server README), 因此適合當作這一步的測試對象.
+
+**6. 確認憑證鏈完整**
+
+```bash
+openssl s_client -connect ai.example.internal:443 -servername ai.example.internal -showcerts </dev/null
+```
+
+nginx.org 文件指出, 有些瀏覽器會快取中繼憑證, 因此缺少中繼憑證時瀏覽器不一定報錯, 建議以 `openssl s_client` 確認伺服器送出完整憑證鏈 (來源: nginx.org Configuring HTTPS servers).
+
+**7. 掃描主機, 確認沒有多餘的開放連接埠**
+
+在內網另一台裝置執行:
+
+```bash
+nmap -p- 192.168.10.5
+```
+
+預期只看到 443 (以及管理用的 SSH, 若有開放). 若看到 3000, 11434 或 8080, 回到 M2.2 節與本節檢查連接埠發布位址.
+
+## 參考來源
+
+- [Docker 文件: Port publishing and mapping](https://docs.docker.com/engine/network/port-publishing/)
+- [Docker 文件: Packet filtering and firewalls](https://docs.docker.com/engine/network/packet-filtering-firewalls/)
+- [Open WebUI 文件: Quick Start](https://docs.openwebui.com/getting-started/quick-start)
+- [Open WebUI 文件: HTTPS using Nginx](https://docs.openwebui.com/reference/https/nginx)
+- [Open WebUI 文件: Connection Errors](https://docs.openwebui.com/troubleshooting/connection-error)
+- [Open WebUI 文件: Environment Variable Configuration](https://docs.openwebui.com/reference/env-configuration)
+- [Open WebUI 文件: API Endpoints](https://docs.openwebui.com/reference/api-endpoints)
+- [Ollama 文件: FAQ](https://docs.ollama.com/faq)
+- [nginx.org: ngx_http_limit_req_module](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html)
+- [nginx.org: ngx_http_auth_basic_module](https://nginx.org/en/docs/http/ngx_http_auth_basic_module.html)
+- [nginx.org: ngx_http_access_module](https://nginx.org/en/docs/http/ngx_http_access_module.html)
+- [nginx.org: WebSocket proxying](https://nginx.org/en/docs/http/websocket.html)
+- [nginx.org: Configuring HTTPS servers](https://nginx.org/en/docs/http/configuring_https_servers.html)
+- [Caddy 文件: reverse_proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy)
+- [Caddy 文件: basic_auth](https://caddyserver.com/docs/caddyfile/directives/basic_auth)
+- [Caddy 文件: tls](https://caddyserver.com/docs/caddyfile/directives/tls)
+- [Caddy 文件: Request matchers](https://caddyserver.com/docs/caddyfile/matchers)
+- [Caddy 文件: Automatic HTTPS](https://caddyserver.com/docs/automatic-https)
+- [Caddy 文件: Conventions](https://caddyserver.com/docs/conventions)
+- [Caddy 文件: Build from source](https://caddyserver.com/docs/build)
+- [Caddy 文件: http.handlers.rate_limit 模組頁](https://caddyserver.com/docs/modules/http.handlers.rate_limit)
+- [GitHub: mholt/caddy-ratelimit](https://github.com/mholt/caddy-ratelimit)
+- [llama.cpp server README](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
