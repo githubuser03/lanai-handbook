@@ -6,8 +6,6 @@ description: "單機單人不需要閘道. 只有多模型輪替而沒有多人�
 
 ::: info 本章屬性
 - 等級: ○ 依情境, 符合條件才讀
-- 狀態: 可閱讀
-- 資料基準日: 2026-10-27
 - 實機驗證: 未進行 (M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令依官方文件整理; 需實機確認: Keycloak Hosted Domain 以非公司帳號登入時確實遭拒, Open WebUI 掛載內部 CA 後能完成 OIDC 登入)
 :::
 
