@@ -6,9 +6,9 @@ description: "只做「解釋, 撰寫, 檢查程式碼」時, 里程碑 1 (M0 �
 
 ::: info 本章屬性
 - 等級: ○ 依情境
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: 編輯器整合步驟依 Ollama 與 VS Code 官方文件整理, 未實機驗證; VS Code 使用本機模型時是否仍有資料送往外部服務, 官方文件未說明; 64K 上下文在各硬體等級的記憶體需求未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 未進行 (編輯器整合步驟依 Ollama 與 VS Code 官方文件整理; 待確認: 64K 上下文在各硬體等級的實際記憶體用量)
 :::
 
 **結論**: 只做「解釋, 撰寫, 檢查程式碼」時, 里程碑 1 (M0 至 M2) 就夠: 在 Open WebUI (M2 安裝的瀏覽器對話介面) 貼上程式碼即可, 程式碼不離開本機. 想在編輯器裡使用時, 可以用 Ollama (M1 的推論伺服器) 官方提供的 VS Code (程式編輯器) 擴充套件或終端機的程式代理, 但這類工具建議上下文至少 64K, 對顯示記憶體的要求明顯較高. 要讓模型在主機上執行程式碼, 就必須加上 M7 的沙箱, 不能直接在自己的電腦上執行. Open WebUI 預設提供的程式碼執行功能是在瀏覽器內以 Pyodide 執行, 不在主機上, 不需要時可以關閉 (見設定要點).
@@ -101,7 +101,7 @@ flowchart TD
 
 - Ollama 官方文件的步驟: 從 VS Code Marketplace 安裝 Ollama 擴充套件, 開啟 Chat, 在輸入框下方的模型選單選 **Ollama** 區段的模型. 擴充套件預設從 `http://127.0.0.1:11434` 讀取模型清單; 本機模型不需要登入.
 - 官方文件要求 VS Code 1.127 以上, 並建議把 Ollama 的上下文長度設為至少 64K, 設定後重新載入 VS Code 視窗.
-- VS Code 官方部落格說明, 自備模型 (BYOK) 可以在不登入 GitHub, 沒有 Copilot 方案的情況下使用; 但語意搜尋, 行內建議與依賴嵌入的功能仍需要 GitHub 帳號或 Copilot. 換句話說, 這條路線提供的是對話功能, 不是自動補全.
+- VS Code 官方部落格說明, 自備模型 (BYOK) 可以在不登入 GitHub, 沒有 Copilot 方案的情況下使用; 但語意搜尋, 行內建議與依賴嵌入的功能仍需要 GitHub 帳號或 Copilot. 換句話說, 這條路線提供的是對話功能, 不是自動補全. VS Code 的 Language models 文件另說明, 自備的本機模型可以完全離線使用, 依賴 GitHub Copilot 服務的功能 (例如語意搜尋) 離線時無法使用. 因此要確保程式碼不送往外部服務, 可以在不登入 GitHub 的離線環境使用本機模型 (推論, 信心: 中).
 - VS Code 的遙測以 `telemetry.telemetryLevel` 設定, 可設為 `off`; 官方文件說明這個設定不管擴充套件, 每個擴充套件的遙測要各自查文件.
 - 其他編輯器擴充套件也能接 Ollama. 選用前先確認維護狀態: 例如 Continue (可接本機模型的 VS Code 擴充套件) 的 GitHub 儲存庫已標示「不再積極維護, 唯讀」, 不適合新導入.
 
@@ -139,6 +139,8 @@ flowchart TD
 需要人工確認的步驟: 模型寫的程式碼在合併前由讀者檢查; 程式代理對檔案的修改在合併前逐一確認.
 
 ## 參考來源
+
+- [VS Code 文件: Language models](https://code.visualstudio.com/docs/copilot/language-models) (自備模型不需登入 GitHub, 本機模型可離線使用, 語意搜尋等功能需要 GitHub 帳號)
 
 - [Ollama 文件: Integrations](https://docs.ollama.com/integrations)
 - [Ollama 文件: VS Code](https://docs.ollama.com/integrations/vscode)

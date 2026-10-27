@@ -6,9 +6,9 @@ description: "內部知識庫問答需要里程碑 2 (M0 至 M6), 權限設計�
 
 ::: info 本章屬性
 - 等級: ○ 依情境
-- 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: Open WebUI 與 Keycloak 設定依官方文件整理, 未實機驗證; Keycloak 群組 mapper 的細部選項 (例如是否帶完整群組路徑) 官方 Open WebUI 文件只以圖片呈現, 須實機確認; 群組在登入時同步的時間點須實機確認; 嵌入請求經 LiteLLM 轉送屬本手冊的設計推論; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 狀態: 可閱讀
+- 資料基準日: 2026-10-27
+- 實機驗證: 未進行 (Open WebUI 與 Keycloak 設定依官方文件整理; 待確認: Keycloak 群組 mapper 是否帶完整群組路徑, 群組在登入時同步的時間點)
 :::
 
 **結論**: 內部知識庫問答需要里程碑 2 (M0 至 M6). 權限設計的核心是「一個部門一個知識庫, 一個知識庫只授權給對應的群組」: 群組由 Keycloak 管理並在登入時同步到 Open WebUI, 知識庫設為私有並只給該群組讀取權限. Open WebUI 的管理者角色等同系統最高權限, 群組權限擋不住管理者, 因此人事薪資這類高度機密的文件不放進共用系統, 或另建獨立的執行個體.
@@ -183,4 +183,5 @@ flowchart TD
 - [LiteLLM 文件: Virtual Keys](https://docs.litellm.ai/docs/proxy/virtual_keys)
 - [Langfuse 文件: OpenTelemetry](https://langfuse.com/docs/opentelemetry/introduction)
 - 站內: [M4 檢索 (RAG)](/build/m4-retrieval), [M5 模型閘道與身分驗證](/build/m5-gateway-identity), [M6 可觀測, 稽核與評估](/build/m6-observability), [O2 版本鎖定與升級流程](/ops/versioning)
+- 嵌入請求也經 LiteLLM 轉送: 本手冊的設計, 讓所有模型呼叫共用同一套金鑰與紀錄 (推論, 信心: 中).
 - 文中的類比 (諮詢櫃台, 大門, 通行證): 整理者所寫, 無外部來源, 不應當作技術定義引用.

@@ -6,9 +6,9 @@ description: "每週報告是規則固定的流程, 適合交給 n8n (流程自�
 
 ::: info 本章屬性
 - 等級: ○ 依情境
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: n8n 與 LiteLLM 設定依官方文件整理, 未實機驗證; n8n 的 OpenAI 憑證是否可改指向 OpenAI 相容 API, 官方憑證文件未說明, 因此本頁改用 HTTP Request 節點; 工具名稱 (ticket.list_closed 等) 為示意; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 未進行 (n8n 與 LiteLLM 設定依官方文件整理)
 :::
 
 **結論**: 每週報告是規則固定的流程, 適合交給 n8n (流程自動化平台) 排程執行, 不需要代理自己決定步驟. n8n 經 MCP gateway (所有工具呼叫的單一出入口) 呼叫唯讀工具取得工作紀錄與指標, 由程式計算數字, 再經 LiteLLM (模型閘道) 請模型撰寫文字說明; 草稿送給負責人確認, 確認後才寄出. 對外發信屬 A3 (不可回復), 一律人工核准, 而且郵件工具寄出前會再查一次核准紀錄, 不只靠 n8n 流程本身.
@@ -102,6 +102,7 @@ flowchart TD
 ### 寫草稿: 經 LiteLLM
 
 - 用 HTTP Request 節點呼叫 LiteLLM 的 `/chat/completions`, 以 `Authorization: Bearer <n8n 專用虛擬金鑰>` 驗證 (LiteLLM 虛擬金鑰文件的呼叫方式). 金鑰以 `/key/generate` 建立時, 用 `models` 限定只能使用撰寫週報的模型, 並以 `metadata` 標明用途.
+- n8n 的 OpenAI 憑證有 Base URL 欄位 (預設 `https://api.openai.com/v1`, 欄位說明為覆寫 API 的預設網址), 也可加自訂標頭 (來源: n8n 原始碼 `packages/nodes-base/credentials/OpenAiApi.credentials.ts`, 2026-10-26 版), 因此也能指向 LiteLLM. 本頁仍用 HTTP Request 節點, 讓請求內容與驗證標頭在流程中一目了然 (推論, 信心: 中).
 - 這把金鑰存在 n8n 的憑證中. 它是內部閘道的虛擬金鑰, 不是外部系統的金鑰; 外洩時在 LiteLLM 停用即可, 不影響其他應用.
 
 提示範本 (數字由程式填好, 模型只寫說明):
@@ -174,6 +175,8 @@ flowchart TD
 需要人工確認的步驟: 每一份草稿寄出前的核准; 所有對外發信.
 
 ## 參考來源
+
+- [n8n GitHub 儲存庫](https://github.com/n8n-io/n8n): OpenAI 憑證定義 `packages/nodes-base/credentials/OpenAiApi.credentials.ts` 的 Base URL 與自訂標頭欄位 (2026-10-27 以 git 讀取)
 
 - [n8n 文件: Schedule Trigger node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/)
 - [n8n 文件: Wait node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/)

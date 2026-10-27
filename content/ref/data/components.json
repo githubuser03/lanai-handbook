@@ -421,9 +421,9 @@
     {
       "component": "Langflow",
       "cve": "CVE-2026-0768",
-      "summary": "CVSS 9.8 (v3.0, ZDI), validate 端點程式碼注入, 未經身分驗證即以 root 執行程式碼; NVD 列 1.4.2 受影響. 不在 CISA KEV 目錄 (版本 2026.10.23). VulnCheck 的誘捕感測器 (Canary) 自 2026-08-29 至 08-30 起觀測到利用嘗試, VulnCheck 本身的公告為 LinkedIn 貼文, 此處引用 CSA 研究筆記與 Security Affairs 的轉述 (二手來源)",
-      "source_name": "NVD (ZDI 通報編號 ZDI-26-034); 利用情形見 CSA 研究筆記 (2026-09-04) 與 Security Affairs",
-      "source_url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2026-0768",
+      "summary": "CVSS 9.8 (v3.0, ZDI), validate 端點程式碼注入, 未經身分驗證即以 root 執行 Python 程式碼. ZDI 於 2026-01-09 以 0-day 公告發布, 公告未列受影響版本與修補版本, 建議的緩解方式是限制對服務的存取. 不在 CISA KEV 目錄 (版本 2026.10.23). VulnCheck 的誘捕感測器 (Canary) 自 2026-08-29 至 08-30 起觀測到利用嘗試, VulnCheck 本身的公告為 LinkedIn 貼文, 此處引用 CSA 研究筆記與 Security Affairs 的轉述 (二手來源)",
+      "source_name": "ZDI 公告 ZDI-26-034 (CNA); 利用情形見 CSA 研究筆記 (2026-09-04) 與 Security Affairs",
+      "source_url": "https://zerodayinitiative.com/advisories/ZDI-26-034",
       "source_type": "primary",
       "verified_on": "2026-10-26",
       "expires_after_days": 30,

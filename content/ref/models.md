@@ -6,9 +6,9 @@ description: "挑模型先看記憶體放不放得下, 再看授權, 最後才�
 
 ::: info 本章屬性
 - 等級: 參考資料
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: 各等級的模型落點為依 K2 公式估算的權重大小, 未實測; 等級 E, F 的門檻沿用 K3.1 節 (整理者設計); Gemma 4 E4B 與 12B 的模型 ID 未在模型卡上確認; 各模型的繁體中文能力除 TAIDE 與 Breeze 2 外均未見官方評測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 未進行 (待確認: 各等級模型的實際記憶體用量與繁體中文表現)
 :::
 
 **結論**: 挑模型先看記憶體放不放得下, 再看授權, 最後才看能力. 8 至 12GB 顯示記憶體可從 8B 級模型開始; 16GB 放約 14B 級餘裕較大 (與 K3.1 節一致); 24B 至 32B 級要 24GB 以上, 其中 30B 級在 24GB 時上下文須壓低. 需要繁體中文表現時, TAIDE 與聯發創新基地的 Breeze 2 是以繁體中文資料訓練的選項, 但授權各有條件; 國際模型的模型卡多半沒有繁體中文評測, 導入前請用自己的題目實測.
@@ -38,7 +38,7 @@ description: "挑模型先看記憶體放不放得下, 再看授權, 最後才�
 | B | 同上 (繁體中文) | [MediaTek-Research/Llama-Breeze2-8B-Instruct](https://huggingface.co/MediaTek-Research/Llama-Breeze2-8B-Instruct) | 8B | 4.9GB | Llama 3.2 Community License |
 | C | Apple Silicon 16GB | 同等級 B | - | - | - |
 | D | 16GB 顯示記憶體 (或 Apple Silicon 32GB 以上) | [taide/Gemma-3-TAIDE-12b-Chat-2602](https://huggingface.co/taide/Gemma-3-TAIDE-12b-Chat-2602) (繁體中文) | 12.4B | 7.6GB | (Gemma 版次)-TAIDE 模型授權條款 |
-| D | 同上 | Gemma 4 12B (見 [Gemma 4 模型卡](https://huggingface.co/google/gemma-4-31B-it)的家族表) | 11.95B | 7.3GB | Apache 2.0 |
+| D | 同上 | [google/gemma-4-12B-it](https://huggingface.co/google/gemma-4-12B-it) | 11.95B | 7.3GB | Apache 2.0 |
 | D | 同上 | [openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b) | 21B, 每 token 啟用 3.6B (MoE) | 模型卡稱 MoE 權重以 MXFP4 (一種 4 位元浮點量化格式) 訓練後量化, 可在 16GB 記憶體內執行 | Apache 2.0 |
 | E | 24GB 以上, 未滿 48GB 顯示記憶體 | [mistralai/Mistral-Small-3.2-24B-Instruct-2506](https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506) | 24B | 14.7GB | Apache 2.0 |
 | E | 同上 | Gemma 4 26B A4B (見 [Gemma 4 模型卡](https://huggingface.co/google/gemma-4-31B-it)) | 25.2B, 每 token 啟用 3.8B (MoE) | 15.4GB | Apache 2.0 |
@@ -88,6 +88,7 @@ description: "挑模型先看記憶體放不放得下, 再看授權, 最後才�
 - [Hugging Face 模型卡: microsoft/Phi-4-mini-instruct](https://huggingface.co/microsoft/Phi-4-mini-instruct/blob/main/README.md)
 - [Hugging Face 模型卡: google/gemma-4-E2B-it](https://huggingface.co/google/gemma-4-E2B-it)
 - [Hugging Face 模型卡: google/gemma-4-31B-it](https://huggingface.co/google/gemma-4-31B-it) (Gemma 4 家族表: E2B, E4B, 12B, 26B A4B, 31B)
+- [Hugging Face 模型卡: google/gemma-4-12B-it](https://huggingface.co/google/gemma-4-12B-it) (Google 發布, Apache 2.0, 11.95B 參數, 基底為 google/gemma-4-12B; 2026-10-27 擷取)
 - [Hugging Face 模型卡: meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)
 - [Hugging Face 模型卡: openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b) (含 gpt-oss-120b 的參數與記憶體說明)
 - [Hugging Face 模型卡: mistralai/Mistral-Small-3.2-24B-Instruct-2506](https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506)
