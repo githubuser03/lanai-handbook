@@ -6,9 +6,9 @@ description: "地端 AI 最有效的安全措施有四項: 不對網際網路開
 
 ::: info 本章屬性
 - 等級: ● 必要
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: OWASP LLM Top 10 2026 官方 PDF 的版次頁仍寫「發布日期待定」, 發布日以官方網頁標示的 2026-08-03 為準; 「研究 1」「研究 2」為內部研究紀錄, 非公開來源; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 不適用 (本章沒有要執行的指令; 各措施的設定步驟見 M0 至 M9)
 :::
 
 **結論**: 地端 AI 最有效的安全措施有四項: 不對網際網路開放, 鎖定版本, 縮小權限, 能還原. 這四項成本低, 且能涵蓋 2026 年已知的主要攻擊途徑 (推論, 信心: 中).
@@ -65,7 +65,7 @@ flowchart TD
 
 **不要**用連接埠轉發把服務直接開到網際網路. SentinelLABS (SentinelOne) 與 Censys 在 293 天的掃描中觀察到 130 個國家共 175,108 台暴露的 Ollama 主機 (來源: SentinelLABS 研究報告); 2026 年 n8n 於 Shadowserver 2026-02-05 的統計中仍有 24,607 台易受攻擊 (來源: SC Media); Langflow 也有多個漏洞已列入 CISA KEV (來源: BleepingComputer 報導; 編號與加入日見[架構地圖](/start/map)的參考來源, 處理方式見 [M9](/build/m9-automation)). 這幾件事屬於同一類問題.
 
-本節不寫各工具的版本號; 上表的分級為研究 2 的推論 (信心: 中).
+本節不寫各工具的版本號; 上表依使用人數區分做法, 屬整理者判斷 (推論, 信心: 中).
 
 ## K6.2 供應鏈: 版本鎖定與映像摘要值
 
@@ -91,7 +91,7 @@ flowchart TD
 1. 容器映像以版本號或摘要值 (digest) 鎖定, 不使用 `latest`.
 2. 記錄每個元件的安裝版本與日期 (見 O2).
 3. 升級前先讀發行說明, 並跑一次 promptfoo 測試集 (M6). promptfoo 是以固定題目比較模型回答品質的命令列測試工具.
-4. 模型權重優先採用 safetensors 格式, 避免載入來源不明的 pickle 檔; pickle 載入時可能執行任意程式碼 (來源: Hugging Face Pickle scanning 文件; 研究 1 亦列為風險).
+4. 模型權重優先採用 safetensors 格式, 避免載入來源不明的 pickle 檔; pickle 載入時可能執行任意程式碼 (來源: Hugging Face Pickle scanning 文件).
 5. 發現金鑰外洩時, 依「隔離, 重建, 輪替」處理 (整理者歸納的處理順序, 見 O3).
 
 ## K6.3 沙箱與機密管理
@@ -165,7 +165,7 @@ flowchart LR
     R6["LLM06<br/>無限制資源消耗"] --> C6["速率與 token 上限"]
 ```
 
-OWASP Top 10 for LLM Applications 2026 於 2026-08-03 發布 (來源: OWASP GenAI Security Project 官方頁面). 下表的條目編號與名稱已用官方頁面提供下載的 PDF 核對: LLM01 提示注入, LLM02 敏感資訊揭露, LLM03 過度代理, LLM04 供應鏈, LLM05 資料與模型投毒, LLM06 無限制資源消耗, LLM07 錯誤資訊, LLM08 隱藏情境暴露, LLM09 向量與嵌入弱點, LLM10 不當輸出處理 (2026-10-27 核對). OWASP Top 10 for Agentic Applications 2026 於 2025-12-09 發布 (來源: OWASP 官方頁面), ASI 條目名稱引自 Giskard 的整理 (二手來源). 另有一份 OWASP GenAI 的《State of Agentic AI Security and Governance》v2.01 於 2026-06-01 發布 (來源: letsdatascience.com 報導, 二手來源); 該文件與 Agentic Top 10 的更新關係待核對.
+OWASP Top 10 for LLM Applications 2026 於 2026-08-03 發布 (來源: OWASP GenAI Security Project 官方頁面; 官方 PDF 的版次頁仍寫「發布日期待定」, 本手冊以官方網頁標示的日期為準). 下表的條目編號與名稱已用官方頁面提供下載的 PDF 核對: LLM01 提示注入, LLM02 敏感資訊揭露, LLM03 過度代理, LLM04 供應鏈, LLM05 資料與模型投毒, LLM06 無限制資源消耗, LLM07 錯誤資訊, LLM08 隱藏情境暴露, LLM09 向量與嵌入弱點, LLM10 不當輸出處理 (2026-10-27 核對). OWASP Top 10 for Agentic Applications 2026 於 2025-12-09 發布 (來源: OWASP 官方頁面), ASI 條目名稱引自 Giskard 的整理 (二手來源). 另有一份 OWASP GenAI 的《State of Agentic AI Security and Governance》v2.01 於 2026-06-01 發布, 內容是代理型 AI 的安全與治理現況, 治理模式與各國法規標準 (來源: OWASP GenAI 官方頁面). 官方頁面沒有說明這份報告與 Agentic Top 10 的關係 (2026-10-27 查詢), Agentic Top 10 頁的延伸資源也沒有列出它; 本手冊以 Agentic Top 10 作為對照依據.
 
 | 風險 | 本手冊的對應做法 |
 |---|---|
@@ -235,7 +235,7 @@ OWASP 對照與護欄模型:
 - [Cloud Security Alliance: The OWASP Top 10 for LLM Applications 2026 (二手來源, 改版說明)](https://cloudsecurityalliance.org/blog/2026/10/21/the-owasp-top-10-for-llm-applications-2026-what-changed-and-why-it-matters)
 - [OWASP GenAI Security Project: Top 10 for Agentic Applications for 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/)
 - [Giskard: OWASP Top 10 for Agentic Applications 2026 (二手來源, ASI 條目名稱)](https://www.giskard.ai/knowledge/owasp-top-10-for-agentic-application-2026)
-- [letsdatascience.com: OWASP releases agentic AI security report v2.01 (二手來源)](https://letsdatascience.com/news/owasp-releases-agentic-ai-security-report-v201-b6926a1d)
+- [OWASP GenAI Security Project: State of Agentic AI Security and Governance 2.01 (發布日 2026-06-01)](https://genai.owasp.org/resource/state-of-agentic-ai-security-and-governance/)
 - [Hackett 等人, Bypassing LLM Guardrails (arXiv 2504.11168)](https://arxiv.org/abs/2504.11168)
 - [arXiv 2504.11168 全文 (Emoji Smuggling 結果)](https://arxiv.org/pdf/2504.11168)
 - [Meta 文件: Llama Guard 4 模型卡](https://dev.meta.ai/llama/docs/model-cards-and-prompt-formats/llama-guard-4)
@@ -245,6 +245,6 @@ OWASP 對照與護欄模型:
 
 內部研究紀錄與整理者判斷:
 
-- 「研究 1」「研究 2」為手冊整理前的內部研究紀錄, 非公開來源. 本章中「研究 2」對存取控制工具的分級, 以及「四項措施涵蓋 2026 年已知的主要攻擊途徑」的結論, 屬整理者推論 (信心: 中), 無公開來源可佐證.
+- 整理者判斷 (推論, 信心: 中, 無外部來源): K6.1 依使用人數區分的存取控制做法, 以及「四項措施涵蓋 2026 年已知的主要攻擊途徑」的結論.
 - 文中的類比 (住家的門, 門牌與指紋, 玻璃隔間, 金屬探測門): 整理者所寫, 無外部來源, 不應當作技術定義引用.
 - 沙箱分級 (最低, 中階, 進階), 機密管理的取捨, 「縮小工具權限優於護欄」的判斷, 以及 SSO 的人數門檻 (10 人), 皆為整理者建議 (推論).

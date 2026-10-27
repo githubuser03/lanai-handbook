@@ -6,9 +6,9 @@ description: "從零預訓練一個實用的語言模型, 需要數兆個 token 
 
 ::: info 本章屬性
 - 等級: ◇ 選讀
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: OLMo 系列各版本的 token 數本輪未查到官方數字; nanoGPT 的指令未實機驗證; 「多數讀者不需要預訓練」為整理者判斷; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 未進行 (T3.4 的 nanoGPT 範例依官方 README 整理, 尚未實際執行)
 :::
 
 **結論**: 從零預訓練一個實用的語言模型, 需要數兆個 token 的資料與數百萬 GPU 小時的運算, 超出個人與一般企業的能力範圍. 以公開數字為例, Llama 3.1 用了約 15 兆個 token 預訓練, 其中 8B 模型就用了 146 萬個 H100 GPU 小時. 讀者若要讓模型學會自己的格式與規則, 應先用檢索 ([M4](/build/m4-retrieval)) 或微調 ([T2](/train/t2-finetune)). 預訓練只適合當作學習題材, 用教學用的小型專案了解模型如何訓練.
@@ -33,6 +33,7 @@ description: "從零預訓練一個實用的語言模型, 需要數兆個 token 
 |---|---|---|---|
 | Llama 3.1 (8B, 70B, 405B) | 約 15 兆個 token, 資料截至 2023 年 12 月 | 三種大小合計 3,930 萬 H100-80GB GPU 小時; 8B 為 146 萬, 70B 為 700 萬, 405B 為 3,084 萬 | Llama 3.1 模型卡 (Meta 官方 llama-models 儲存庫) |
 | Gemma 3 | 27B 為 14 兆, 12B 為 12 兆, 4B 為 4 兆, 1B 為 2 兆, 270M 為 6 兆個 token | 以 TPUv4p, TPUv5p 與 TPUv5e 訓練, 未揭露時數 | Gemma 3 模型卡 |
+| OLMo 2 (7B, 13B) | 第一階段 7B 約 4 兆個 token, 13B 約 5 兆個 token; 第二階段以精選資料再訓練, 7B 用 500 億個 token 跑 3 次, 13B 用 1,000 億個 token 跑 3 次加 3,000 億個 token 跑 1 次, 再合併結果 | 模型卡未列 GPU 時數 | OLMo 2 模型卡 (Ai2) |
 | GPT-2 (124M) 的教學重現 | OpenWebText 語料 | 單一 8 張 A100 40GB 的節點約 4 天 | nanoGPT README |
 
 以 Llama 3.1 8B 為例, 146 萬 GPU 小時若只用 8 張同級 GPU, 約需 182,500 小時, 也就是約 21 年 (計算值: 1,460,000 ÷ 8 ÷ 24 ÷ 365). 相對地, [T1.3](/train/t1-decide) 引用的 Unsloth 文件標示, 用 QLoRA 微調同一等級的 8B 模型, 最低只需約 6GB 的顯示記憶體. 兩者的差距, 是本章建議多數讀者不要預訓練的主要理由 (推論, 信心: 高).
@@ -78,6 +79,7 @@ README 同時說明, 這個儲存庫已經很舊並停止維護, 只是保留供
 - **FineWeb2 的語言數, 授權, 去重**: [FineWeb2 GitHub 儲存庫](https://github.com/huggingface/fineweb-2), [Hugging Face 資料集: HuggingFaceFW/fineweb-2](https://huggingface.co/datasets/HuggingFaceFW/fineweb-2)
 - **維基百科資料庫備份的授權**: [Wikimedia dumps: License information (Debian 鏡像站)](https://cdimage.debian.org/mirror/wikimedia.org/dumps/legal.html)
 - **Dolma 的規模, Ai2 公開訓練程式與資料**: [Ai2 文件: OLMo](https://docs.allenai.org/models/olmo)
+- **OLMo 2 的預訓練資料量**: [Hugging Face: allenai/OLMo-2-1124-7B 模型卡 (含 7B 與 13B 的訓練階段與 token 數)](https://huggingface.co/allenai/OLMo-2-1124-7B)
 - **QLoRA 微調 8B 的顯示記憶體**: 見 [T1.3](/train/t1-decide) 引用的 Unsloth 文件
 - **計算值**: 8 張 GPU 所需年數 (1,460,000 ÷ 8 ÷ 24 ÷ 365 ≈ 20.8 年), 以及 GPT-2 124M 與 8B 的參數比例, 皆為依上列來源數字的算術結果.
 - **整理者判斷 (推論, 無外部來源)**: 三種做法的比較表, 「多數讀者不需要預訓練」, 自行爬取時須逐站確認條款, 去重的效益, 以及 nanoGPT 套件相容性的提醒.
