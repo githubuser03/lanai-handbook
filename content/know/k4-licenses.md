@@ -7,7 +7,7 @@ description: "模型與軟體的授權各自獨立, 要分開檢查; 限制多�
 ::: info 本章屬性
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
+- 資料基準日: 2026-10-27
 - 待查證: TAIDE 授權條款要點改依國研院 TAIDE 網站公布的條款全文整理, 見[授權速查](/ref/licenses); Gemma 4 授權檔原文 (本輪依 Google 開源部落格與 Gemma 條款頁的指引, 未直接讀授權檔); Mistral AI Research License 的要點為整理者依授權全文歸納, 非逐條對照; 模型範例已更換, 授權標示須對照各模型的 Hugging Face 頁面; 量化或轉檔版本是否沿用原模型授權為推論; 本章不構成法律意見; 文中的類比為整理者所寫, 不代表技術或法律上完全等同
 :::
 
@@ -33,6 +33,20 @@ description: "模型與軟體的授權各自獨立, 要分開檢查; 限制多�
 ## K4.1 模型授權: 通用開源授權與自訂授權
 
 授權可以想成租屋契約: 房子 (模型) 可以住, 但契約會寫明能不能轉租, 能不能拿來開店, 門口要不要掛房東指定的招牌. 免費下載不代表沒有條件, 條件都寫在授權裡.
+
+模型授權大致分成兩類, 下圖列出本章提到的例子 (各模型的實際授權以模型頁與授權原文為準):
+
+```mermaid
+flowchart TD
+  ML["模型授權"] --> OS["通用開源授權"]
+  ML --> CU["自訂授權<br/>常附使用政策, 標示, 門檻或用途限制"]
+  OS --> AP["Apache 2.0<br/>例: gpt-oss-20b, Gemma 4"]
+  OS --> MIT["MIT<br/>常見於軟體"]
+  CU --> LL["Llama 4 Community License"]
+  CU --> GT["Gemma Terms of Use<br/>Gemma 4 以前"]
+  CU --> MR["Mistral AI Research License<br/>僅限研究用途"]
+  CU --> TA["TAIDE 模型授權條款"]
+```
 
 模型的權重也有授權. 同一個模型家族的不同尺寸或不同世代, 授權可能不同, 因此要逐一看模型頁面, 不能只看家族名稱. 例如 Hugging Face (公開存放與下載模型的平台, 也是本手冊主要的模型來源) 上 Mistral-7B-Instruct-v0.3 標示 Apache 2.0, 同一家公司的 Mistral-Large-Instruct-2411 標示 `mrl` (Mistral AI Research License), 模型頁說明只允許非商業的使用與修改 (來源: 各模型的 Hugging Face 頁面).
 
@@ -63,6 +77,21 @@ Gemma 是授權會變動的例子. Google 開源部落格說明 Gemma 4 是 Gemm
 - **衍生關係**: 模型卡的 `base_model` 欄位標示衍生自哪個模型, `base_model_relation` 可標示為 `finetune`, `adapter`, `quantized` 或 `merge` (來源: Hugging Face 文件 Model cards). 量化或轉檔版本的授權應回到原模型確認; 轉檔不會讓授權變寬鬆 (推論, 信心: 中).
 - **存取條件**: 部分模型是 gated model, 使用者要先同意與作者分享聯絡資訊才能下載; 作者可設為人工核准, 也可隨時撤銷存取 (來源: Hugging Face 文件 Gated models). Llama 3.1 等模型即採此方式 (來源: meta-llama/Llama-3.1-8B-Instruct 模型頁).
 
+下圖把判斷來源與格式的步驟串起來; 實際的入庫掃描見 M3:
+
+```mermaid
+flowchart TD
+  D["找到模型檔"] --> P{"發布者是官方組織帳號嗎?"}
+  P -->|"是"| G{"是 gated model 嗎?"}
+  P -->|"否, 是轉檔或量化版本"| B["查 base_model<br/>授權回到原模型確認"]
+  B --> G
+  G -->|"是"| AG["登入並同意條款後下載"]
+  G -->|"否"| FMT{"檔案格式"}
+  AG --> FMT
+  FMT -->|"safetensors 或 GGUF"| OK["優先選用, 進入 M3 入庫"]
+  FMT -->|"pickle (.bin, .pt)"| NG["載入時可執行程式<br/>來源不明就避免"]
+```
+
 檔案格式也影響風險. pickle 是 Python 用來儲存資料物件的格式; pickle 格式 (常見副檔名 `.bin`, `.pt`) 在載入時可以執行任意 Python 程式; Hugging Face 會掃描上傳的 pickle 檔並標示可疑的 import, 但官方自承掃描「並非百分之百可靠」, 使用者須自行確認 (來源: Hugging Face 文件 Pickle scanning). 因此優先選用 safetensors 或 GGUF, 避免來源不明的 pickle 檔. 入庫掃描與雜湊紀錄的做法見 [M3](/build/m3-model-intake).
 
 **對應架構圖**: 雲端模型來源到入庫檢查主機 (ModelAudit 等掃描模型檔的工具) 的那一段.
@@ -74,6 +103,17 @@ Gemma 是授權會變動的例子. Google 開源部落格說明 Gemma 4 是 Gemm
 OSI (Open Source Initiative) 的開源定義要求授權不得歧視任何人或團體, 也不得限制在特定領域使用; 授權也不得限制任何人販售或贈送軟體 (來源: The Open Source Definition 第 1, 5, 6 條). 只要授權對使用方式或對象設限, 即使原始碼公開, 也不屬於 OSI 開源. 本手冊對這類專案稱「原始碼公開」(source-available), 不稱「開源」.
 
 判斷方式: 讀授權檔, 找有沒有「僅限內部使用」, 「不得營運多租戶服務」, 「超過多少使用者須保留品牌」這類使用限制. 有任一項, 就歸為原始碼公開 (信心: 中).
+
+下圖是同一個判斷方式的流程, 只是初步歸類, 實際仍以授權原文為準:
+
+```mermaid
+flowchart TD
+  S{"原始碼看得到嗎?"} -->|"看不到"| CL["閉源 (專有軟體)<br/>例: LM Studio"]
+  S -->|"看得到"| L["讀授權檔"]
+  L --> R{"有使用限制嗎?<br/>僅限內部, 不得多租戶,<br/>超過人數須保留品牌"}
+  R -->|"有任一項"| SA["原始碼公開<br/>例: n8n, Open WebUI, Dify"]
+  R -->|"沒有"| OSI["再對照 OSI 開源定義<br/>不得限制使用者與用途"]
+```
 
 | 元件 | 角色 | 授權性質 | 主要限制 |
 |---|---|---|---|
@@ -94,9 +134,26 @@ n8n 官方 FAQ 對「內部業務」的界線有具體說明: 顧問在自己的
 
 授權疊加可以想成一趟要轉乘好幾段交通工具的旅程: 每一段的行李規定都要遵守, 最後能帶多少行李, 由規定最嚴的那一段決定.
 
+```mermaid
+flowchart TD
+  A["介面的授權<br/>例: Open WebUI"] --> SYS["整套系統能做的事"]
+  B["自動化的授權<br/>例: n8n"] --> SYS
+  C["模型的授權<br/>例: Llama, Gemma"] --> SYS
+  SYS --> R["由限制最多的那一份決定"]
+```
+
 一套系統由多個元件與模型組成時, 每一份授權都要同時遵守, 因此限制最多的那一份決定整套系統能做什麼 (信心: 中). 同一個專案內也可能有多份授權, 例如 n8n 的 `.ee.` 檔案, LiteLLM (統一轉送模型請求並控管金鑰與配額的閘道, 見 M5) 的 `enterprise/` 目錄 (見[授權速查](/ref/licenses)).
 
 三種使用情境的差異如下 (整理者推論, 信心: 中):
+
+先看自己屬於哪一種情境, 再看下表的判讀重點 (決策時以各授權原文為準):
+
+```mermaid
+flowchart TD
+  U{"使用情境"} -->|"個人使用"| P["很少受影響<br/>模型的使用政策仍適用"]
+  U -->|"組織內部使用"| I["留意品牌與人數門檻<br/>以及研究用途限定"]
+  U -->|"對外提供服務或散布"| E["大多數限制在這裡<br/>依授權紅旗逐項檢查"]
+```
 
 | 情境 | 通常受影響的條款 | 判讀重點 |
 |---|---|---|
@@ -113,6 +170,20 @@ AGPL 值得單獨留意. AGPL v3 第 13 條要求: 修改過的程式若讓使�
 ## K4.5 入庫時記錄授權
 
 入庫時記錄授權, 可以想成購物時保存收據與當時的條款: 日後條款改版, 仍能證明取得時適用的是哪一版.
+
+下圖是入庫時記錄授權的流程, 欄位明細見本節的表格:
+
+```mermaid
+flowchart TD
+  D["下載模型"] --> C["讀模型卡的 license 欄位"]
+  C --> O{"是 license: other 嗎?"}
+  O -->|"是"| LF["讀 license_name<br/>與 LICENSE 檔全文"]
+  O -->|"否"| SAVE
+  LF --> SAVE["存授權原文副本<br/>並記錄雜湊值"]
+  SAVE --> REC["記錄取得日期, 原模型,<br/>是否 gated, 使用範圍"]
+  REC --> REG["寫入登記表 (M1.5 節)"]
+  REG --> CMP["日後比對授權是否改版"]
+```
 
 授權會改版, 模型頁面也可能更新, 因此要在入庫當下記錄當時的授權. Hugging Face 模型庫以模型卡 (README.md) 開頭的 YAML 中介資料 `license` 欄位標示授權, 例如 `apache-2.0`, `mit`, `llama3.1`, `gemma`; 自訂授權標為 `license: other`, 以 `license_name` 命名, 並把全文放在模型庫的 `LICENSE` 檔 (來源: Hugging Face 文件 Licenses).
 
