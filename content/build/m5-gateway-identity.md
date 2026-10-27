@@ -1,10 +1,14 @@
+---
+description: "單機單人不需要閘道. 只有多模型輪替而沒有多人治理需求時, 用 llama-swap 就夠."
+---
+
 # M5 模型閘道與身分驗證
 
 ::: info 本章屬性
 - 等級: ○ 依情境, 符合條件才讀
 - 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: llama-swap 授權 (訓練資料內資訊, 可能已過時); 另有一個 LiteLLM 漏洞據報預定於 2026-10-27 公開 (原引的 SOCRadar 文章未見此說法, 來源待補), 本章發布前須重新查證; M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令未實機驗證; Keycloak 的 Google Hosted Domain 欄位是否在登入時強制檢查網域, 須在測試環境驗證; Google 身分提供者的回呼網址格式來自社群論壇 (二手來源), 以主控台顯示為準; Open WebUI 的 `AIOHTTP_CLIENT_SSL_CERT_FILE` 是否涵蓋 OIDC 請求未確認; Langfuse `AUTH_KEYCLOAK_ISSUER` 的值為依 OIDC 慣例的推論; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 資料基準日: 2026-10-27
+- 待查證: LiteLLM 官方事故報告提到一個預定於 2026-10-27 公開的漏洞, 截至 2026-10-27 查詢尚未見對應的 GHSA 或 CVE, 須再查證; M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令未實機驗證; Keycloak 的 Google Hosted Domain 欄位是否在登入時強制檢查網域, 須在測試環境驗證; Google 身分提供者的回呼網址格式來自社群論壇 (二手來源), 以主控台顯示為準; Open WebUI 的 `AIOHTTP_CLIENT_SSL_CERT_FILE` 是否涵蓋 OIDC 請求未確認; Langfuse `AUTH_KEYCLOAK_ISSUER` 的值為依 OIDC 慣例的推論; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 單機單人不需要閘道. 只有多模型輪替而沒有多人治理需求時, 用 llama-swap 就夠. LiteLLM 有納入評估, 但不列為預設, 原因是一年內兩度成為供應鏈入侵的入口, 且集中保存上游金鑰 (信心: 高). 符合 M5.1 節的條件時, 閘道放在獨立的閘道區, 成為唯一保存 API 金鑰的地方; 帳號則交給身分驗證伺服器統一管理.
@@ -33,7 +37,7 @@
 
 Ollama, llama-server 與 LM Studio 都已提供與 OpenAI 相容的 API, 介面可以直接連推論引擎 (信心: 高).
 
-三項條件中符合任兩項, 才考慮加閘道 (信心: 中高; 「架構地圖」與「組裝總覽」引用此條件):
+三項條件中符合任兩項, 才考慮加閘道 (信心: 中; 「架構地圖」與「組裝總覽」引用此條件):
 
 1. 3 人以上共用, 需要個別金鑰, 配額或用量紀錄.
 2. 同時混用雲端 API 與地端模型, 需要故障轉移.
@@ -43,16 +47,16 @@ Ollama, llama-server 與 LM Studio 都已提供與 OpenAI 相容的 API, 介面�
 
 - 介面直連推論引擎
 - 用 llama-swap 處理模型切換
-- 在反向代理 (Nginx 或 Caddy) 上做基本驗證與速率限制. Nginx 的速率限制 (`limit_req`) 為標準模組; Caddy 標準版不內建, 須另裝 caddy-ratelimit 外掛並重新編譯 (來源: 第三方教學, 待對照官方文件)
+- 在反向代理 (Nginx 或 Caddy) 上做基本驗證與速率限制. Nginx 的速率限制 (`limit_req`) 為標準模組; Caddy 標準版不內建, 須另裝 caddy-ratelimit 外掛並重新編譯 (見 M2.3 節; 來源: caddyserver.com 模組頁)
 - 使用介面本身的使用者與權限管理 (Open WebUI, LibreChat)
 
 ## M5.2 llama-swap: 多模型輪替
 
 一張顯示卡的記憶體通常只夠放一個模型. 想輪流使用對話模型與嵌入模型時, 需要一個程式依請求自動卸下目前的模型, 換上需要的模型. 可以想成只有一個爐口的廚房, 由同一位廚師依點單換鍋.
 
-llama-swap 是 Go 撰寫的單一執行檔, 以 YAML 設定, 依請求中的 model 欄位自動啟停 llama-server 或 vLLM. 它相容 OpenAI 與 Anthropic API, 並支援 API 金鑰. 2026 年持續發版, Go 模組在 2026-08-24 仍有更新 (來源: libraries.io 與多篇設定教學彙整; 授權為 MIT 屬訓練資料內資訊, 可能已過時, 請以官方儲存庫核對).
+llama-swap 是 Go 撰寫的單一執行檔, 以 YAML 設定, 依請求中的 model 欄位自動啟停 llama-server 或 vLLM. 它相容 OpenAI 與 Anthropic API, 並支援 API 金鑰. 專案自述為「在自己的機器上執行多個生成式 AI 模型, 並依需求即時切換」, 授權為 MIT (來源: llama-swap GitHub 儲存庫, 2026-10-27 核對). 2026 年持續發版, Go 模組在 2026-08-24 仍有更新 (來源: libraries.io 與多篇設定教學彙整, 二手來源).
 
-適用情境是一張顯示卡要輪流載入對話模型與嵌入模型, 也就是硬體等級 B, D, E (信心: 中高). 它只做模型切換, 不做多租戶治理, 因此風險等級低於完整閘道.
+適用情境是一張顯示卡要輪流載入對話模型與嵌入模型, 也就是硬體等級 B, D, E (信心: 中). 它只做模型切換, 不做多租戶治理, 因此風險等級低於完整閘道.
 
 ## M5.3 LiteLLM 的使用條件與限制
 
@@ -60,7 +64,7 @@ LiteLLM 是常見的開源模型閘道, 能統一接地端與雲端模型, 並�
 
 ### 現況
 
-LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權, SSO 等功能屬企業版 (來源: Maxim AI 與 TechJack Solutions 的比較文). Socket 的 PyPI 頁面顯示 litellm 1.107.0 的週下載量為 22,948,819 次.
+LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權. 管理介面的 SSO 屬企業版功能: 官方文件寫明 SSO 需要企業版授權, 但自 v1.76.0 起, 5 位使用者以內可免費使用 (來源: LiteLLM 文件 Admin UI SSO, 2026-10-27 核對).
 
 ### 2026 年兩次供應鏈事件
 
@@ -68,20 +72,22 @@ LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權, SSO 等�
 
 | 日期 | 事件 | 來源 |
 |---|---|---|
-| 2026-03-24 | TeamPCP 先入侵 LiteLLM CI/CD 中未鎖定版本的 Trivy 掃描工具, 竊取 PyPI 發布權杖, 再發布含後門的 1.82.7 與 1.82.8 | Snyk |
-| 2026-10-21 | 官方事故報告指出發布流程遭入侵, 攻擊者將惡意 v1.107.0 推送到 Docker registry 與 PyPI; 惡意 wheel 於 UTC 11:39 至 13:23 在 PyPI 上架; v1.107.0, latest, main-latest, main-stable 標籤都曾指向惡意映像; 惡意程式放在 Python 啟動檔 (cook.pth, sitecustomize.py), 只要 Python 啟動就會執行 | LiteLLM 官方事故報告, Wiz, Help Net Security |
+| 2026-03-24 | PyPI 上的 1.82.7 與 1.82.8 含竊取憑證的惡意程式, 上架約 40 分鐘後遭 PyPI 隔離; 官方研判入口很可能是 CI/CD 掃描流程中的 Trivy 相依套件, 攻擊者繞過官方 CI/CD 直接發布到 PyPI. Snyk 的分析指出, 攻擊者 (TeamPCP) 先入侵未鎖定版本的 Trivy, 再竊取 PyPI 發布權杖 | LiteLLM 官方部落格 (2026-03-24), Snyk |
+| 2026-10-21 | 官方事故報告指出發布流程遭入侵, 攻擊者將惡意 v1.107.0 推送到 Docker registry 與 PyPI; 惡意 wheel 於 UTC 11:39 至 13:23 在 PyPI 上架; v1.107.0, latest, main-latest, main-stable 標籤都曾指向惡意映像; 惡意程式放在 Python 啟動檔 (cook.pth, sitecustomize.py), 只要 Python 啟動就會執行 | LiteLLM 官方事故報告 |
 
-官方建議鎖定 `litellm==1.106.2`, 或 2026-10-21 之前發布的明確版本 (SOCRadar 轉述). 官方事故報告指出, 發布權限曾暫時放寬, 攻擊者取得開發者的 GitHub CLI 憑證後修改發布流程, 入口點官方表示尚未確認. 官方說明企業版私有發行未受影響.
+2026-03 事件的官方建議是把所有存在受影響系統上的憑證視為已外洩並輪替, 移除惡意的 `litellm_init.pth`, 並鎖定已知安全的版本 (例如 1.82.6 或更早); 官方之後以新的 CI/CD 流程發布乾淨的 1.83.0 (來源: LiteLLM 官方部落格 2026-03-24). 2026-10 事件的官方建議是鎖定 `litellm==1.106.2` 或更早發布的明確版本, 從頭重建映像與虛擬環境, 並輪替所有金鑰 (來源: LiteLLM 官方事故報告 2026-10-21).
 
-2026 年的 CVE 紀錄見[元件版本與安全公告頁](/ref/versions). 其中 CVE-2026-42208 為未驗證即可利用的 SQL 注入 (1.81.16 至 1.83.6, 修補於 1.83.7), 來源為 LiteLLM 官方部落格與 Bishop Fox.
+2026-10 事件的入口, 官方在 2026-10-23 的攻擊鏈報告中說明: LiteLLM Agent Platform 的 master key 於 2026-05-27 被提交到公開儲存庫, 之後沒有撤銷; 攻擊者於 2026-10-10 用這把金鑰呼叫 Agent Platform 的 API, 再一路取得開發者的 GitHub 憑證並修改發布流程. 官方表示已完成對攻擊者行為的調查, 改善措施另行公布 (來源: LiteLLM 官方部落格 The attack chain behind the v1.107.0 LiteLLM release). 官方說明企業版私有發行未受影響. 這起事件的起點是一把沒有撤銷的金鑰, 說明 O3 的「外洩後立即輪替」比任何單一防護更關鍵 (推論, 信心: 中).
+
+2026 年的 CVE 紀錄見[元件版本與安全公告頁](/ref/versions). 其中 3 個程式漏洞已列入 CISA KEV (美國網路安全暨基礎設施安全局的已知遭利用漏洞目錄): 未經身分驗證即可利用的 SQL 注入, 經 MCP 預覽端點的命令注入, 以及 MCP 驗證繞過; 受影響與修補版本見版本頁 (來源: CISA KEV 目錄, 版本頁所列 GitHub Security Advisories).
 
 ### 判斷
 
-LiteLLM 的問題不在程式碼品質, 而在它是集中保存金鑰的高價值目標. 單機使用時, 它帶來的攻擊面大於效益. 多人環境則需要虛擬金鑰與配額, 此時須承擔其風險並落實下列措施 (信心: 中高):
+LiteLLM 集中保存所有上游金鑰, 是攻擊者的高價值目標; 2026 年除了兩次供應鏈事件, 也有 3 個程式漏洞列入 CISA KEV. 單機使用時, 它帶來的攻擊面大於效益. 多人環境則需要虛擬金鑰與配額, 此時須承擔其風險並落實下列措施 (信心: 中):
 
 1. 以映像摘要值 (digest) 鎖定版本, 不使用 latest 或 main-stable 標籤.
-2. 只放在內網, 並在反向代理層封鎖管理路徑 (`/health/test_connection`, MCP 路由).
-3. 不開啟 MCP 功能.
+2. 只放在內網, 並在反向代理層封鎖管理路徑 (`/health/test_connection`, MCP 路由). 其他區呼叫閘道時, 請求中帶有虛擬金鑰與完整提示; 跨 VM 連線建議經反向代理改走 HTTPS (憑證來源見 M2.3 節). 本章範例為了簡潔寫成 `http://`, 只適合各區已以 VLAN 與防火牆隔開, 且接受網段內明文傳輸風險的情況 (推論, 信心: 中).
+3. 不需要時不開啟 MCP 功能; 由 LiteLLM 兼任工具閘道 (M7.2 節) 時, 版本須高於 MCP 相關公告的修補版 (見[版本頁](/ref/versions)).
 4. 上游金鑰只給最低權限.
 5. 訂閱 GitHub Security Advisories.
 6. 事先準備好金鑰輪替流程 (見 O3).
@@ -90,7 +96,7 @@ LiteLLM 的問題不在程式碼品質, 而在它是集中保存金鑰的高價�
 
 | 方案 | 授權 | 定位 | 評語 |
 |---|---|---|---|
-| llama-swap | MIT (待核對) | 模型切換 | 地端多模型首選 |
+| llama-swap | MIT | 模型切換 | 地端多模型首選 |
 | Bifrost (Maxim AI) | Apache 2.0 | Go 閘道, 含虛擬金鑰, MCP 閘道, 語意快取 | 效能數字皆為廠商自測; SSO 與叢集屬企業版; 安全紀錄較短, 資料不足 |
 | Envoy AI Gateway, Kong AI Gateway, Apache APISIX | Apache 2.0 | 企業 API 管理延伸 | 須先會維運 Envoy 或 Kong, 對手冊讀者過重 |
 
@@ -125,22 +131,27 @@ Keycloak 有兩種啟動方式. `start-dev` 是開發模式, 官方文件說明�
 
 下例以標準映像示意, 正式採用時建議改為官方的最佳化映像做法. 指令依官方文件的選項名稱整理, 未實機驗證:
 
+密碼不寫在指令列, 改放在權限 600 的 `keycloak.env` 檔, 以免留在 shell 歷史紀錄與行程清單 (推論). Keycloak 的每個命令列選項都有對應的環境變數, 命名規則是加上 `KC_` 前綴, 轉成大寫並把 `-` 換成 `_`, 例如 `--db-password` 對應 `KC_DB_PASSWORD` (來源: Keycloak 文件 Configuring Keycloak). `keycloak.env` 的內容為:
+
+```ini
+KC_BOOTSTRAP_ADMIN_USERNAME=<暫時管理者帳號>
+KC_BOOTSTRAP_ADMIN_PASSWORD=<暫時管理者密碼>
+KC_DB_PASSWORD=<資料庫密碼>
+```
+
 ```bash
 # 反向代理與 Keycloak 在同一台主機時, 只發布在 127.0.0.1
 docker run -d --name keycloak --restart always \
   -p 127.0.0.1:8081:8080 \
-  -e KC_BOOTSTRAP_ADMIN_USERNAME=<暫時管理者帳號> \
-  -e KC_BOOTSTRAP_ADMIN_PASSWORD=<暫時管理者密碼> \
+  --env-file ./keycloak.env \
   quay.io/keycloak/keycloak:<固定版本標籤> \
   start \
   --db postgres --db-url-host <PostgreSQL 主機> \
-  --db-username keycloak --db-password <資料庫密碼> \
+  --db-username keycloak \
   --hostname https://sso.example.internal \
   --http-enabled true \
   --proxy-headers xforwarded
-```
-
-密碼請放在 `.env` 檔 (權限 600) 或機密管理工具, 不要留在 shell 歷史紀錄 (推論). 反向代理依第 4 點限制路徑. 以 Nginx 為例 (依 M2.3 節的寫法延伸, 未實機驗證):
+``` 反向代理依第 4 點限制路徑. 以 Nginx 為例 (依 M2.3 節的寫法延伸, 未實機驗證):
 
 ```nginx
 server {
@@ -180,9 +191,9 @@ Nginx 的前綴比對採最長符合, 因此 `/realms/master/` 會優先於 `/re
 
 Keycloak 端登記完成後, 換到 Open WebUI 這一端, 告訴它要去哪裡確認身分, 以及登記時拿到的 client ID 與 secret. 下列設定寫在 Open WebUI 的環境變數檔.
 
-依 Open WebUI 官方 SSO 與 Keycloak 文件整理的環境變數 (未實機驗證):
+依 Open WebUI 官方 SSO 與 Keycloak 文件整理的環境變數 (未實機驗證). 下列內容加進 M2.2 節建立的同一個 `.env`, 以 `docker run --env-file` 或 Docker Compose 的 `env_file` 載入; 環境變數只在容器建立時讀入, 改完 `.env` 要先移除容器 (`docker rm -f open-webui`), 再以 M2.2 節的同一個指令重建, 資料卷中的對話與設定會保留 (推論, 依 Docker 環境變數的一般行為). `OAUTH_SCOPES` 的值含空白, 不要用 shell 的 `. ./.env` 方式載入:
 
-```bash
+```ini
 # .env (權限 600)
 WEBUI_URL=https://ai.example.internal
 ENABLE_OAUTH_SIGNUP=true
@@ -201,13 +212,14 @@ JWT_EXPIRES_IN=8h
 
 - `OPENID_PROVIDER_URL` 為必填, 值是 OIDC 的 well-known 網址. `OAUTH_SCOPES` 預設即為 `openid email profile`.
 - `ENABLE_OAUTH_SIGNUP` 預設為 `False`, 不開啟時, 第一次以 SSO 登入的使用者無法自動建立帳號.
-- `WEBUI_URL` 必須在開始使用 OAuth 之前設定.
+- `WEBUI_URL` 必須在開始使用 OAuth 之前設定, 否則無法登入. 它屬於 ConfigVar: 值在第一次啟動後存進 Open WebUI 的資料庫, 之後改環境變數不會生效, 只能在管理面板 Settings 的 WebUI URL 修改, 或設定 `ENABLE_PERSISTENT_CONFIG=False` 讓 Open WebUI 每次都讀環境變數. 依 M2.2 節第一次啟動時就寫入 `WEBUI_URL`, 可以避開這個問題.
 - `ENABLE_OAUTH_PERSISTENT_CONFIG` 預設為 `false`, 此時管理面板的 OAuth 區塊為唯讀, 修改要改環境變數並重新啟動.
 - `OAUTH_MERGE_ACCOUNTS_BY_EMAIL` 預設為 `false`. 官方提醒, 身分提供者沒有驗證電子郵件時, 依電子郵件合併帳號可能不安全.
 - 群組同步需要 `ENABLE_OAUTH_GROUP_MANAGEMENT=true`, 並在 Keycloak 的 client scope 加上群組 mapper; Keycloak 預設不會把群組資訊放進權杖.
 - back-channel logout 要在設定 Redis 時, 才能撤銷已簽發的 JWT; 沒有 Redis 時, 已簽發的 JWT 仍有效到過期為止.
 - `JWT_EXPIRES_IN` 預設 `4w`. 官方警告設為 `-1` (永不過期) 在正式環境極度危險.
-- 確認 SSO 可用後, 可將 `ENABLE_LOGIN_FORM` 設為 `false` 隱藏帳密表單. 管理者仍可經 `/auth?form=true` 進入本機登入表單.
+- 確認 SSO 可用後, 可將 `ENABLE_LOGIN_FORM` 設為 `false` 隱藏帳密表單; 官方提醒要先設好 SSO 或 LDAP 再關閉, 否則沒有人能登入. 這個設定也屬於 ConfigVar, 已啟動的實例改在管理面板 Settings > Admin > Authentication 的 Login Form 調整, 立即生效. 管理者仍可經 `/auth?form=true` 進入本機登入表單.
+- `ENABLE_PASSWORD_AUTH` 是另一個開關, 官方警告只有在已使用 `ENABLE_OAUTH_SIGNUP=true` 時才能設為 `False`, 沒有使用 SSO 時關閉會無法登入.
 - Keycloak 使用公司內部 CA 的憑證時, Open WebUI 要能信任該 CA. Open WebUI 提供 `AIOHTTP_CLIENT_SSL_CERT_FILE` 指定自訂 CA 檔, 但它是否涵蓋 OIDC 探索與權杖請求, 本輪未確認, 須在測試環境驗證.
 
 ### 其他系統的串接
@@ -215,9 +227,9 @@ JWT_EXPIRES_IN=8h
 | 系統 | 串接方式 | 注意事項 |
 |---|---|---|
 | Langfuse | 環境變數 `AUTH_KEYCLOAK_CLIENT_ID`, `AUTH_KEYCLOAK_CLIENT_SECRET`, `AUTH_KEYCLOAK_ISSUER`; 回呼路徑 `/api/auth/callback/keycloak` (來源: Langfuse 文件 Authentication and SSO) | `AUTH_DISABLE_SIGNUP=true` 關閉自行註冊; `AUTH_DISABLE_USERNAME_PASSWORD=true` 關閉帳密登入 (同上). Issuer 的值一般為 `https://sso.example.internal/realms/company` (推論, 依 OIDC 慣例, 須實機確認) |
-| LiteLLM 管理介面 | 以 `GENERIC_CLIENT_ID`, `GENERIC_CLIENT_SECRET`, `GENERIC_AUTHORIZATION_ENDPOINT`, `GENERIC_TOKEN_ENDPOINT`, `GENERIC_USERINFO_ENDPOINT` 串接通用 OIDC (來源: LiteLLM 文件 Admin UI SSO) | 官方說明 SSO 需要企業版授權; 自 v1.76.0 起 5 位使用者以內免費 (同上). 管理介面本身仍只限管理者 IP (見 M5.3 節) |
+| LiteLLM 管理介面 | 以 `GENERIC_CLIENT_ID`, `GENERIC_CLIENT_SECRET`, `GENERIC_AUTHORIZATION_ENDPOINT`, `GENERIC_TOKEN_ENDPOINT`, `GENERIC_USERINFO_ENDPOINT` 串接通用 OIDC (來源: LiteLLM 文件 Admin UI SSO) | 官方說明 SSO 需要企業版授權; 自 v1.76.0 起 5 位使用者以內免費 (同上). 另設 `GENERIC_USER_ID_ATTRIBUTE=sub`: 未設定時 LiteLLM 以 `preferred_username` 識別使用者, 使用者若能自行修改這個值, 下次登入會被當成另一個人; `sub` 是 OIDC 中終生不變的帳號識別碼 (同上). 管理介面本身仍只限管理者 IP (見 M5.3 節) |
 
-每個系統各建一個 client, 不要共用 client secret (推論, 信心: 中高).
+每個系統各建一個 client, 不要共用 client secret (推論, 信心: 中).
 
 ### 串接公司既有帳號
 
@@ -247,19 +259,13 @@ JWT_EXPIRES_IN=8h
 
 目標是停用一次, 所有系統都無法再使用. 各系統的登入狀態彼此獨立, 只停用 Keycloak 帳號並不夠:
 
-```
-[AD 停用帳號 (或 Keycloak 直接停用)]
-      |
-      v
-[Keycloak: 帳號 Enabled 關閉, 登出所有工作階段]
-      |
-      +--> [Open WebUI: back-channel logout 撤銷 JWT (需 Redis)]
-      +--> [Langfuse 等其他 OIDC 系統: 無法再登入]
-      v
-[LiteLLM: 封鎖該使用者的虛擬金鑰]
-      |
-      v
-[檢查各系統中該使用者自建的 API 金鑰, 記錄完成時間]
+```mermaid
+flowchart TD
+  A["AD 停用帳號 (或 Keycloak 直接停用)"] --> B["Keycloak: 帳號 Enabled 關閉, 登出所有工作階段"]
+  B --> C["Open WebUI: back-channel logout 撤銷 JWT (需 Redis)"]
+  B --> D["Langfuse 等其他 OIDC 系統: 無法再登入"]
+  B --> E["LiteLLM: 封鎖該使用者的虛擬金鑰"]
+  E --> F["檢查各系統中該使用者自建的 API 金鑰, 記錄完成時間"]
 ```
 
 1. **停用帳號**: 以 AD 為來源時, 在 AD 停用帳號, 並確認同步或 MSAD User Account Mapper 已讓 Keycloak 帳號變成停用. 也可直接在 Keycloak 的 **Users** 選取使用者, 把 **Enabled** 切為關閉; 官方文件說明這會阻止新的登入 (來源: Keycloak Server Administration Guide).
@@ -281,7 +287,7 @@ curl -X POST 'http://<閘道區主機>:4000/key/block' \
 
 有些環境同時使用地端模型與雲端模型. 閘道可以決定每個請求送去哪裡 (路由), 地端故障時改送雲端 (備援). 方便之餘, 也要先決定哪些資料絕對不能離開內網.
 
-**結論**: LiteLLM 可以在同一個入口同時接地端 vLLM 與雲端模型, 並在地端故障時自動退到雲端. 但「退到雲端」等於請求內容離開內網, 因此備援要有明確的範圍. LiteLLM 官方文件提供金鑰層的 `disable_fallbacks`, 可讓特定金鑰「失敗就報錯, 不退到雲端」; 依請求標籤精確限制備援目的地的專門機制, 官方文件查無, 須自行實測 (信心: 中). 本手冊的架構中, 只有閘道區能對外連線, 所以即使設定錯誤, 地端各區也無法直接連到雲端; 控制點在閘道區的設定與防火牆.
+**結論**: LiteLLM 可以在同一個入口同時接地端 vLLM 與雲端模型, 並在地端故障時自動退到雲端. 但「退到雲端」等於請求內容離開內網, 因此備援要有明確的範圍. LiteLLM 官方文件提供兩種金鑰層的控制: `disable_fallbacks` 讓特定金鑰「失敗就報錯, 不退到雲端」; 金鑰可用模型清單 (`models`) 只列地端模型時, 備援也不會改送雲端. 依請求標籤精確限制備援目的地的專門機制, 官方文件查無, 須自行實測 (信心: 中). 本手冊的架構中, 只有閘道區能對外連線, 所以即使設定錯誤, 地端各區也無法直接連到雲端; 控制點在閘道區的設定與防火牆.
 
 ### 設定範例
 
@@ -294,22 +300,22 @@ model_list:
   - model_name: local-chat
     litellm_params:
       model: openai/google/gemma-4-31B-it
-      api_base: http://vllm-a:8000/v1
-      api_key: dummy
+      api_base: http://<推論區位址>:8000/v1
+      api_key: os.environ/VLLM_API_KEY
   - model_name: cloud-chat
     litellm_params:
       model: <雲端供應商的模型名稱>
       api_key: os.environ/CLOUD_API_KEY
 
-router_settings:
-  # local-chat 重試用盡仍失敗時, 改送 cloud-chat
-  fallbacks: [{"local-chat": ["cloud-chat"]}]
-
 litellm_settings:
   num_retries: 3
   request_timeout: 10
+  # local-chat 重試用盡仍失敗時, 改送 cloud-chat
+  fallbacks: [{"local-chat": ["cloud-chat"]}]
   cooldown_time: 30
 ```
+
+`fallbacks`, `num_retries`, `request_timeout` 與 `cooldown_time` 都放在 `litellm_settings` 之下, 與 LiteLLM 文件 Reliability 的設定範例一致. 地端模型的 `api_key` 讀取環境變數 `VLLM_API_KEY`, 值與 M1.10 節 vLLM 啟動時設定的金鑰相同; 這把金鑰只放在閘道區的 `.env` (權限 600), 不放在其他區 (來源: LiteLLM 文件 OpenAI-Compatible Endpoints; 金鑰存放為整理者建議).
 
 ### 路由與備援的行為
 
@@ -323,12 +329,12 @@ litellm_settings:
 
 ### 控制資料是否離開內網
 
-1. **敏感金鑰關閉備援**: 官方文件說明 `disable_fallbacks: true` 可設在單次請求或金鑰的 `metadata` (於 `/key/generate` 設定), 效果是該請求不啟用備援. 處理敏感資料的代理或部門, 其金鑰應設定這個值, 地端失敗時回傳錯誤, 不退到雲端 (來源: LiteLLM 文件 Reliability).
+1. **敏感金鑰關閉備援**: 官方文件說明 `disable_fallbacks: true` 可設在單次請求或金鑰的 `metadata` (於 `/key/generate` 設定), 效果是該請求不啟用備援. 另一層是金鑰的可用模型清單: 官方文件說明, 呼叫者的金鑰沒有權限使用備援模型時, 備援會跳過, 直接回傳原模型的錯誤; 權限查詢本身失敗時也跳過備援. 處理敏感資料的代理或部門, 其金鑰的 `models` 只列地端模型, 並同時設定 `disable_fallbacks: true`, 地端失敗時回傳錯誤, 不退到雲端 (來源: LiteLLM 文件 Reliability).
 2. **標籤路由只當輔助**: Tag routing 可在 deployment 設定 `tags`, 請求以 `tags` 或 `metadata.tags` 指定, 並須啟用 `enable_tag_filtering: True`; 標籤前加 `!` 可把對應 deployment 從候選池排除. 但官方文件未明載「請求標籤是否嚴格限制只能使用同標籤的 deployment」, 也未說明標籤與備援目標之間如何互動, 因此不要單獨依賴標籤作為外送防線 (來源: LiteLLM 文件 Tag Based Routing; 判斷屬整理者推論, 信心: 中).
-3. **防火牆當最後防線**: 閘道區以外的各區本來就禁止對外連線 (見組裝總覽的分區表). 需要完全禁止某類資料外送時, 可為該類流量另設一個不含雲端 deployment 的 LiteLLM 實例, 或在防火牆只允許特定來源連到雲端供應商 (設計建議, 信心: 中高).
+3. **防火牆當最後防線**: 閘道區以外的各區本來就禁止對外連線 (見組裝總覽的分區表). 需要完全禁止某類資料外送時, 可為該類流量另設一個不含雲端 deployment 的 LiteLLM 實例, 或在防火牆只允許特定來源連到雲端供應商 (設計建議, 信心: 中).
 4. **備援事件要看得到**: 每次備援都會讓請求改走雲端, 須在 Langfuse 或 LiteLLM 紀錄中能查出是哪把金鑰, 何時, 因何故障退到雲端 (設計建議).
 
-LiteLLM 管理端的 `fallback_management` 頁面僅提供 `/fallback` 端點與預算備援, 須設定 `STORE_MODEL_IN_DB=True`, 未見依標籤限制; `enforce_fallback_model_access` 出現在 Reliability 頁面, 但官方未說明其語意, 查無 (來源: LiteLLM 文件 Fallback Management 與 Reliability).
+LiteLLM 管理端的 `fallback_management` 頁面僅提供 `/fallback` 端點與預算備援, 須設定 `STORE_MODEL_IN_DB=True`, 未見依標籤限制; 上述備援前的權限檢查可用 `general_settings.enforce_fallback_model_access: false` 關閉, 關閉後所有設定的備援都會執行, 不論呼叫者有無權限; 官方提醒較早的版本即使呼叫者無權使用備援模型, 仍會執行備援, 因此本手冊建議維持預設, 不要關閉 (來源: LiteLLM 文件 Fallback Management 與 Reliability; 建議屬整理者判斷).
 
 ## M5.6 驗收測試
 
@@ -371,14 +377,14 @@ done
 
 **3. 推論伺服器只接受閘道區連線**
 
-vLLM 官方安全文件列出, 即使設定了 `--api-key`, 仍有多個端點不需金鑰, 包括 `/invocations` (與 `/v1` 相同的推論功能), `/pause` 與 `/metrics` (來源: vLLM 文件 Security). 因此真正的防線是網路隔離, 驗收時要從入口區確認完全連不上:
+vLLM 官方安全文件列出, 即使設定了 `--api-key`, 仍有多個端點不需金鑰, 包括 `/invocations` (與 `/v1` 相同的推論功能), `/pause` 與 `/metrics` (來源: vLLM 文件 Security). 因此真正的防線是網路隔離, 驗收時要從入口區確認完全連不上. 下列指令以 M1.10 節的預設 8000 連接埠為例, 若改過連接埠請一併修改. 里程碑 2 暫時允許入口區直連推論區的規則 (見 M0.2 節), 這時應已刪除:
 
 ```bash
 # 在入口區 VM 執行, 預期連線逾時或遭拒
-curl -sS -m 5 http://<推論區主機>:<vLLM 連接埠>/v1/models
-curl -sS -m 5 http://<推論區主機>:<vLLM 連接埠>/health
+curl -sS -m 5 http://<推論區主機>:8000/v1/models
+curl -sS -m 5 http://<推論區主機>:8000/health
 # 在閘道區 VM 執行, 預期成功
-curl -sS -m 5 -H 'Authorization: Bearer <vLLM API 金鑰>' http://<推論區主機>:<vLLM 連接埠>/v1/models
+curl -sS -m 5 -H 'Authorization: Bearer <vLLM API 金鑰>' http://<推論區主機>:8000/v1/models
 ```
 
 測試時不要呼叫 `/pause` 這類會中斷服務的端點. 若 M6 的 Prometheus 要抓取 vLLM 指標, 只對稽核區的 Prometheus 主機開放例外 (見 M6.4 節).
@@ -399,10 +405,10 @@ curl -sS -m 5 -H 'Authorization: Bearer <vLLM API 金鑰>' http://<推論區主�
 
 **5. 地端模型故障時, 一般金鑰退到雲端; 敏感金鑰不退**
 
-1. 建立兩把測試金鑰: 一把不加設定, 另一把在 `metadata` 設 `disable_fallbacks: true` (設定位置見 M5.5 節, 未實機驗證).
-2. 停止地端的 vLLM 行程, 兩把金鑰各送一次請求.
-3. 一般金鑰應成功回應, 且 LiteLLM 紀錄顯示由雲端模型回應; 敏感金鑰應回傳錯誤, 並且在雲端供應商的用量紀錄或閘道區的對外連線紀錄中, 看不到這次請求.
-4. 恢復 vLLM 後, 兩把金鑰都回到地端模型.
+1. 建立三把測試金鑰: 一把不加設定; 一把在 `metadata` 設 `disable_fallbacks: true`; 一把的可用模型 (`models`) 只列 `local-chat` (設定位置見 M5.5 節, 未實機驗證).
+2. 停止地端的 vLLM 行程, 三把金鑰各送一次請求.
+3. 一般金鑰應成功回應, 且 LiteLLM 紀錄顯示由雲端模型回應; 後兩把敏感金鑰都應回傳錯誤, 並且在雲端供應商的用量紀錄或閘道區的對外連線紀錄中, 看不到這次請求.
+4. 恢復 vLLM 後, 三把金鑰都回到地端模型.
 
 ## 參考來源
 
@@ -431,4 +437,11 @@ curl -sS -m 5 -H 'Authorization: Bearer <vLLM API 金鑰>' http://<推論區主�
 - [LiteLLM 文件: Reliability](https://docs.litellm.ai/docs/proxy/reliability.md)
 - [LiteLLM 文件: Tag Based Routing](https://docs.litellm.ai/docs/proxy/tag_routing)
 - [LiteLLM 文件: Fallback Management](https://docs.litellm.ai/docs/proxy/fallback_management.md)
+- [LiteLLM 文件: Admin UI SSO (企業版授權, 5 位使用者以內免費)](https://docs.litellm.ai/docs/proxy/admin_ui_sso)
+- [LiteLLM 官方部落格: Security Update, Suspected Supply Chain Incident (2026-03-24)](https://docs.litellm.ai/blog/security-update-march-2026)
+- [LiteLLM 官方部落格: Contained, Oct 21 2026 LiteLLM release v1.107.0 Compromised](https://docs.litellm.ai/blog/security-incident-oct-21-2026)
+- [LiteLLM 官方部落格: The attack chain behind the v1.107.0 LiteLLM release (2026-10-23)](https://docs.litellm.ai/blog/security-incident-oct-21-2026-attack-chain)
+- [Snyk: Poisoned security scanner backdooring LiteLLM](https://snyk.io/blog/poisoned-security-scanner-backdooring-litellm/)
+- [CISA: Known Exploited Vulnerabilities Catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)
+- [llama-swap GitHub 儲存庫 (用途, MIT 授權)](https://github.com/mostlygeek/llama-swap)
 - 文中的類比 (公司總機, 員工證門禁, 單一爐口的廚房): 整理者所寫, 無外部來源, 不應當作技術定義引用.

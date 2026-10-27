@@ -1,10 +1,14 @@
+---
+description: "規則固定的工作 (排程彙整, 告警轉 ticket) 交給 n8n 這類流程自動化平台, 不需要模型自己判斷."
+---
+
 # M9 流程自動化
 
 ::: info 本章屬性
 - 等級: ○ 依情境
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: KEV 清單取自彙整站, 應改連 CISA 原始來源; M9.3 節的 docker run 與環境變數組合依官方文件整理, 未實機執行; LocalFileTrigger 節點的類型名稱未查到官方寫法; task runner 加固文件未核對; SSRF 防護設定與閘道區位址的搭配未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 待查證: M9.1 節表格中 Dify 一列引自二手來源, Flowise 的修補版本未見於 CVE 紀錄; M9.3 節的 docker run 與環境變數組合依官方文件整理, 未實機執行; LocalFileTrigger 節點的類型名稱未查到官方寫法; task runner 加固文件未核對; SSRF 防護設定與閘道區位址的搭配未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 規則固定的工作 (排程彙整, 告警轉 ticket) 交給 n8n 這類流程自動化平台, 不需要模型自己判斷. 這類平台設計上會執行使用者提供的程式碼, 又保存憑證, 是 2026 年漏洞最集中的元件之一. 因此 n8n 放在獨立 VM, 只經模型閘道與工具閘道對外, 本身不保存外部系統的金鑰.
@@ -29,22 +33,22 @@
 
 流程自動化平台為了串接各種系統, 會保存大量帳號與金鑰, 也允許在流程中執行程式碼. 這讓它成為攻擊者眼中的高價值目標: 攻下一台, 等於拿到通往多個系統的鑰匙.
 
-Langflow, n8n, Flowise 這類平台設計上就會執行使用者提供的程式碼, 預設以高權限執行, 又保存所有憑證, 因此 2026 年已有實際利用紀錄的漏洞最多.
+Langflow, Flowise 與 Dify 是以拖拉方式組合模型, 知識庫與工具的 AI 應用開發平台; n8n 以一般流程自動化為主, 也能在流程中接上模型. Langflow, n8n, Flowise 這類平台設計上就會執行使用者提供的程式碼, 預設以高權限執行, 又保存所有憑證, 因此 2026 年已有實際利用紀錄的漏洞最多.
 
 | 平台 | 授權 | 2026 年重大紀錄 (來源) |
 |---|---|---|
-| Langflow | MIT | CISA KEV 多筆 (如 CVE-2026-33017, Sysdig 觀測到公告後 20 小時內即出現利用行為); VulnCheck 統計 2026 年已有第 12 個出現利用紀錄的 Langflow CVE |
-| n8n | Sustainable Use License, 官方文件明言非 OSI 開源 | CVE-2025-68613 (CVSS 9.9) 於 2026-03-11 列入 KEV; CVE-2026-21858 (CVSS 10.0, 未驗證) 於 2026-01-09 列入 VulnCheck KEV |
-| Flowise | Apache 2.0 (企業目錄另計, 未驗證) | CVE-2025-71333 未驗證路徑穿越寫檔導致 RCE, 官方容器以 root 執行 (VulnCheck, 2026-08) |
-| Dify | Dify Open Source License (非 OSI) | 2026 年多為中度漏洞, 未見利用紀錄 (guard0 TrustVector, 2026-07) |
+| Langflow | MIT | 未經身分驗證即可遠端執行程式碼的漏洞列入 CISA KEV (已知遭利用漏洞目錄); 資安廠商 Sysdig 觀測到公告約 20 小時後即出現利用 (CISA KEV, Cloud Security Alliance 研究筆記) |
+| n8n | Sustainable Use License, 官方文件明言非 OSI 開源 | 2026-03 有漏洞列入 CISA KEV (CISA KEV) |
+| Flowise | Apache 2.0 (企業目錄另有授權) | 2.2.4 及以前版本有未經身分驗證即可上傳任意檔案的漏洞, 2026-06-25 公開; 修補版本以 Flowise 官方 release 為準 (CVE.org 紀錄, CNA 為 VulnCheck) |
+| Dify | Dify Open Source License (非 OSI) | 2026-06 公開 4 個漏洞 (DifyTap), 其中 3 個影響多租戶雲端服務, 可能讓其他租戶看到資料; 報導未提到遭實際利用 (The Hacker News, 二手來源) |
 
-KEV 清單取自彙整站, 資料頁應改連 CISA 原始來源.
+各筆的 CVE 編號, 受影響與修補版本見[版本頁](/ref/versions).
 
 對初階讀者的建議 (信心: 高):
 
 - 若要學習, 只在本機或內網使用.
 - 不直接對網際網路開放.
-- 自動更新至最新修補版.
+- 依 [O2](/ops/versioning) 的流程儘快升級到修補版; 不使用自動更新, 版本以摘要值鎖定 (見 M0.3 節).
 - 不把正式環境金鑰放進去.
 - 稱 Dify 為「原始碼公開」, 不稱「開源」.
 
@@ -58,13 +62,13 @@ KEV 清單取自彙整站, 資料頁應改連 CISA 原始來源.
 | 適合的工作 | 排程彙整, 告警轉 ticket, 定期報表, 資料搬移 | 需要判斷的多步驟調查, 分流 |
 | 模型的角色 | 流程中的一個步驟 (摘要, 分類), 輸出交給固定的下一步 | 決定要呼叫哪個工具 |
 | 主要風險 | 平台本身的漏洞與保存的憑證 (見 M9.1 節) | 提示注入導致錯誤動作 |
-| 主要控制 | 獨立 VM, 只經閘道對外, 停用高風險節點 | OPA 政策, 隔離模型, 人工核准 |
+| 主要控制 | 獨立 VM, 只經閘道對外, 停用高風險節點 | OPA 政策引擎, 隔離模型, 人工核准 |
 
 **互相呼叫的方式** (推論, 信心: 中):
 
 - **代理呼叫 n8n**: n8n 以 MCP Server Trigger 節點把流程提供為 MCP 工具, 登記在工具閘道; LangGraph 經工具閘道呼叫, 呼叫前照常查詢 OPA.
 - **n8n 呼叫工具**: n8n 以 MCP Client 節點經工具閘道呼叫工具, 不直接連 MCP 伺服器.
-- **n8n 呼叫模型**: 經 LiteLLM, 使用專屬的虛擬金鑰與用量上限.
+- **n8n 呼叫模型**: 經模型閘道 LiteLLM, 使用專屬的虛擬金鑰與用量上限.
 
 所有呼叫都經過模型閘道或工具閘道, 稽核紀錄因此集中在閘道與稽核區, 不必分別查 n8n 與代理的紀錄. 一項工作若能畫成固定流程, 優先用 n8n 或一般程式完成, 不交給代理 (見 K5.4 節).
 
@@ -74,7 +78,7 @@ KEV 清單取自彙整站, 資料頁應改連 CISA 原始來源.
 
 ### 網路位置
 
-n8n 部署在 VM 自動化區 (見[組裝總覽](/build/overview)的部署分區). 防火牆規則 (推論, 信心: 中高):
+n8n 部署在 VM 自動化區 (見[組裝總覽](/build/overview)的部署分區). 防火牆規則 (推論, 信心: 中):
 
 - **連入**: 只接受入口區反向代理 (提供 n8n 編輯介面的 HTTPS) 與閘道區 (工具閘道呼叫 MCP Server Trigger) 的連線.
 - **連出**: 只允許連到閘道區的 LiteLLM 與工具閘道; 其他目的地一律封鎖, 包含 n8n 官方的更新與遙測服務.
@@ -82,7 +86,7 @@ n8n 部署在 VM 自動化區 (見[組裝總覽](/build/overview)的部署分區
 
 ### 以 Docker 執行
 
-n8n 官方的 Docker 安裝頁面標示為舊版說明, 建議改用 Docker Compose (來源: n8n Docker 安裝文件). 官方 Compose 範例以 Traefik 取得公開憑證, 預設情境是對外開放的網域 (來源: n8n Docker Compose 文件), 與本手冊「只限內網」的前提不同, 因此下列範例改以 `docker run` 呈現各項設定, 由入口區的 Nginx 或 Caddy 提供 HTTPS (見 M2). 範例依官方文件的參數組合, 未實機驗證; `<...>` 為佔位符, 實際值放在權限 600 的 `.env` 檔:
+n8n 官方的 Docker 安裝頁面標示為舊版說明, 建議改用 Docker Compose (以一個設定檔同時啟動多個容器的工具) (來源: n8n Docker 安裝文件). 官方 Compose 範例以 Traefik (能自動申請憑證的反向代理) 取得公開憑證, 預設情境是對外開放的網域 (來源: n8n Docker Compose 文件), 與本手冊「只限內網」的前提不同, 因此下列範例改以 `docker run` 呈現各項設定, 由入口區的反向代理 Nginx 或 Caddy 提供 HTTPS (見 M2). 範例依官方文件的參數組合, 未實機驗證; `<...>` 為佔位符, 實際值放在權限 600 的 `.env` 檔:
 
 ```bash
 docker volume create n8n_data
@@ -98,7 +102,7 @@ docker run -d \
 
 上述指令建立資料卷並啟動 n8n 容器, 只在自動化區的內網位址提供服務. 實際設定放在 `/etc/n8n/n8n.env`, 內容如下, 包含時區, 加密金鑰, 停用高風險節點與限制對外連線:
 
-```bash
+```ini
 GENERIC_TIMEZONE=Asia/Taipei
 TZ=Asia/Taipei
 N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
@@ -106,8 +110,9 @@ N8N_ENCRYPTION_KEY=<另行產生並備份的金鑰>
 
 # 安全設定
 N8N_BLOCK_ENV_ACCESS_IN_NODE=true
-# LocalFileTrigger 的節點類型名稱確認後, 一併加入下列清單
-NODES_EXCLUDE=["n8n-nodes-base.executeCommand", "n8n-nodes-base.readWriteFile"]
+# 自訂清單會取代 2.0 的預設清單, 因此要把預設停用的兩個節點一併列入;
+# localFileTrigger 的類型名稱待實機確認
+NODES_EXCLUDE=["n8n-nodes-base.executeCommand", "n8n-nodes-base.localFileTrigger", "n8n-nodes-base.readWriteFile"]
 N8N_PUBLIC_API_DISABLED=true
 N8N_PUBLIC_API_SWAGGERUI_DISABLED=true
 
@@ -115,6 +120,9 @@ N8N_PUBLIC_API_SWAGGERUI_DISABLED=true
 N8N_DIAGNOSTICS_ENABLED=false
 N8N_VERSION_NOTIFICATIONS_ENABLED=false
 N8N_TEMPLATES_ENABLED=false
+EXTERNAL_FRONTEND_HOOKS_URLS=
+N8N_DIAGNOSTICS_CONFIG_FRONTEND=
+N8N_DIAGNOSTICS_CONFIG_BACKEND=
 
 # SSRF 防護: 只允許連到閘道區
 N8N_SSRF_PROTECTION_ENABLED=true
@@ -130,17 +138,17 @@ N8N_SSRF_ALLOWED_IP_RANGES=<閘道區網段>
 | `N8N_BLOCK_ENV_ACCESS_IN_NODE` | 控制運算式與 Code 節點能否讀取環境變數; n8n 2.0 起預設為 `true` | 安全環境變數文件, 2.0 重大變更文件 |
 | `NODES_EXCLUDE` | 以 JSON 陣列列出要封鎖的節點類型; 使用者無法搜尋或使用這些節點; 設為 `[]` 可全部解除 | 封鎖節點文件 |
 | `N8N_PUBLIC_API_DISABLED`, `N8N_PUBLIC_API_SWAGGERUI_DISABLED` | 停用公開 REST API 與 API playground | 停用公開 API 文件 |
-| `N8N_DIAGNOSTICS_ENABLED`, `N8N_VERSION_NOTIFICATIONS_ENABLED`, `N8N_TEMPLATES_ENABLED` | 設為 `false` 可讓自架實例不連 n8n 的伺服器 | Isolate n8n 文件 |
+| `N8N_DIAGNOSTICS_ENABLED`, `N8N_VERSION_NOTIFICATIONS_ENABLED`, `N8N_TEMPLATES_ENABLED`; `EXTERNAL_FRONTEND_HOOKS_URLS`, `N8N_DIAGNOSTICS_CONFIG_FRONTEND`, `N8N_DIAGNOSTICS_CONFIG_BACKEND` | 前三項設為 `false`, 後三項設為空值, 可讓自架實例不連 n8n 的伺服器 | Isolate n8n 文件 |
 | `N8N_SSRF_PROTECTION_ENABLED` 等 | 限制節點對外 HTTP 請求可連的主機與 IP 範圍; 啟用後預設封鎖 RFC 1918 私有位址, loopback 與 link-local; 須 n8n 2.12.0 以上 | SSRF 防護文件 |
 
 設定時須注意下列事項:
 
-- **NODES_EXCLUDE 會取代預設清單**: n8n 2.0 起預設停用 ExecuteCommand 與 LocalFileTrigger 兩個節點, 可經由變更 `NODES_EXCLUDE` 重新啟用 (來源: 2.0 重大變更文件). 由此推論, 自行設定 `NODES_EXCLUDE` 時, 清單應包含這兩個節點; LocalFileTrigger 的節點類型名稱本輪未查到官方寫法, 須以實機確認 (推論, 信心: 中).
+- **NODES_EXCLUDE 會取代預設清單**: n8n 2.0 起預設停用 ExecuteCommand 與 LocalFileTrigger 兩個節點, 可經由變更 `NODES_EXCLUDE` 重新啟用 (來源: 2.0 重大變更文件). 由此推論, 自行設定 `NODES_EXCLUDE` 時, 清單應包含這兩個節點, 上例已列入; LocalFileTrigger 的節點類型名稱 `n8n-nodes-base.localFileTrigger` 依其他節點的命名方式推得, 官方文件未列出, 須以實機確認 (推論, 信心: 中).
 - **SSRF 允許清單的順序**: 判定順序為主機名稱允許清單, IP 允許清單, IP 封鎖清單; 主機名稱允許清單會略過 IP 封鎖檢查, 因此只能放自己控管的主機名稱 (來源: SSRF 防護文件). 本範例只用 IP 範圍.
 - **SSRF 防護不取代防火牆**: 它只涵蓋使用者可控制的節點發出的 HTTP 請求; VM 自動化區的防火牆仍是主要控制 (推論, 信心: 高).
 - **Cookie 與 HTTPS**: `N8N_SECURE_COOKIE` 預設為 `true`, 只在 HTTPS 下傳送 cookie (來源: 安全環境變數文件), 因此編輯介面須經反向代理的 HTTPS 存取.
-- **Code 節點**: n8n 2.0 起預設啟用 task runner 執行 Code 節點; Python Code 節點只能搭配外部模式的 task runner 使用 (來源: 2.0 重大變更文件). 官方另有 task runner 加固文件, 本輪未核對.
-- **資料庫**: 預設使用 SQLite; 改用 PostgreSQL 時, 加上 `DB_TYPE=postgresdb` 與 `DB_POSTGRESDB_*` 一組變數 (來源: Docker 安裝文件).
+- **Code 節點**: n8n 2.0 起預設啟用 task runner (在主程式之外另行執行 Code 節點程式碼的元件) 執行 Code 節點; Python Code 節點只能搭配外部模式的 task runner 使用 (來源: 2.0 重大變更文件). 官方另有 task runner 加固文件, 本輪未核對.
+- **資料庫**: 預設使用 SQLite (存成單一檔案的輕量資料庫); 改用 PostgreSQL (獨立運作的資料庫伺服器) 時, 加上 `DB_TYPE=postgresdb` 與 `DB_POSTGRESDB_*` 一組變數 (來源: Docker 安裝文件).
 - **更新**: 以固定版本標籤拉取新映像, 停止並移除舊容器後重新啟動 (來源: Docker 安裝文件). 版本鎖定與升級流程見 O2. M9.1 節列出的漏洞都已有修補版, 應維持在最新修補版.
 - **Webhook 網址**: 經反向代理提供 Webhook 時, 須設定對外網址變數; 官方 Compose 範例使用 `N8N_WEBHOOK_URL`, 並註明此變數須 n8n 2.30.0 以上, 較舊版本使用 `WEBHOOK_URL` (來源: Docker Compose 文件).
 
@@ -148,13 +156,13 @@ N8N_SSRF_ALLOWED_IP_RANGES=<閘道區網段>
 
 原則是讓 n8n 手上只有「通行證」, 沒有各系統的「萬用鑰匙」. 即使 n8n 遭入侵, 只要在閘道撤銷通行證, 就能切斷它與所有系統的連線.
 
-n8n 的憑證 (credentials) 中只放兩類: LiteLLM 發給 n8n 的虛擬金鑰, 以及工具閘道發給 n8n 的身分憑證. 外部系統 (SIEM, ticket 系統, 郵件) 的金鑰放在工具閘道後方的 MCP 伺服器, 不放進 n8n (見 M7.2 節). 這樣 n8n 遭入侵時, 攻擊者只能取得受用量上限與工具白名單限制的閘道憑證, 閘道端撤銷即可止血 (推論, 信心: 中高).
+n8n 的憑證 (credentials) 中只放兩類: LiteLLM 發給 n8n 的虛擬金鑰, 以及工具閘道發給 n8n 的身分憑證. 外部系統 (SIEM 這類資安紀錄分析系統, ticket 系統, 郵件) 的金鑰放在工具閘道後方的 MCP 伺服器, 不放進 n8n (見 M7.2 節). 這樣 n8n 遭入侵時, 攻擊者只能取得受用量上限與工具白名單限制的閘道憑證, 閘道端撤銷即可止血 (推論, 信心: 中).
 
 ### MCP Client 節點: 經工具閘道呼叫工具
 
 這個節點讓 n8n 的流程可以使用工具閘道上已審核的工具, 不必在 n8n 裡另外設定各系統的連線.
 
-MCP Client 節點把外部 MCP 伺服器的工具當作流程中的一般步驟執行; 要讓 n8n 的 AI Agent 節點使用 MCP 工具, 改用 MCP Client Tool 節點 (來源: n8n MCP Client 節點文件). 主要參數:
+MCP Client 節點把外部 MCP 伺服器的工具當作流程中的一般步驟執行; 要讓 n8n 的 AI Agent 節點 (由模型自行選用工具的節點) 使用 MCP 工具, 改用 MCP Client Tool 節點 (來源: n8n MCP Client 節點文件). 主要參數:
 
 | 參數 | 說明 | 本手冊的設定 |
 |---|---|---|
@@ -166,7 +174,7 @@ MCP Client 節點把外部 MCP 伺服器的工具當作流程中的一般步驟�
 
 ### MCP Server Trigger 節點: 把流程提供為工具
 
-反方向也成立: 在 n8n 畫好的流程, 可以包成一個工具, 讓 Open WebUI 的使用者或 LangGraph 的代理呼叫.
+反方向也成立: 在 n8n 畫好的流程, 可以包成一個工具, 讓對話介面 Open WebUI 的使用者或 LangGraph 的代理呼叫.
 
 MCP Server Trigger 節點讓 n8n 扮演 MCP 伺服器, 只連接並執行工具節點; 要把整個流程提供出去, 以 Custom n8n Workflow Tool 節點接上 (來源: n8n MCP Server Trigger 節點文件). 官方文件的要點:
 
@@ -176,7 +184,7 @@ MCP Server Trigger 節點讓 n8n 扮演 MCP 伺服器, 只連接並執行工具�
 - **反向代理**: 放在 Nginx 等代理後方時, 須對此端點停用 proxy buffering; 官方另建議對該端點停用 gzip, chunked transfer encoding 與 Connection 標頭.
 - **佇列模式**: 有多個 webhook 副本時, 須把所有 `/mcp*` 請求導到同一個專用副本, 否則 SSE 與 Streamable HTTP 連線可能中斷.
 
-把正式網址登記在工具閘道 (例如 LiteLLM 設定檔的 `mcp_servers`, 見 M7.2 節), 介面與代理才會經閘道呼叫, 不直接連 n8n (推論, 信心: 中高).
+把正式網址登記在工具閘道 (例如 LiteLLM 設定檔的 `mcp_servers`, 見 M7.2 節), 介面與代理才會經閘道呼叫, 不直接連 n8n (推論, 信心: 中).
 
 ### 授權: Sustainable Use License
 
@@ -188,7 +196,7 @@ n8n 主要原始碼採 Sustainable Use License, 檔名含 `.ee.` 的檔案另採
 - **不在授權範圍內**: 把 n8n 提供給客戶, 讓客戶連接自己的帳號並建立流程; 這類用途須與 n8n 另簽商業合約.
 - **定位**: 官方表示, 依開放原始碼促進會 (OSI) 的定義, 開源授權不能限制用途, 因此 n8n 不自稱開源, 改稱 fair-code.
 
-因此, 企業在內網自架給自己的員工使用, 屬於官方文件所述的內部業務用途; 若要把 n8n 包進對外販售的服務, 須先洽 n8n 確認 (信心: 中高; 本手冊不提供法律意見, 個案請洽法務).
+因此, 企業在內網自架給自己的員工使用, 屬於官方文件所述的內部業務用途; 若要把 n8n 包進對外販售的服務, 須先洽 n8n 確認 (信心: 中; 本手冊不提供法律意見, 個案請洽法務).
 
 ## M9.4 驗收測試
 
@@ -218,6 +226,10 @@ n8n 主要原始碼採 Sustainable Use License, 檔名含 `.ee.` 的檔案另採
 
 ## 參考來源
 
+- [CISA: Known Exploited Vulnerabilities Catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)
+- [Cloud Security Alliance: Langflow RCE CVE-2026-33017 Exploited Within 20 Hours](https://labs.cloudsecurityalliance.org/research/csa-research-note-cve-2026-33017-langflow-ai-pipeline-rce-20/)
+- [CVE.org 紀錄: CVE-2025-71333 (Flowise, CNA: VulnCheck)](https://cveawg.mitre.org/api/cve/CVE-2025-71333)
+- [The Hacker News: Researchers Detail DifyTap Flaws (2026-06-22, 二手來源)](https://thehackernews.com/2026/06/researchers-detail-difytap-flaws-in.html)
 - [n8n 文件: Docker 安裝](https://docs.n8n.io/hosting/installation/docker/)
 - [n8n 文件: Docker Compose](https://docs.n8n.io/deploy/host-n8n/install-options/use-a-cloud-provider/use-docker-compose)
 - [n8n 文件: 安全相關環境變數](https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/use-environment-variables/security.md)

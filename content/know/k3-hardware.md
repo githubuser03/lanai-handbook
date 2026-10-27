@@ -1,10 +1,14 @@
+---
+description: "預算有限時, 先買「更大的顯示記憶體 (或統一記憶體)」, 再考慮運算速度."
+---
+
 # K3 硬體選購
 
 ::: info 本章屬性
 - 等級: ● 必要
 - 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: 等級 E, F 的規格門檻尚未定義; 各等級可跑的模型大小為依 K2 公式的估算, 未實測; 價格見[硬體價格頁](/ref/hardware-prices), 本章不寫價格; K3.4 節的 KV cache欄位語意與各配置的並行表現為推論, 未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 資料基準日: 2026-10-27
+- 待查證: 等級 A 至 F 為整理者設計的分級, 非業界標準; 各等級可跑的模型大小為依 K2 公式的估算, 未實測; 價格見[硬體價格頁](/ref/hardware-prices), 本章不寫價格; K3.4 節的 KV cache 欄位語意與各配置的並行表現為推論, 未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 預算有限時, 先買「更大的顯示記憶體 (或統一記憶體)」, 再考慮運算速度. 記憶體決定能不能跑, 運算速度只決定跑得多快 (信心: 高).
@@ -20,6 +24,14 @@
 | BF16, FP8 | 兩種存放數字的格式, 分別為 16 位元與 8 位元 |
 | KV cache | 模型處理對話時暫存的中間結果, 說明見 K2 |
 | 並行 | 同時處理多個請求或多位使用者 |
+| 預填 (prefill) 與解碼 (decode) | 模型回答分兩段: 預填是一次讀完整段輸入, 解碼是逐個產生輸出的 token; 解碼速度主要受記憶體頻寬限制 |
+| CUDA 執行環境 | NVIDIA 顯示卡執行運算所需的程式庫, 推論引擎透過它使用 GPU |
+| Vulkan 後端 | 以跨廠牌的 Vulkan 繪圖與運算介面使用 GPU 的執行方式, 常用於 AMD 等非 NVIDIA 硬體 |
+| OEM | 採用同一套晶片, 再以自家品牌組裝販售整機的廠商 |
+| TGP 與 Max-Q | TGP 是顯示卡的總耗電設計值; Max-Q 是同款晶片的低功耗版本, 耗電與發熱較低, 效能也略低 |
+| toolbox | 社群整理的容器化執行環境, 預先裝好特定硬體所需的推論軟體 |
+| llm-compressor | vLLM 專案提供的模型壓縮與校準工具, 可產生 FP8 等量化版本並計算縮放係數 |
+| sleep mode | vLLM 讓閒置模型釋放顯示記憶體, 需要時再喚醒的功能 |
 
 完整詞彙見[術語對照](/ref/glossary).
 :::
@@ -28,24 +40,24 @@
 
 本手冊把硬體依記憶體多寡分成 A 至 F 六個等級. 記憶體越大, 放得下的模型越大, 等級也越高; 讀者先找出自己的電腦屬於哪一級, 就能知道大致可以跑多大的模型, 以及該從哪一種組合開始.
 
-下表依 [K2](/know/k2-quantization)的公式估算 4 位元量化模型的大致落點. 結果為推論 (信心: 中), 未實測; 實際能否執行, 還取決於上下文長度與同時使用人數.
+下表依 [K2](/know/k2-quantization)的公式, 以 4 位元量化中常用的 GGUF Q4_K_M (每參數約 4.8944 位元, 見 K3.4 節) 估算權重: 14B 約 8.6GB, 30B 約 18.4GB, 35B 約 21.4GB, 70B 約 42.8GB (計算值). 權重之外還有 KV cache 與執行開銷, 因此以 K2 的「總需求不超過可用記憶體八成」保守規劃. 結果為推論 (信心: 中), 未實測; 實際能否執行, 還取決於上下文長度與同時使用人數.
 
 | 等級 | 記憶體條件 | 較可能的落點 (4 位元量化, 推論) | 建議架構 |
 |---|---|---|---|
 | A | 無獨立顯示卡, 以系統記憶體運算 | 數十億參數以下的小模型, 速度較慢 | [最小組合](/build/overview) |
-| B | 8 至 12GB 顯示記憶體 | 約 8B 級模型餘裕較大; 約 14B 級須壓低上下文 | 最小組合 |
+| B | 8 至 12GB 顯示記憶體 | 約 8B 級模型餘裕較大; 約 14B 級須壓低上下文 | 8GB 用最小組合; 12GB 可用標準組合 |
 | C | Apple Silicon, 統一記憶體 | 依記憶體容量而定, 16GB 與 32GB 以上差異大 | 16GB 用最小組合; 32GB 以上可用標準組合 |
 | D | 16GB 顯示記憶體 | 約 14B 級餘裕較大; 約 30B 以上通常放不下 | 標準組合 |
-| E | 待 K3 補充門檻 | 同 D, 並有餘裕同時載入嵌入模型 | 標準組合 |
-| F | 待 K3 補充門檻 | 較大的模型或多人同時使用 | 進階組合 (須有人每週維運) |
+| E | 24GB 以上, 未滿 48GB 顯示記憶體 (單卡或多卡合計) | 約 14B 至 24B 級餘裕較大, 並能同時載入嵌入模型; 約 30B 級在 24GB 時已接近八成上限, 上下文須壓低; 約 70B 級放不下 | 標準組合 |
+| F | 48GB 以上顯示記憶體 (例如 K3.4 節的 96GB 單卡, 或多卡) | 48GB 時約 35B 級餘裕較大, 可同時常駐 1 個並服務多人; 約 70B 級 (約 42.8GB) 須 64GB 以上; 同時常駐 3 個約 35B 級須 K3.4 節的 96GB 等級 | 進階組合 (須有人每週維運) |
 
 ## K3.2 記憶體優先的選購順序
 
 記憶體容量與頻寬可以想成一座倉庫: 容量是倉庫有多大, 決定貨 (模型) 放不放得下; 頻寬是倉庫大門每秒能進出多少貨. 模型每產生一段文字, 都要從記憶體讀取大量權重, 大門太窄時, 運算單元再快也只能排隊等貨.
 
 1. **容量**: 先確認想跑的模型加 KV cache 放得進去 (K2).
-2. **記憶體頻寬**: 產生文字的速度常受記憶體頻寬限制, 而非純運算能力 (信心: 中高, 屬一般經驗).
-3. **驅動與軟體支援**: Ollama 的 NVIDIA 支援要求運算能力 (compute capability) 5.0 以上, 驅動版本 550 以上; 運算能力 5.0 至 6.2 的舊卡須驅動 570 以上 (來源: Ollama 文件 GPU). AMD 與 Apple 的支援見 [M1.4 節](/build/m1-inference).
+2. **記憶體頻寬**: 產生文字的速度常受記憶體頻寬限制, 而非純運算能力 (信心: 中, 屬一般經驗).
+3. **驅動與軟體支援**: Ollama (M1 介紹的推論伺服器) 的 NVIDIA 支援要求運算能力 (compute capability) 5.0 以上, 驅動版本 550 以上; 運算能力 5.0 至 6.2 的舊卡須驅動 570 以上 (來源: Ollama 文件 GPU). AMD 與 Apple 的支援見 [M1.4 節](/build/m1-inference).
 4. **電源, 散熱與機殼空間**: 高階顯示卡對電源供應器與機殼有要求, 購買前核對規格書 (信心: 高, 屬一般經驗).
 5. **價格時機**: DRAM 與 GPU 價格波動大, 以[價格頁](/ref/hardware-prices)的查價日期為準, 不憑舊資料決定.
 
@@ -68,9 +80,9 @@
 
 ## K3.4 範例: 同時常駐 3 個 30B 至 35B 級模型
 
-**結論**: 單機要同時常駐 3 個約 35B 的模型, 目前最穩的選擇是 1 張 96GB 的 NVIDIA RTX PRO 6000 搭配 4 位元量化, 或 2 張同款卡搭配 FP8. 統一記憶體機種 (NVIDIA GB10 系列, AMD Strix Halo, Apple Mac Studio) 容量夠, 但記憶體頻寬較低, 較適合低併發; 多人同時使用時, 頻寬與推論軟體的成熟度比容量更常成為瓶頸 (信心: 中, 屬推論). 預算區間見[硬體價格頁](/ref/hardware-prices), 2026 年記憶體漲價使各選項價格都明顯上升, 且多數官方通路缺貨, 採購前請以當月報價為準.
+**結論**: 單機要同時常駐 3 個約 35B 的模型, 目前最穩的選擇是 1 張 96GB 的 NVIDIA RTX PRO 6000 搭配 4 位元量化, 或 2 張同款卡搭配 FP8. 統一記憶體機種 (NVIDIA GB10 系列, AMD Strix Halo, Apple Mac Studio) 容量夠, 但記憶體頻寬較低, 較適合低併發; 多人同時使用時, 頻寬與推論軟體的成熟度比容量更常成為瓶頸 (信心: 中, 屬推論). 預算區間見[硬體價格頁](/ref/hardware-prices), 硬體價格頁引用 TrendForce 2026-09-30 的報導, 2026 年第 4 季 DRAM 合約價持續上漲, 價格頁所列的多款 GPU 與整機在官方通路標示缺貨, 採購前請以當月報價為準.
 
-這個範例對應[架構地圖](/start/map)的情境: LiteLLM 同時接雲端模型與地端模型, 地端常駐 3 個約 35B 的模型, 推論伺服器的做法見 [M1.11 節](/build/m1-inference), 路由與備援見 [M5.5 節](/build/m5-gateway-identity).
+這個範例對應[架構地圖](/start/map)的情境: LiteLLM (模型閘道, 見 M5) 同時接雲端模型與地端模型, 地端常駐 3 個約 35B 的模型, 推論伺服器的做法見 [M1.11 節](/build/m1-inference), 路由與備援見 [M5.5 節](/build/m5-gateway-identity).
 
 ### 先決定三件事
 
@@ -80,7 +92,7 @@
 |---|---|---|
 | 模型型態 | 密集 (dense) 或 MoE (混合專家) | MoE 每個 token 只讀取啟用的參數 (例如總參數 30B 左右, 啟用 3B 至 4B), 對頻寬的需求低很多; 但權重仍須全部放進記憶體, 容量以總參數計 |
 | 精度 | BF16, FP8, 4 位元 | 每降一級, 權重約減半; 4 位元的品質損失依模型與任務而異, 上線前須用自己的測試集比較 (M6) |
-| 並行與上下文 | 同時多少人, 單次多長 | 決定 KV cache大小, 常是容量的第二大項 |
+| 並行與上下文 | 同時多少人, 單次多長 | 決定 KV cache 大小, 常是容量的第二大項 |
 
 ### 約 30B 至 35B 級的候選模型
 
@@ -90,7 +102,6 @@
 |---|---|---|---|---|
 | google/gemma-4-31B-it | 密集 | 30.7B | Apache-2.0 | 60 層, 上下文 262,144 |
 | Gemma 4 26B A4B (同一張模型卡所列變體) | MoE | 25.2B / 3.8B | Apache-2.0 | 128 個專家, 每 token 啟用 8 個加 1 個共享專家 |
-| nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16 | Mamba2 與 Transformer 混合的 MoE | 30B / 3.5B | NVIDIA Open Model License (模型卡稱可商用, 其餘條款須讀授權全文) | 支援至 1M 上下文, 預設設定 256K |
 | mistralai/Magistral-Small-2509 | 模型卡未載明 | 24B | Apache 2.0 | 低於 30B 範圍, 供對照; 上下文 128k |
 | openai/gpt-oss-20b | MoE | 21B / 3.6B | Apache 2.0 | 低於 30B 範圍, 供對照; MoE 權重為 MXFP4, 模型卡稱可在 16GB 記憶體執行 |
 
@@ -110,11 +121,11 @@
 
 AWQ 與 GPTQ 的實際額外開銷, 以及 FP8 的縮放係數開銷, 本輪查無官方數字, 上表為未含開銷的下限. 以單張 96GB 的卡檢視: 3 個 FP8 共 105GB, 放不下; 3 個 Q4_K_M 共 64.2GB, 剩約 31.8GB, 還要再扣 CUDA 執行環境與啟用記憶體 (推算, 信心: 中).
 
-### KV cache需要多少記憶體
+### KV cache 需要多少記憶體
 
-KV cache是模型邊讀邊做的筆記 (見 [K2.3 節](/know/k2-quantization)), 大小隨上下文長度與同時處理的對話數增加. 這一段用到兩個架構名詞: 分組查詢注意力 (GQA) 讓多個查詢共用同一組 KV heads, 筆記因此變薄; 滑動視窗層只保留最近固定數量 token 的筆記, 像只留最近幾頁, 超過範圍的就丟掉, 所以不會無限增加.
+KV cache 是模型邊讀邊做的筆記 (見 [K2.3 節](/know/k2-quantization)), 大小隨上下文長度與同時處理的對話數增加. 這一段用到兩個架構名詞: 分組查詢注意力 (GQA) 讓多個查詢共用同一組 KV heads, 筆記因此變薄; 滑動視窗層只保留最近固定數量 token 的筆記, 像只留最近幾頁, 超過範圍的就丟掉, 所以不會無限增加.
 
-公式 (來源: PagedAttention 論文對 KV cache大小的計算, 並依分組查詢注意力 GQA 的定義, 把隱藏維度換成 KV heads 與 head_dim 的乘積; 換算為整理者推導): 每個 token 的 KV 位元組數 = 2 x 層數 x KV heads x head_dim x 每個元素的位元組數; 總量 = 該值 x 上下文長度 x 同時處理的序列數.
+公式 (來源: PagedAttention 論文對 KV cache 大小的計算, 並依分組查詢注意力 GQA 的定義, 把隱藏維度換成 KV heads 與 head_dim 的乘積; 換算為整理者推導): 每個 token 的 KV 位元組數 = 2 x 層數 x KV heads x head_dim x 每個元素的位元組數; 總量 = 該值 x 上下文長度 x 同時處理的序列數.
 
 下表以官方 `config.json` 的欄位計算 FP16 的 KV cache; 同一表也示範混合注意力架構, 只有完整注意力層的 KV 會隨上下文長度成長.
 
@@ -124,7 +135,7 @@ KV cache是模型邊讀邊做的筆記 (見 [K2.3 節](/know/k2-quantization)), 
 | gemma-4-31B-it, 完整注意力層 | 10 層 (共 60 層, 其餘 50 層為滑動視窗), 全域 KV heads 4, 全域 head_dim 512 | 2 x 10 x 4 x 512 x 2 | 80 KiB | 80 MiB |
 | gemma-4-31B-it, 滑動視窗層 | 50 層, KV heads 16, head_dim 256, 視窗 1,024 token | 2 x 50 x 16 x 256 x 2 | 800 KiB, 但超過視窗後不再增加 | 每條序列固定約 800 MiB |
 
-Gemma 4 的欄位 (`global_head_dim`, `num_global_key_value_heads`) 語意為整理者依欄位名稱解讀, 推論引擎實際的配置方式須實測 (信心: 中低). 以 Mistral 的數字示範容量: 4 條序列各 32K token, 共 131,072 token, FP16 約 20GiB; 若 vLLM 的 KV cache改用 FP8 (`--kv-cache-dtype fp8`), 每個元素 1 位元組, 約減半為 10GiB. vLLM 文件說明, 預設 FP8 在沒有校準時縮放係數為 1.0, 建議用 llm-compressor 校準, 並未提供準確度數字 (來源: vLLM 文件 Quantized KV Cache).
+Gemma 4 的欄位 (`global_head_dim`, `num_global_key_value_heads`) 語意為整理者依欄位名稱解讀, 推論引擎實際的配置方式須實測 (信心: 低). 以 Mistral 的數字示範容量: 4 條序列各 32K token, 共 131,072 token, FP16 約 20GiB; 若 vLLM (多人同時使用時採用的推論伺服器, 見 M1) 的 KV cache 改用 FP8 (`--kv-cache-dtype fp8`), 每個元素 1 位元組, 約減半為 10GiB. vLLM 文件說明, 預設 FP8 在沒有校準時縮放係數為 1.0, 建議用 llm-compressor 校準, 並未提供準確度數字 (來源: vLLM 文件 Quantized KV Cache).
 
 ### 硬體選項與適合度
 
@@ -155,16 +166,15 @@ Gemma 4 的欄位 (`global_head_dim`, `num_global_key_value_heads`) 語意為整
 
 三個模型分在不同機器時, LiteLLM 依 `model_name` 分流 (M5.5 節), 單機故障時只影響其中一個模型. 主機其他零組件 (CPU, 主機板, 系統記憶體, 電源, 機箱, 儲存) 不在本節估算內; 使用 vLLM 的 sleep mode Level 1 時, CPU 記憶體須容納被移出的權重 (來源: vLLM 文件 Sleep Mode).
 
-## 研究 1 的分級依據
+## 分級依據
 
-等級定義來自研究 1 (待以第一手報價核對): A 無獨顯筆電; B 8 至 12GB 顯示記憶體的遊戲電腦; C Apple Silicon Mac; D 16GB 顯示卡升級; E, F 依預算區分. 預算區間見價格頁.
+A 至 F 是整理者為本手冊設計的分級, 不是業界標準 (推論). A 至 D 對應常見的設備類型: A 無獨立顯示卡的筆電; B 8 至 12GB 顯示記憶體的遊戲電腦; C Apple Silicon Mac; D 16GB 顯示卡. E 與 F 以顯示記憶體 24GB 與 48GB 為分界, 和 Ollama 依顯示記憶體設定預設上下文長度的分界相同 (小於 24GiB, 24 至 48GiB, 48GiB 以上; 來源: Ollama 文件 Context length), 方便讀者對照同一組數字. 各等級的預算區間見[價格頁](/ref/hardware-prices).
 
 ## 參考來源
 
 模型卡與設定 (官方):
 
 - [google/gemma-4-31B-it](https://huggingface.co/google/gemma-4-31B-it) 與其 [config.json](https://huggingface.co/google/gemma-4-31B-it/raw/main/config.json)
-- [nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16)
 - [mistralai/Magistral-Small-2509](https://huggingface.co/mistralai/Magistral-Small-2509)
 - [mistralai/Mistral-Small-3.2-24B-Instruct-2506 config.json](https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506/raw/main/config.json)
 - [openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b)
@@ -197,6 +207,8 @@ Gemma 4 的欄位 (`global_head_dim`, `num_global_key_value_heads`) 語意為整
 - [InsiderLLM: multi-GPU local AI](https://insiderllm.com/guides/multi-gpu-local-ai/)
 - [HotHardware: GeForce RTX 4090 48GB 改版卡](https://hothardware.com/news/geforce-rtx-4090-48gb-vram-mod)
 
+- [Ollama 文件: Context length (依顯示記憶體分級的預設上下文長度)](https://docs.ollama.com/context-length)
+
 文中的類比 (倉庫的容量與大門, 只留最近幾頁的筆記): 整理者所寫, 無外部來源, 不應當作技術定義引用.
 
-等級定義 (A 至 F) 與前三節的選購原則屬整理者依研究 1 與一般經驗的判斷 (內部研究紀錄, 非公開來源); 價格來源見[硬體價格頁](/ref/hardware-prices).
+等級定義 (A 至 F) 與前三節的選購原則屬整理者的設計與判斷 (推論); E, F 的 24GB 與 48GB 分界參照 Ollama 文件 Context length 的顯示記憶體分級, 各等級的模型落點依 K2 公式估算; 價格來源見[硬體價格頁](/ref/hardware-prices).

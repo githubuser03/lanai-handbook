@@ -208,6 +208,105 @@
       "verified_on": "2026-10-26",
       "expires_after_days": 30,
       "status": "已核對官方部落格與規格頁; 規格變更紀錄載明前一版為 2025-11-25"
+    },
+    {
+      "component": "gVisor (runsc)",
+      "version": "20261019.0",
+      "date": "2026-10-19",
+      "source_name": "gVisor 官方 GitHub 儲存庫的 git tag release-20261019.0 (以 git ls-remote 查詢, 日期為 tag 所指提交的日期)",
+      "source_url": "https://github.com/google/gvisor",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "gVisor 以日期為版本號, 約每週發布; 前一個版本為 release-20261012.0"
+    },
+    {
+      "component": "Podman",
+      "version": "v6.1.4",
+      "date": "2026-10-12",
+      "source_name": "Podman GitHub Releases",
+      "source_url": "https://github.com/podman-container-tools/podman/releases/tag/v6.1.4",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "已核對官方 release 頁; 同日另發布 5.8.9 維護版. 儲存庫網址 github.com/containers/podman 現由 podman-container-tools/podman 提供"
+    },
+    {
+      "component": "SOPS",
+      "version": "v3.13.3",
+      "date": "2026-07-23",
+      "source_name": "SOPS GitHub Releases",
+      "source_url": "https://github.com/getsops/sops/releases",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "已核對官方 releases 頁, 標示為 Latest"
+    },
+    {
+      "component": "n8n",
+      "version": "n8n@2.45.4",
+      "date": "2026-10-26",
+      "source_name": "n8n 官方 GitHub 儲存庫的 git tag n8n@2.45.4 (以 git ls-remote 查詢)",
+      "source_url": "https://github.com/n8n-io/n8n",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "以 git 直接查詢官方儲存庫的 tag (2026-10-27); 日期為 tag 所指提交的日期, 正式發布頁的上架日可能稍晚"
+    },
+    {
+      "component": "OPA",
+      "version": "v1.21.4",
+      "date": "2026-10-23",
+      "source_name": "OPA 官方 GitHub 儲存庫的 git tag v1.21.4 (以 git ls-remote 查詢)",
+      "source_url": "https://github.com/open-policy-agent/opa",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "以 git 直接查詢官方儲存庫的 tag (2026-10-27); 日期為 tag 所指提交的日期, 正式發布頁的上架日可能稍晚"
+    },
+    {
+      "component": "Keycloak",
+      "version": "26.8.1",
+      "date": "2026-10-13",
+      "source_name": "Keycloak 官方 GitHub 儲存庫的 git tag 26.8.1 (以 git ls-remote 查詢)",
+      "source_url": "https://github.com/keycloak/keycloak",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "以 git 直接查詢官方儲存庫的 tag (2026-10-27); 日期為 tag 所指提交的日期, 正式發布頁的上架日可能稍晚"
+    },
+    {
+      "component": "Langfuse",
+      "version": "v4.70.1",
+      "date": "2026-10-26",
+      "source_name": "Langfuse 官方 GitHub 儲存庫的 git tag v4.70.1 (以 git ls-remote 查詢)",
+      "source_url": "https://github.com/langfuse/langfuse",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "以 git 直接查詢官方儲存庫的 tag (2026-10-27); 日期為 tag 所指提交的日期, 正式發布頁的上架日可能稍晚"
+    },
+    {
+      "component": "ToolHive",
+      "version": "v0.56.0",
+      "date": "2026-10-22",
+      "source_name": "ToolHive 官方 GitHub 儲存庫的 git tag v0.56.0 (以 git ls-remote 查詢)",
+      "source_url": "https://github.com/stacklok/toolhive",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "以 git 直接查詢官方儲存庫的 tag (2026-10-27); 日期為 tag 所指提交的日期, 正式發布頁的上架日可能稍晚"
+    },
+    {
+      "component": "whisper.cpp",
+      "version": "v1.9.5",
+      "date": "2026-10-06",
+      "source_name": "whisper.cpp 官方 GitHub 儲存庫的 git tag v1.9.5 (以 git ls-remote 查詢)",
+      "source_url": "https://github.com/ggml-org/whisper.cpp",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30,
+      "status": "以 git 直接查詢官方儲存庫的 tag (2026-10-27); 日期為 tag 所指提交的日期, 正式發布頁的上架日可能稍晚"
     }
   ],
   "litellm_cves": [
@@ -226,14 +325,14 @@
     {
       "component": "LiteLLM",
       "cve": "CVE-2026-42208",
-      "summary": "未驗證 SQL 注入; CVSS v4.0 9.3 (GHSA), v3.1 9.8 (NVD)",
-      "affected": "1.81.16 至 1.83.6; 修補於 1.83.7, 官方建議 1.83.10-stable",
+      "summary": "未經身分驗證即可利用的 SQL 注入; CVSS v4.0 9.3 (GHSA), v3.1 9.8 (NVD)",
+      "affected": "1.81.16 至 1.83.6; 修補於 1.83.7",
       "source_name": "GitHub Security Advisory GHSA-r75f-5x8p-qvmc, NVD, CISA KEV",
       "source_url": "https://github.com/BerriAI/litellm/security/advisories/GHSA-r75f-5x8p-qvmc",
       "source_type": "primary",
       "verified_on": "2026-10-26",
       "expires_after_days": 30,
-      "status": "官方 (GHSA, NVD 核對); 已列入 CISA KEV (2026-05-08). 「官方建議 1.83.10-stable」出自先前引用的 LiteLLM 部落格, 本輪未核對"
+      "status": "官方 (GHSA, NVD 核對); 已列入 CISA KEV (2026-05-08). 受影響與修補版本依 GHSA 原文 (>=1.81.16, <1.83.7)"
     },
     {
       "component": "LiteLLM",
@@ -322,8 +421,8 @@
     {
       "component": "Langflow",
       "cve": "CVE-2026-0768",
-      "summary": "CVSS 9.8 (v3.0, ZDI), validate 端點程式碼注入, 未驗證即以 root 執行程式碼; NVD 列 1.4.2 受影響. 不在 CISA KEV 目錄 (版本 2026.10.23). 「自 2026-08-29 起觀測到持續利用」引自 VulnCheck, 來源待補",
-      "source_name": "NVD (ZDI 通報編號 ZDI-26-034); 利用情形引自 VulnCheck (未核對)",
+      "summary": "CVSS 9.8 (v3.0, ZDI), validate 端點程式碼注入, 未經身分驗證即以 root 執行程式碼; NVD 列 1.4.2 受影響. 不在 CISA KEV 目錄 (版本 2026.10.23). VulnCheck 的誘捕感測器 (Canary) 自 2026-08-29 至 08-30 起觀測到利用嘗試, VulnCheck 本身的公告為 LinkedIn 貼文, 此處引用 CSA 研究筆記與 Security Affairs 的轉述 (二手來源)",
+      "source_name": "NVD (ZDI 通報編號 ZDI-26-034); 利用情形見 CSA 研究筆記 (2026-09-04) 與 Security Affairs",
       "source_url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2026-0768",
       "source_type": "primary",
       "verified_on": "2026-10-26",
@@ -333,7 +432,7 @@
     {
       "component": "n8n",
       "cve": "CVE-2026-21858",
-      "summary": "CVSS 10.0, 未驗證遠端讀取伺服器檔案; 1.65.0 至 1.121.0 之前受影響, 1.121.0 修補. 不在 CISA KEV 目錄 (版本 2026.10.23)",
+      "summary": "CVSS 10.0, Webhook 請求處理不當; 執行特定的表單型工作流程時, 未經身分驗證的遠端攻擊者可讀取伺服器上的檔案, 後續影響依部署設定而定; 1.65.0 至 1.121.0 之前受影響, 1.121.0 修補. 不在 CISA KEV 目錄 (版本 2026.10.23)",
       "source_name": "GitHub Security Advisory GHSA-v4pr-fm98-w9pg, NVD",
       "source_url": "https://github.com/n8n-io/n8n/security/advisories/GHSA-v4pr-fm98-w9pg",
       "source_type": "primary",
@@ -344,7 +443,7 @@
     {
       "component": "MCP Inspector",
       "cve": "CVE-2025-49596",
-      "summary": "CVSS v4.0 9.4, 0.14.1 以前缺乏驗證, 可啟動 MCP 指令; 0.14.1 修補. 見[第 13.3 節](/build/m7-tools-sandbox)",
+      "summary": "CVSS v4.0 9.4, 0.14.1 以前缺乏驗證, 可啟動 MCP 指令; 0.14.1 修補. 見 [M7.1 節](/build/m7-tools-sandbox)",
       "source_name": "GitHub Security Advisory GHSA-7f8r-222p-6f5g, NVD",
       "source_url": "https://github.com/modelcontextprotocol/inspector/security/advisories/GHSA-7f8r-222p-6f5g",
       "source_type": "primary",
@@ -355,7 +454,7 @@
     {
       "component": "mcp-remote",
       "cve": "CVE-2025-6514",
-      "summary": "CVSS v3.1 9.6 (JFrog 為 CNA), 連線至不受信任的 MCP 伺服器時, 授權端點回應中的網址可造成作業系統命令注入. 見[第 13.3 節](/build/m7-tools-sandbox)",
+      "summary": "CVSS v3.1 9.6 (JFrog 為 CNA), 連線至不受信任的 MCP 伺服器時, 授權端點回應中的網址可造成作業系統命令注入. 見 [M7.1 節](/build/m7-tools-sandbox)",
       "source_name": "NVD (CNA: JFrog)",
       "source_url": "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2025-6514",
       "source_type": "primary",
@@ -373,6 +472,56 @@
       "verified_on": "2026-10-26",
       "expires_after_days": 30,
       "status": ""
+    },
+    {
+      "component": "llama.cpp (GGUF 解析)",
+      "cve": "CVE-2025-53630",
+      "summary": "GGUF 解析器 gguf_init_from_file_impl 的整數溢位, 可造成堆積越界讀寫; 經過設計的 GGUF 模型檔即可觸發, 官方附概念驗證檔; 嚴重度 High; commit 26a48ad 修補, 2025-07-10 公告. 同類問題另見 Cisco Talos 2024 年通報的 CVE-2024-21825 (TALOS-2024-1912)",
+      "source_name": "llama.cpp GitHub Security Advisory GHSA-vgg9-87g3-85w8",
+      "source_url": "https://github.com/ggml-org/llama.cpp/security/advisories/GHSA-vgg9-87g3-85w8",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30
+    },
+    {
+      "component": "llama-cpp-python",
+      "cve": "CVE-2024-34359",
+      "summary": "以未啟用沙箱的 Jinja2 渲染 GGUF 中繼資料中的對話範本, 可遠端執行程式碼; CVSS v3.1 9.6; 0.2.30 至 0.2.71 受影響, 0.2.72 修補, 2024-05-10 公告. 見 [M3.1 節](/build/m3-model-intake)",
+      "source_name": "GitHub Security Advisory GHSA-56xg-wfcc-g829",
+      "source_url": "https://github.com/abetlen/llama-cpp-python/security/advisories/GHSA-56xg-wfcc-g829",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30
+    },
+    {
+      "component": "Langflow",
+      "cve": "CVE-2026-33017",
+      "summary": "未經身分驗證即可利用的遠端執行程式碼; 2026-03-17 隨 1.9.0 公告, Sysdig 觀測到公告約 20 小時後即出現利用; 2026-03-25 列入 CISA KEV. 見 [M9.1 節](/build/m9-automation)",
+      "source_name": "CISA KEV 目錄 (列入日期); Cloud Security Alliance 研究筆記 (利用觀測)",
+      "source_url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30
+    },
+    {
+      "component": "n8n",
+      "cve": "CVE-2025-68613",
+      "summary": "CVSS 9.9; 2026-03-11 列入 CISA KEV. 見 [M9.1 節](/build/m9-automation)",
+      "source_name": "CISA KEV 目錄",
+      "source_url": "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30
+    },
+    {
+      "component": "Flowise",
+      "cve": "CVE-2025-71333",
+      "summary": "2.2.4 及以前的 /api/v1/attachments 端點, 未經身分驗證即可上傳任意檔案 (chatId 與 chatflowId 可路徑穿越); CVSS v4.0 9.3 (CNA: VulnCheck); 2026-06-25 公開. CVE 紀錄未寫明修補版本, 升級前請以 Flowise 官方 release 說明為準. 見 [M9.1 節](/build/m9-automation)",
+      "source_name": "CVE.org 紀錄 (CNA: VulnCheck)",
+      "source_url": "https://cveawg.mitre.org/api/cve/CVE-2025-71333",
+      "source_type": "primary",
+      "verified_on": "2026-10-26",
+      "expires_after_days": 30
     }
   ]
 }

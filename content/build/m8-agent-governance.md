@@ -1,10 +1,14 @@
+---
+description: "代理讓模型自己決定下一步要呼叫哪個工具, 所以每個動作都要在模型之外再檢查一次."
+---
+
 # M8 代理與治理
 
 ::: info 本章屬性
 - 等級: ◇ 進階
 - 狀態: 可閱讀 (指令未實機驗證)
 - 資料基準日: 2026-10-26
-- 待查證: Rego 政策, 測試與 LangGraph 程式片段依官方文件撰寫, 未實機執行; 隔離模型的結構檢查, 斷路器, kill switch 與 A2 雙模型審查為整理者的設計建議 (推論); M8.4 節的模擬結果為內部研究紀錄, 模型判斷與分析師行為為腳本模擬; M8.1 節的 LangGraph 授權與 CLI 說明本輪未重新核對; M8.5 節的每代理白名單政策, 共用配額與信任邊界為設計建議, 未實機驗證, `Send` 與 `max_concurrency` 僅有社群討論串為據, `max_parallel_requests` 在 `/key/generate` 的欄位名稱待實機確認; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 待查證: Rego 政策, 測試與 LangGraph 程式片段依官方文件撰寫, 未實機執行; 隔離模型的結構檢查, 斷路器, kill switch 與 A2 雙模型審查為整理者的設計建議 (推論); M8.4 節的模擬結果為內部研究紀錄, 模型判斷與分析師行為為腳本模擬; M8.1 節「LangGraph Platform 改名」的說法未查到官方原文; M8.5 節的每代理白名單政策, 共用配額與信任邊界為設計建議, 未實機驗證, `Send` 與 `max_concurrency` 僅有社群討論串為據, `max_parallel_requests` 在 `/key/generate` 的欄位名稱待實機確認; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 代理讓模型自己決定下一步要呼叫哪個工具, 所以每個動作都要在模型之外再檢查一次. 本手冊的做法是: LangGraph 負責流程控制, OPA 負責政策判定, 讀取不可信內容的工作交給沒有工具的隔離模型. 需要多個代理同時執行或協作時, 見 M8.5 節.
@@ -31,9 +35,9 @@
 
 LangGraph 負責代理的流程控制: 每一步做什麼, 下一步走哪裡, 哪裡要停下來等人核准. 它有開源函式庫與商業平台兩種用法, 本節說明為何選函式庫.
 
-- 程式庫採 MIT 授權, 可完全地端執行, 無商業限制.
-- LangGraph Platform 已改名為 LangSmith Deployment. 依 LangChain 官方 CLI 文件, `langgraph up` 啟動的 Agent Server 在正式環境需要授權金鑰.
-- 因此本手冊建議把 LangGraph 當函式庫, 嵌入自己的 FastAPI 或腳本 (信心: 高).
+- 程式庫採 MIT 授權, 可完全地端執行, 無商業限制 (來源: LangGraph GitHub 儲存庫).
+- LangSmith Deployment 是 LangChain 公司代管與部署代理的商業平台 (舊稱 LangGraph Platform; 改名說法為訓練資料內資訊, 可能已過時). 官方文件寫明, 自架部署需要 Enterprise 方案與隨方案提供的 LangSmith 授權金鑰 (來源: LangChain 文件 Self-hosted deployment overview).
+- 因此本手冊建議把 LangGraph 當函式庫, 嵌入自己的 FastAPI (以 Python 撰寫 API 服務的框架) 或腳本 (信心: 高).
 - 需要理解狀態圖, 檢查點與節點等概念, 對初階讀者偏陡 (信心: 中, 屬推論).
 
 
@@ -47,7 +51,7 @@ OPA (Open Policy Agent) 是通用的政策引擎: 應用程式送出一份 JSON 
 
 這一步把 OPA 啟動成一個服務, 讓 LangGraph 每次要呼叫工具前先問它一次.
 
-OPA 以 `opa run --server` 啟動為伺服器, 預設監聽 `localhost:8181`; 在容器中執行時, 須以 `--addr` 綁到容器的對外介面 (來源: OPA Docker 部署文件). 官方安全文件建議: 不需要遠端存取時只綁 localhost; 必須遠端存取時, 啟用驗證 (`--authentication=token` 搭配 `--authorization=basic` 與 `system.authz` 政策), 以 `--tls-cert-file` 與 `--tls-private-key-file` 啟用 HTTPS, 並以非 root 帳號執行. 未設定時, OPA 預設不做驗證與授權 (來源: OPA Security 文件). 本手冊把 OPA 與 LangGraph 放在同一個控制區 VM, 只綁 localhost 或控制區內部網路 (推論, 信心: 中高).
+OPA 以 `opa run --server` 啟動為伺服器, 預設監聽 `localhost:8181`; 在容器中執行時, 須以 `--addr` 綁到容器的對外介面 (來源: OPA Docker 部署文件). 官方安全文件建議: 不需要遠端存取時只綁 localhost; 必須遠端存取時, 啟用驗證 (`--authentication=token` 搭配 `--authorization=basic` 與 `system.authz` 政策), 以 `--tls-cert-file` 與 `--tls-private-key-file` 啟用 HTTPS, 並以非 root 帳號執行. 未設定時, OPA 預設不做驗證與授權 (來源: OPA Security 文件). 本手冊把 OPA 與 LangGraph 放在同一個控制區 VM, 只綁 localhost 或控制區內部網路 (推論, 信心: 中).
 
 查詢決策使用 Data API: 以 `POST /v1/data/<政策路徑>` 送出含 `input` 鍵的 JSON, 回應的 `result` 鍵即為決策. 路徑對應的文件未定義時, 伺服器仍回 200, 但回應中沒有 `result`; 啟用決策紀錄時, 回應另含 `decision_id`, 可與決策紀錄對應 (來源: OPA REST API 文件).
 
@@ -57,7 +61,7 @@ OPA 以 `opa run --server` 啟動為伺服器, 預設監聽 `localhost:8181`; �
 curl -s -X POST http://localhost:8181/v1/data/agent/tools/decision \
   -H 'Content-Type: application/json' \
   -d '{"input": {"tool": "siem.query", "args": {"target": "web01"}, "call_count": 3}}'
-# 預期回應形式: {"decision_id": "...", "result": "allow"}
+# 預期回應形式 (已依下方「決策紀錄」啟用 decision_logs 時才含 decision_id): {"decision_id": "...", "result": "allow"}
 ```
 
 呼叫端程式須「失敗即拒絕」: 連不到 OPA, 回應不是 200, 或回應中沒有 `result` 時, 一律視為拒絕 (推論, 信心: 高).
@@ -82,7 +86,7 @@ tiers := {
 	"mail.send": "A3",
 }
 
-# 關鍵資產: 非唯讀動作不得以這些主機為對象
+# 關鍵資產: 以這些主機為對象的非唯讀動作, 一律轉人工核准
 critical_assets := {"dc01", "fw-core-01"}
 
 # 單次執行的工具呼叫上限
@@ -91,11 +95,13 @@ quota := {"siem.query": 30}
 decision := "allow" if {
 	base_ok
 	tiers[input.tool] in {"A0", "A1"}
+	not touches_critical_asset
 }
 
 decision := "review" if {
 	base_ok
 	tiers[input.tool] == "A2"
+	not touches_critical_asset
 }
 
 decision := "approval" if {
@@ -103,10 +109,14 @@ decision := "approval" if {
 	tiers[input.tool] == "A3"
 }
 
+decision := "approval" if {
+	base_ok
+	touches_critical_asset
+}
+
 base_ok if {
 	tiers[input.tool]
 	not over_quota
-	not touches_critical_asset
 }
 
 over_quota if input.call_count >= quota[input.tool]
@@ -117,14 +127,15 @@ touches_critical_asset if {
 }
 ```
 
-這份政策的設計重點 (推論, 信心: 中高):
+這份政策的設計重點 (推論, 信心: 中):
 
 - **分級寫在政策裡**: 等級由政策依工具名稱查表, 不讓代理在輸入中自行申報.
 - **配額由呼叫端計數**: OPA 每次判定只看當次輸入, 不保存狀態, 因此「本次執行已呼叫幾次」由 LangGraph 的狀態計數後放進 `input.call_count`.
-- **決策值互斥**: 三條 `decision` 規則以不同等級為條件, 同一個輸入只會有一條成立.
+- **決策值互斥**: `allow` 與 `review` 排除了關鍵資產, 兩條 `approval` 規則就算同時成立, 結果也相同, 因此同一個輸入只會得到一個決策值. 若不同值的規則同時成立, OPA 會回報衝突錯誤 (eval_conflict_error), 呼叫端依「失敗即拒絕」處理.
+- **關鍵資產轉人工**: 以關鍵資產為對象的非唯讀動作不直接拒絕, 而是轉人工核准 (`approval`), 與範例 E2, E5 的做法一致.
 - **對外連線白名單**: 需要時可比照 `critical_assets` 的寫法加一份允許的網域清單, 對帶有網址參數的工具檢查.
 
-政策檔以 Git 管理, 變更須經審查; 每條規則都寫單元測試. OPA 以 `opa test` 執行測試, 測試規則的名稱以 `test_` 開頭, 並以 `with input as` 指定輸入 (來源: OPA Policy Testing 文件). 例如:
+政策檔以 Git (追蹤檔案修改紀錄的版本控制工具) 管理, 變更須經審查; 每條規則都寫單元測試. OPA 以 `opa test` 執行測試, 測試規則的名稱以 `test_` 開頭, 並以 `with input as` 指定輸入 (來源: OPA Policy Testing 文件). 例如:
 
 ```rego
 package agent.tools_test
@@ -135,8 +146,8 @@ test_unknown_tool_denied if {
 	tools.decision == "deny" with input as {"tool": "shell.exec", "args": {}, "call_count": 0}
 }
 
-test_isolate_dc_denied if {
-	tools.decision == "deny" with input as {"tool": "host.isolate", "args": {"target": "dc01"}, "call_count": 0}
+test_isolate_dc_requires_approval if {
+	tools.decision == "approval" with input as {"tool": "host.isolate", "args": {"target": "dc01"}, "call_count": 0}
 }
 ```
 
@@ -146,7 +157,7 @@ opa test . -v
 
 ### 決策紀錄
 
-每次判定都應留下紀錄. OPA 的決策紀錄 (decision logs) 包含 `decision_id`, 查詢的政策路徑, `input`, `result` 與時間戳記 (來源: OPA Decision Logs 文件). 最簡單的設定是輸出到主控台, 由容器日誌經 OTel Collector 轉送到稽核區與既有 SIEM (見 M6):
+每次判定都應留下紀錄. OPA 的決策紀錄 (decision logs) 包含 `decision_id`, 查詢的政策路徑, `input`, `result` 與時間戳記 (來源: OPA Decision Logs 文件). 最簡單的設定是輸出到主控台, 由容器日誌經 OTel Collector (稽核區收集並分送紀錄的程式) 轉送到稽核區與既有 SIEM (集中分析資安紀錄的系統) (見 M6):
 
 ```yaml
 decision_logs:
@@ -159,7 +170,7 @@ decision_logs:
 
 log, 郵件與外部情資可能夾帶給模型的指令. 讓有工具權限的模型直接讀這些內容, 等於讓陌生人直接對擁有鑰匙的人下指令. 雙 LLM 模式把工作拆開: 一個沒有任何工具的模型負責閱讀與摘要, 只能交出固定格式的結果; 另一個模型依這些結果規劃下一步, 卻從不直接讀原文. 可以想成郵件室先拆信並填寫制式登記表, 主管只看登記表做決定.
 
-讀取 log, 郵件, 外部情資等不可信內容的工作, 交給一個沒有任何工具的隔離模型; 原理見 K5.6 節. 隔離模型由自建程式加本地模型組成, 放在 VM 隔離區, 只能連 LiteLLM, 不持有任何工具憑證 (見[組裝總覽](/build/overview)的部署分區).
+讀取 log, 郵件, 外部情資等不可信內容的工作, 交給一個沒有任何工具的隔離模型; 原理見 K5.6 節. 隔離模型由自建程式加本地模型組成, 放在 VM 隔離區, 只能連模型閘道 LiteLLM, 不持有任何工具憑證 (見[組裝總覽](/build/overview)的部署分區).
 
 ### 實作要點
 
@@ -191,7 +202,7 @@ log, 郵件與外部情資可能夾帶給模型的指令. 讓有工具權限的�
 
 ### 擋不住的情況
 
-格式檢查只能確認「值的形狀正確」, 無法確認「值是否遭到操控」. 例如郵件中藏有指令, 讓隔離模型在 `indicators` 填入網域控制站的 IP 位址; 這個值格式完全合法, 後續若據此執行「隔離主機」, 就會影響關鍵系統. 因應方式是由 OPA 的關鍵資產清單把關 (見 M8.2 節的 `touches_critical_asset`), 並讓 A2 以上的動作經過審查或人工核准 (見 M8.4 節) (信心: 中高).
+格式檢查只能確認「值的形狀正確」, 無法確認「值是否遭到操控」. 例如郵件中藏有指令, 讓隔離模型在 `indicators` 填入網域控制站的 IP 位址; 這個值格式完全合法, 後續若據此執行「隔離主機」, 就會影響關鍵系統. 因應方式是由 OPA 的關鍵資產清單把關 (見 M8.2 節的 `touches_critical_asset`), 並讓 A2 以上的動作經過審查或人工核准 (見 M8.4 節) (信心: 中).
 
 ## M8.4 人工核准, 斷路器與配額
 
@@ -212,7 +223,7 @@ log, 郵件與外部情資可能夾帶給模型的指令. 讓有工具權限的�
 
 ### 以 LangGraph 的 interrupt 實作人工核准
 
-LangGraph 的 `interrupt()` 會在呼叫處暫停圖的執行, 並透過 checkpointer 保存狀態; 傳給 `interrupt()` 的值會回傳給呼叫端, 圖會一直等到恢復執行. 恢復時以相同的 `thread_id` 再次呼叫, 並傳入 `Command(resume=...)`, 傳入的值即成為 `interrupt()` 的回傳值 (來源: LangGraph Interrupts 文件). 下列程式片段依官方範例改寫, 未實機驗證:
+LangGraph 的 `interrupt()` 會在呼叫處暫停圖的執行, 並透過 checkpointer (LangGraph 保存流程狀態的元件) 保存狀態; 傳給 `interrupt()` 的值會回傳給呼叫端, 圖會一直等到恢復執行. 恢復時以相同的 `thread_id` 再次呼叫, 並傳入 `Command(resume=...)`, 傳入的值即成為 `interrupt()` 的回傳值 (來源: LangGraph Interrupts 文件). 下列程式片段依官方範例改寫, 未實機驗證:
 
 ```python
 from langgraph.types import interrupt, Command
@@ -244,13 +255,13 @@ graph.invoke(Command(resume=True), config)
 
 - **恢復時整個節點從頭執行**: `interrupt()` 之前的程式碼會再跑一次, 因此有副作用的動作 (例如呼叫工具) 應放在 `interrupt()` 之後, 或確保可重複執行而不產生不同結果.
 - **不要用籠統的 try/except 包住 `interrupt()`**: 否則會攔截到暫停機制使用的例外, 應只攔截特定例外類型.
-- **正式環境使用資料庫型的 checkpointer**: 官方建議正式環境使用以資料庫保存狀態的 checkpointer, 範例中的 `InMemorySaver` 只適合測試.
+- **正式環境使用資料庫型的 checkpointer**: 官方建議正式環境使用以資料庫保存狀態的 checkpointer, 範例中的 `InMemorySaver` 把狀態存在記憶體, 服務重啟即消失, 只適合測試.
 
-核准介面可以是 ticket 系統, 聊天機器人或簡單的網頁; 重點是核准紀錄 (誰, 何時, 核准了哪個 `thread_id` 的哪個動作) 與 OPA 的 `decision_id` 一起保存, 稽核時才能串起來 (推論, 信心: 中高).
+核准介面可以是 ticket 系統, 聊天機器人或簡單的網頁; 重點是核准紀錄 (誰, 何時, 核准了哪個 `thread_id` 的哪個動作) 與 OPA 的 `decision_id` 一起保存, 稽核時才能串起來 (推論, 信心: 中).
 
 ### 單次配額
 
-每次代理執行 (一個 `thread_id`) 為每個工具設定呼叫上限, 例如 `siem.query` 每次執行最多 30 次. 計數保存在 LangGraph 的狀態中, 每次查詢 OPA 時帶入 (見 M8.2 節). 配額的作用是限制「遭注入後陷入迴圈」或「大量撈取資料」的影響範圍 (推論, 信心: 中高).
+每次代理執行 (一個 `thread_id`) 為每個工具設定呼叫上限, 例如 `siem.query` 每次執行最多 30 次. 計數保存在 LangGraph 的狀態中, 每次查詢 OPA 時帶入 (見 M8.2 節). 配額的作用是限制「遭注入後陷入迴圈」或「大量撈取資料」的影響範圍 (推論, 信心: 中).
 
 ### 斷路器與 kill switch
 
@@ -269,7 +280,7 @@ graph.invoke(Command(resume=True), config)
 
 ## M8.5 多代理: 同時執行與協作
 
-**結論**: 本手冊的架構可以同時執行多個代理, 但建議分兩步走: 先做「多個獨立代理各跑各的」, 再做「固定流程的協作」, 不建議讓代理之間自由對話. 原因是每多一個代理, 就多一條可能傳遞注入內容的路徑, 且同時進行的請求會共用同一組 GPU. 基礎元件 (LiteLLM 虛擬金鑰, OPA, MCP gateway, Langfuse) 都已就位, 要補的是每個代理的身分, 代理之間的信任邊界, 以及跨執行的共用配額.
+**結論**: 本手冊的架構可以同時執行多個代理, 但建議分兩步走: 先做「多個獨立代理各跑各的」, 再做「固定流程的協作」, 不建議讓代理之間自由對話. 原因是每多一個代理, 就多一條可能傳遞注入內容的路徑, 且同時進行的請求會共用同一組 GPU. 基礎元件 (LiteLLM 虛擬金鑰, OPA, MCP gateway, 記錄模型呼叫軌跡的 Langfuse) 都已就位, 要補的是每個代理的身分, 代理之間的信任邊界, 以及跨執行的共用配額.
 
 ### 三種「多代理」要分開看
 
@@ -277,7 +288,7 @@ graph.invoke(Command(resume=True), config)
 |---|---|---|---|
 | 並行獨立 | 多個代理各自處理不同任務, 彼此不傳訊息 (例如分流代理與週報代理) | 搶用 GPU 與工具配額 | 先做這一種 |
 | 固定流程協作 | 主流程依預先定義的順序呼叫專責代理, 傳遞的內容是固定欄位 JSON (例如分流後交給調查) | 上游輸出若遭操控, 會影響下游 | 第二步, 需套用本節的信任邊界 |
-| 自由對話 | 代理之間以自然語言彼此委派, 自行決定下一個該找誰 | 注入內容可沿對話擴散, 行為難以預測與稽核 | 不建議 (推論, 信心: 中高) |
+| 自由對話 | 代理之間以自然語言彼此委派, 自行決定下一個該找誰 | 注入內容可沿對話擴散, 行為難以預測與稽核 | 不建議 (推論, 信心: 中) |
 
 ### 每個代理一個身分
 
@@ -300,12 +311,11 @@ agent_tools := {
 
 agent_ok if input.tool in agent_tools[input.agent_id]
 
-# 原本的 base_ok 增加一個條件
+# 取代 M8.2 節原本的 base_ok; 同名規則寫兩次會變成「任一成立即可」, 白名單就失效
 base_ok if {
 	tiers[input.tool]
 	agent_ok
 	not over_quota
-	not touches_critical_asset
 }
 ```
 
@@ -323,43 +333,38 @@ LangChain 官方的 supervisor 遷移說明指出, `langgraph-supervisor` 套件
 
 固定流程協作的示意如下 (依上述文件整理的設計, 未實機驗證):
 
-```
-告警進入
-   |
-   v
-[主流程 LangGraph, thread_id = 本次執行編號]
-   |
-   +--> [分流代理]   金鑰 k-triage, 工具: siem.query
-   |        | 輸出固定欄位 JSON
-   |        v
-   |    [程式檢查結構, 長度, 列舉值]  不通過就整筆丟棄
-   |        |
-   +--> [調查代理]   金鑰 k-investigate, 工具: siem.query, ticket.create, host.isolate
-            | 每次工具呼叫先查 OPA (帶 agent_id)
-            v
-        [MCP gateway] --> 工具
-   A2 以上的動作: 雙模型審查或人工核准 (見 M8.4 節)
+```mermaid
+flowchart TD
+  A["告警進入"] --> B["主流程 LangGraph, thread_id = 本次執行編號"]
+  B --> C["分流代理<br/>金鑰 k-triage, 工具: siem.query"]
+  C -->|"輸出固定欄位 JSON"| D["程式檢查結構, 長度, 列舉值<br/>不通過就整筆丟棄"]
+  D --> E
+  B --> E["調查代理<br/>金鑰 k-investigate, 工具: siem.query, ticket.create, host.isolate"]
+  E -->|"每次工具呼叫先查 OPA (帶 agent_id)"| F["MCP gateway"]
+  F --> G["工具"]
+  N["A2 以上的動作: 雙模型審查或人工核准 (見 M8.4 節)"]:::note
+  classDef note stroke-dasharray: 4 4
 ```
 
 完整的應用範例 (三個調查代理平行執行, 一個彙整代理提出處置建議), 見 [E5 多代理事件調查](/examples/e5-multi-agent-investigation).
 
 ### 代理之間的訊息一律視為不可信
 
-OWASP 的代理應用十大風險中, ASI07「Insecure Inter-Agent Communication」指代理之間遭偽造的訊息可能把整群代理導向錯誤動作, ASI08「Cascading Failures」指錯誤訊號在自動化流程中擴大 (來源: OWASP GenAI Security Project, Top 10 for Agentic Applications). 因應做法沿用 M8.3 節的隔離原則 (設計建議, 信心: 中高):
+OWASP (推動應用程式安全的非營利社群) 的代理應用十大風險中, ASI07「Insecure Inter-Agent Communication」指代理之間遭偽造的訊息可能把整群代理導向錯誤動作, ASI08「Cascading Failures」指錯誤訊號在自動化流程中擴大 (來源: OWASP GenAI Security Project, Top 10 for Agentic Applications). 因應做法沿用 M8.3 節的隔離原則 (設計建議, 信心: 中):
 
 1. **只傳固定欄位**: 上游代理的輸出須通過結構檢查 (欄位, 型別, 列舉值, 長度) 才交給下游; 自由文字只顯示給分析師, 不當作下游的指令或規劃依據.
 2. **權限不隨訊息變動**: 下游代理的工具範圍由自己的金鑰與 OPA 白名單決定. 上游訊息要求「幫我隔離這台主機」時, 下游仍須通過自己的政策判定.
 3. **訊息不帶憑證**: 代理之間不傳遞金鑰, token 或網址憑證.
-4. **關鍵資產清單照常生效**: 上游填入的目標值若落在關鍵資產清單, 下游的非唯讀動作仍會遭拒 (見 M8.3 節「擋不住的情況」).
+4. **關鍵資產清單照常生效**: 上游填入的目標值若落在關鍵資產清單, 下游的非唯讀動作仍會轉人工核准 (見 M8.3 節「擋不住的情況」).
 5. **錯誤不往下游擴散**: 上游連續輸出格式錯誤時, 由斷路器切斷該代理, 下游不再接收 (見 M8.4 節).
 
 ### 同時執行的容量與配額
 
-**GPU 是共用瓶頸.** 同時進行的請求數大致等於「同時執行的代理數」乘以「每個代理內同時送出的呼叫數」(推算, 非實測). vLLM 的 KV cache不足時會發生搶佔 (preemption), 被搶佔的請求待空間足夠後重新計算; V1 預設的搶佔模式為 `RECOMPUTE`. 官方建議: 搶佔頻繁時降低 `max_num_seqs` 或 `max_num_batched_tokens`, 可縮小一批的請求數, 降低 KV cache需求; 搶佔次數可由 Prometheus 指標或 `disable_log_stats=False` 觀察 (來源: vLLM 文件 Optimization and Tuning). 實務做法是先用一個代理量出單次執行的呼叫數與延遲, 再逐一加入其他代理, 觀察搶佔次數與延遲, 超過可接受範圍就停止增加, 或另加一台推論主機 (設計建議, 信心: 中).
+**GPU 是共用瓶頸.** 同時進行的請求數大致等於「同時執行的代理數」乘以「每個代理內同時送出的呼叫數」(推算, 非實測). 推論伺服器 vLLM 的 KV cache 不足時會發生搶佔 (preemption), 被搶佔的請求待空間足夠後重新計算; V1 預設的搶佔模式為 `RECOMPUTE`. 官方建議: 搶佔頻繁時降低 `max_num_seqs` 或 `max_num_batched_tokens`, 可縮小一批的請求數, 降低 KV cache 需求; 搶佔次數可由 Prometheus (M6 的指標監控系統) 的指標或 `disable_log_stats=False` 觀察 (來源: vLLM 文件 Optimization and Tuning). 實務做法是先用一個代理量出單次執行的呼叫數與延遲, 再逐一加入其他代理, 觀察搶佔次數與延遲, 超過可接受範圍就停止增加, 或另加一台推論主機 (設計建議, 信心: 中).
 
-**金鑰層的限流.** LiteLLM 跨多個實例時, `tpm`, `rpm` 與 `max_parallel_requests` 的計數放在 Redis; Redis 無法連線時, 各實例會退回各自的記憶體計數, 例如 `rpm_limit: 2` 會變成每個實例各 2 次. 設定 `fail_closed_rate_limit_enforcement: true` 後, 無法驗證計數的請求會回 503 (來源: LiteLLM 文件 Users). 單一 LiteLLM 實例的部署不受影響; 多實例時, 建議啟用 fail closed (推論, 信心: 中).
+**金鑰層的限流.** LiteLLM 跨多個實例時, `tpm`, `rpm` 與 `max_parallel_requests` 的計數放在 Redis (常用來存放計數與快取的記憶體資料庫); Redis 無法連線時, 各實例會退回各自的記憶體計數, 例如 `rpm_limit: 2` 會變成每個實例各 2 次. 設定 `fail_closed_rate_limit_enforcement: true` 後, 無法驗證計數的請求會回 503 (來源: LiteLLM 文件 Users). 單一 LiteLLM 實例的部署不受影響; 多實例時, 建議啟用 fail closed (推論, 信心: 中).
 
-**跨執行的共用配額.** M8.4 節的單次配額只管「一次執行」(一個 `thread_id`) 的呼叫數. 要限制「所有代理加總」的呼叫量 (例如整個系統每分鐘最多對 SIEM 查詢 100 次), 需要外部計數器, 例如 Redis. LangGraph 在查詢 OPA 前讀取計數, 放進 `input.global_count`, 政策再加一條 `over_global_quota` 規則. OPA 本身不保存狀態, 計數由呼叫端負責 (設計建議, 信心: 中高).
+**跨執行的共用配額.** M8.4 節的單次配額只管「一次執行」(一個 `thread_id`) 的呼叫數. 要限制「所有代理加總」的呼叫量 (例如整個系統每分鐘最多對 SIEM 查詢 100 次), 需要外部計數器, 例如 Redis. LangGraph 在查詢 OPA 前讀取計數, 放進 `input.global_count`, 政策再加一條 `over_global_quota` 規則. OPA 本身不保存狀態, 計數由呼叫端負責 (設計建議, 信心: 中).
 
 ### 觀測與切斷以代理為單位
 
@@ -379,7 +384,7 @@ K5 引用的 BFCL V4 顯示, 通用小模型單步工具呼叫約 78% 至 87%, �
 
 **政策引擎**
 
-- [ ] `opa test . -v` 全部通過, 測試涵蓋: 拒絕不在白名單的工具; 拒絕以關鍵資產為對象的非唯讀動作; 拒絕超過配額的呼叫; 每個等級回傳預期的決策.
+- [ ] `opa test . -v` 全部通過, 測試涵蓋: 拒絕不在白名單的工具; 以關鍵資產為對象的非唯讀動作轉人工核准; 拒絕超過配額的呼叫; 每個等級回傳預期的決策.
 - [ ] 停止 OPA 服務後, 代理的所有工具呼叫一律拒絕 (失敗即拒絕).
 - [ ] OPA 只能從控制區內部連線; 從其他區連 8181 連接埠失敗.
 
@@ -409,6 +414,8 @@ K5 引用的 BFCL V4 顯示, 通用小模型單步工具呼叫約 78% 至 87%, �
 - [OPA 文件: Decision Logs](https://www.openpolicyagent.org/docs/management-decision-logs)
 - [OPA 文件: Deploy with Docker](https://openpolicyagent.org/docs/deploy/docker)
 - [OPA 文件: Security](https://www.openpolicyagent.org/docs/security.md)
+- [LangGraph GitHub 儲存庫 (MIT 授權)](https://github.com/langchain-ai/langgraph)
+- [LangChain 文件: Self-hosted deployment overview (自架需 Enterprise 方案與授權金鑰)](https://docs.langchain.com/langsmith/deploy-to-self-hosted-overview)
 - [LangGraph 文件: Interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts)
 - [Simon Willison: The Dual LLM pattern](https://simonwillison.net/2023/Apr/25/dual-llm-pattern/)
 - [OWASP GenAI: LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)

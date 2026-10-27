@@ -1,15 +1,19 @@
+---
+description: "介面讓使用者能在瀏覽器裡和模型對話, 反向代理讓連線加密, 並在介面前面多一道驗證與流量控制."
+---
+
 # M2 使用者介面與反向代理
 
 ::: info 本章屬性
 - 等級: ● 必要
 - 狀態: 可閱讀 (指令未實機驗證)
-- 資料基準日: 2026-10-26
+- 資料基準日: 2026-10-27
 - 待查證: M2.3 節 Nginx 與 Caddy 設定範例, M2.4 節驗收指令皆未實機驗證; 在 Open WebUI 前疊加基本驗證是否與其 `Authorization` 標頭衝突, 未實機確認; 瀏覽器介面的對話請求是否都經過 `/api/chat/completions`, 未確認; caddy-ratelimit 的維護狀態與設定語法僅依其 README (非 Caddy 官方模組); 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
 **結論**: 介面讓使用者能在瀏覽器裡和模型對話, 反向代理讓連線加密, 並在介面前面多一道驗證與流量控制. 單人單機只需要介面, 而且只綁 127.0.0.1; 要讓內網其他人連入時, 才在前面加反向代理.
 
-**這一塊在圖上的位置**: VM 入口區的 Open WebUI 與 Nginx 或 Caddy. **前置模組**: M1. **完成後的狀態**: 里程碑 1 完成, 可以在瀏覽器裡和本機模型對話.
+**這一塊在圖上的位置**: VM 入口區的 Open WebUI (對話介面) 與 Nginx 或 Caddy (反向代理). **前置模組**: M1. **完成後的狀態**: 里程碑 1 完成, 可以在瀏覽器裡和本機模型對話.
 
 M1 的推論伺服器只能用指令操作; 這一章裝上一般人熟悉的聊天畫面. 介面像餐廳的外場與菜單, 讓客人不必走進廚房就能點菜. 反向代理則像門口的接待櫃台: 所有客人都先到櫃台, 櫃台確認對方是內部人員, 才帶到座位, 外人不會直接走進用餐區.
 
@@ -18,7 +22,7 @@ M1 的推論伺服器只能用指令操作; 這一章裝上一般人熟悉的聊
 |---|---|
 | 使用者介面 (UI) | 在瀏覽器或桌面 App 裡和模型對話的畫面, 例如 Open WebUI, AnythingLLM |
 | 反向代理 (reverse proxy) | 站在服務前面統一接收連線, 再轉給後面服務的程式, 例如 Nginx, Caddy |
-| TLS 與 HTTPS | TLS 是加密連線的協定; 網址開頭是 https 時, 傳輸內容就經過加密 |
+| TLS 與 HTTPS | TLS 是加密連線的協定; HTTPS 是以 TLS 加密的 HTTP, 網址開頭是 https 時, 瀏覽器與伺服器之間的傳輸內容就經過加密 (來源: MDN) |
 | 憑證與 CA | 憑證證明「這個網站就是它聲稱的那一個」; CA (憑證機構) 是簽發憑證的單位, 瀏覽器要信任 CA 才會接受它簽的憑證 |
 | 速率限制 (rate limit) | 限制同一來源在一段時間內的請求次數, 避免單一使用者占滿資源 |
 | 基本驗證 (basic auth) | 瀏覽器跳出帳號密碼視窗的簡易登入方式 |
@@ -29,14 +33,14 @@ M1 的推論伺服器只能用指令操作; 這一章裝上一般人熟悉的聊
 
 介面決定使用者看到的畫面與操作方式. AnythingLLM 桌面版像一般軟體一樣下載安裝即可使用; Open WebUI 以 Docker 容器執行, 透過瀏覽器操作, 之後要多人共用也比較容易. 等級 A 與 C 建議用 AnythingLLM 桌面版, 其他等級用 Open WebUI 單一容器. 不加閘道, 代理框架與 MCP. 下圖是單人使用時的連線關係:
 
-```
-[瀏覽器 / 桌面 App]
-      | http://127.0.0.1:3000
-      v
-[Open WebUI 或 AnythingLLM] ----> [Ollama / llama-server]
-      |
-   (本機資料卷: 對話, 設定) --> 每週備份
-   對外: 無開放連接埠
+```mermaid
+flowchart TD
+  A["瀏覽器 / 桌面 App"] -->|"http://127.0.0.1:3000"| B["Open WebUI 或 AnythingLLM"]
+  B --> C["Ollama / llama-server"]
+  B --- D["本機資料卷: 對話, 設定"]
+  D --> E["每週備份"]
+  N["對外: 無開放連接埠"]:::note
+  classDef note stroke-dasharray: 4 4
 ```
 
 ## M2.2 用 Docker 執行介面時的連接埠與位址
@@ -48,22 +52,30 @@ M1 的推論伺服器只能用指令操作; 這一章裝上一般人熟悉的聊
 1. **發布連接埠時要指定 127.0.0.1.** Docker 官方文件指出, `-p 8080:80` 會綁定在主機的任一位址, 要限制只有主機本身能存取, 須寫成 `-p 127.0.0.1:8080:80` (來源: Docker 文件 Port publishing and mapping). 此外, Docker 官方文件說明 Docker 與 ufw 的防火牆規則運作方式不相容, 已發布的連接埠可能不受 ufw 規則限制 (來源: Docker 文件 Packet filtering and firewalls). 因此「用 ufw 擋住」不能當作唯一防線, 發布時就要綁定 127.0.0.1.
 2. **容器內的 127.0.0.1 指的是容器自己.** 要從容器連到主機上的 Ollama, Open WebUI 官方文件建議使用 `host.docker.internal`, 並在 Linux 加上 `--add-host=host.docker.internal:host-gateway` (來源: Open WebUI 文件 Quick Start).
 
-範例 (以 Open WebUI 官方 Quick Start 的指令為基礎, 僅把發布位址改為 127.0.0.1, 並固定版本標籤). 這段指令啟動 Open WebUI 容器: 只在本機的 3000 連接埠提供服務, 讓容器連得到主機上的 Ollama, 把對話與設定存在名為 `open-webui` 的資料卷, 並產生一把登入用的加密金鑰:
+範例 (以 Open WebUI 官方 Quick Start 的指令為基礎, 把發布位址改為 127.0.0.1, 固定版本標籤, 並把金鑰改放在 `.env` 檔). 第一段指令先建立權限 600 的 `.env`, 寫入登入用的加密金鑰與介面網址; 第二段啟動 Open WebUI 容器: 只在本機的 3000 連接埠提供服務, 讓容器連得到主機上的 Ollama, 並把對話與設定存在名為 `open-webui` 的資料卷:
+
+```bash
+umask 077
+printf 'WEBUI_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" > .env
+# 只在本機使用時填 127.0.0.1; 之後要經反向代理給內網使用, 第一次啟動就填正式網址
+echo 'WEBUI_URL=http://127.0.0.1:3000' >> .env
+chmod 600 .env
+```
 
 ```bash
 docker run -d -p 127.0.0.1:3000:8080 \
   --add-host=host.docker.internal:host-gateway \
   -v open-webui:/app/backend/data \
-  -e WEBUI_SECRET_KEY="$(openssl rand -hex 32)" \
+  --env-file ./.env \
   --name open-webui --restart always \
   ghcr.io/open-webui/open-webui:<固定版本標籤>
 ```
 
-`WEBUI_SECRET_KEY` 請存入 `.env` 並沿用, 否則重建容器後所有人須重新登入 (來源: Open WebUI Quick Start). 官方範例使用浮動的 `:main` 標籤, 本手冊建議改用固定版本 (見 O2).
+`WEBUI_SECRET_KEY` 要保存並沿用, 否則重建容器後所有人須重新登入 (來源: Open WebUI Quick Start). 金鑰放在 `.env` 而不是指令列, 不會留在 shell 歷史紀錄 (推論). 官方範例使用浮動的 `:main` 標籤, 本手冊建議改用固定版本 (見 O2). M5.4 節的 SSO 設定也寫進同一個 `.env`.
 
-Open WebUI 文件中標為 `ConfigVar` 的環境變數只在第一次啟動時寫入設定, 之後再改環境變數不會生效, 要到管理介面調整 (來源: Open WebUI 文件 Environment Variable Configuration). 因此第一次啟動前就要決定好這類設定.
+Open WebUI 文件中標為 `ConfigVar` 的環境變數 (例如 `WEBUI_URL`) 只在第一次啟動時寫入設定, 之後再改環境變數不會生效, 要到管理介面調整 (來源: Open WebUI 文件 Environment Variable Configuration). 因此第一次啟動前就要決定好這類設定; 已經啟動過的實例, 到管理面板 Settings 修改 WebUI URL.
 
-**尚待實機驗證的取捨 (推論, 信心: 中高)**: Ollama 預設只綁 127.0.0.1:11434 (來源: Ollama FAQ). 在 Linux 上, 容器經 `host-gateway` 連主機時, 流量不是從主機的 127.0.0.1 進入, 因此預設設定下可能連不到. 常見解法有三種, 各有取捨:
+**尚待實機驗證的取捨 (推論, 信心: 中)**: Ollama 預設只綁 127.0.0.1:11434 (來源: Ollama FAQ). 在 Linux 上, 容器經 `host-gateway` 連主機時, 流量不是從主機的 127.0.0.1 進入, 因此預設設定下可能連不到. 常見解法有三種, 各有取捨:
 
 | 做法 | 作法 | 風險 |
 |---|---|---|
@@ -114,7 +126,30 @@ HTTPS 需要一張憑證, 讓瀏覽器確認連到的確實是這台伺服器. �
 2. **反向代理只接受內網網段.** Nginx 以 `allow` 與 `deny` 限制, 規則由上往下比對, 第一條符合者生效 (來源: nginx.org ngx_http_access_module). Caddy 以 `remote_ip` 比對直接連線端的位址; 前面還有其他代理時, 改用 `client_ip` 並設定 `trusted_proxies`; `private_ranges` 代表所有私有 IPv4 與 IPv6 網段 (來源: Caddy 文件 Request matchers). 建議寫明實際網段, 不要直接放行所有私有網段 (推論).
 3. **主機防火牆.** 如 M2.2 節所述, Docker 發布的連接埠可能不受 ufw 規則限制, 因此防火牆只能當作其中一層.
 
-反向代理本身的連接埠也只發布在內網介面的位址上, 例如 `-p 192.168.10.5:443:443`, 不要發布在 `0.0.0.0` (推論, 信心: 中高).
+反向代理本身的連接埠也只發布在內網介面的位址上, 例如 `-p 192.168.10.5:443:443`, 不要發布在 `0.0.0.0` (推論, 信心: 中).
+
+下列設定以 Nginx 與 Open WebUI 都跑在容器內為例: 兩者加入同一個 Docker 自訂網路, Nginx 以容器名稱 `open-webui` 找到介面, Open WebUI 不發布連接埠. 先建立網路, 再以 M2.2 節的指令重建 Open WebUI, 但移除 `-p` 並加上 `--network`; 最後啟動 Nginx 容器, 掛入設定檔與憑證 (依 Docker 文件 Networking 與 Port publishing 整理, 未實機驗證):
+
+```bash
+docker network create owui-net
+
+docker rm -f open-webui
+docker run -d --network owui-net \
+  --add-host=host.docker.internal:host-gateway \
+  -v open-webui:/app/backend/data \
+  --env-file ./.env \
+  --name open-webui --restart always \
+  ghcr.io/open-webui/open-webui:<固定版本標籤>
+
+docker run -d --network owui-net \
+  -p 192.168.10.5:443:443 \
+  -v /etc/nginx/conf.d:/etc/nginx/conf.d:ro \
+  -v /etc/nginx/tls:/etc/nginx/tls:ro \
+  --name nginx --restart always \
+  nginx:<固定版本標籤>
+```
+
+Nginx 改裝在主機上時, 設定檔中的 `listen` 改寫為內網位址 (`listen 192.168.10.5:443 ssl;`), `proxy_pass` 改為 `http://127.0.0.1:3000`, Open WebUI 則維持 M2.2 節的 `-p 127.0.0.1:3000:8080`.
 
 ### 基本驗證的適用範圍
 
@@ -136,7 +171,9 @@ map $http_upgrade $connection_upgrade {
 }
 
 server {
-    listen 192.168.10.5:443 ssl;
+    # Nginx 跑在容器內時監聽 443, 由 -p 192.168.10.5:443:443 限定在內網位址;
+    # Nginx 裝在主機上時改寫為 listen 192.168.10.5:443 ssl;
+    listen 443 ssl;
     server_name ai.example.internal;
 
     # 伺服器憑證在前, 中繼憑證接在後面
@@ -334,4 +371,5 @@ nmap -p- 192.168.10.5
 - [Caddy 文件: http.handlers.rate_limit 模組頁](https://caddyserver.com/docs/modules/http.handlers.rate_limit)
 - [GitHub: mholt/caddy-ratelimit](https://github.com/mholt/caddy-ratelimit)
 - [llama.cpp server README](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
+- [MDN Web Docs: HTTPS (詞彙表, 以 TLS 加密 HTTP 通訊)](https://developer.mozilla.org/docs/Glossary/https)
 - 文中的類比 (餐廳外場與菜單, 接待櫃台): 整理者所寫, 無外部來源, 不應當作技術定義引用.

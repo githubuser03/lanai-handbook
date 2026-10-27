@@ -1,3 +1,7 @@
+---
+description: "後續每個模組都放在這一章準備的環境裡: 一台主機, 一個不對外開放的內網網段, 以及能還原的備份."
+---
+
 # M0 基礎環境
 
 ::: info 本章屬性
@@ -7,7 +11,7 @@
 - 待查證: 本章指令與設定檔依官方文件整理, 尚未在實機執行; Proxmox VE 與 Proxmox Backup Server 的版本請以官方文件為準, 本章不列版本號; Proxmox VE 防火牆 `policy_in` 與 `policy_out` 的預設值官方文件未列出, 本章一律寫成明確設定; 各區服務的連接埠除 vLLM, Proxmox VE, Proxmox Backup Server 與 SSH 外, 請以各模組章節為準; Docker Desktop 容器能否使用 Apple GPU 本輪未查證; 標示「推論」的段落沒有官方文件依據; 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
-**結論**: 後續每個模組都放在這一章準備的環境裡: 一台主機, 一個不對外開放的內網網段, 以及能還原的備份. 單人單機可以只用一台 Linux 或 Mac 加 Docker; 多人共用時, 改用 Proxmox VE 以 VM 劃分信任區, 並以 Proxmox Backup Server 備份 VM. 不論哪一種起點, 進入 M1 之前都要先完成一次還原演練.
+**結論**: 後續每個模組都放在這一章準備的環境裡: 一台主機, 一個不對外開放的內網網段, 以及能還原的備份. 單人單機可以只用一台 Linux 或 Mac 加 Docker (把每個服務包成容器執行的工具); 多人共用時, 改用 Proxmox VE (在實體主機上建立多台 VM 的虛擬化平台) 以 VM 劃分信任區, 並以 Proxmox Backup Server (Proxmox 的備份伺服器) 備份 VM. 不論哪一種起點, 進入 M1 之前都要先完成一次還原演練.
 
 **這一塊在圖上的位置**: 實體主機 Proxmox VE, 各 VM 區的邊界, 以及備份伺服器. **前置模組**: 無. **完成後的狀態**: 主機, 網段與備份都已就位, 可以開始組裝 M1.
 
@@ -48,8 +52,8 @@
 
 單機起點適合一個人在自己的電腦上使用.
 
-- 作業系統用 Linux 或 macOS, 容器引擎用 Docker. 推論引擎依 M1.2 節安裝; macOS 上建議以 Ollama 原生應用程式執行推論引擎, 介面等其他元件再用 Docker (Docker Desktop 容器能否使用 Apple GPU 本輪未查證).
-- 所有服務只綁 127.0.0.1, 不開放給其他裝置 (見 M0.3 節).
+- 作業系統用 Linux 或 macOS, 容器引擎用 Docker. 推論引擎依 M1.2 節安裝; macOS 上建議以 Ollama 原生應用程式執行推論引擎, 介面等其他元件再用 Docker (Docker Desktop 是在 Mac 與 Windows 上執行 Docker 的桌面應用程式, 其容器能否使用 Apple GPU 本輪未查證).
+- 所有服務只綁 127.0.0.1, 不開放給其他裝置; Docker Engine 使用 28.0.0 以上版本 (見 M0.3 節).
 - 主機若要讓內網其他裝置連入, 代表需求已接近里程碑 2, 建議同時規劃反向代理 (M2.3 節) 與主機防火牆.
 
 ### Proxmox VE 起點
@@ -59,7 +63,7 @@ Proxmox VE 是安裝在實體主機上的虛擬化平台, 裝好之後用瀏覽�
 **硬體需求** (來源: Proxmox VE wiki System Requirements):
 
 - x86 主機的 CPU 與主機板須支援 Intel VT 或 AMD-V; 官方也列出 64 位元 ARM 主機.
-- 記憶體建議至少 2GB 給作業系統與 Proxmox VE 服務, 另加 VM 所需; 使用 ZFS 或 Ceph 時, 每 TB 已用儲存空間約需 1GB 記憶體.
+- 記憶體建議至少 2GB 給作業系統與 Proxmox VE 服務, 另加 VM 所需; 使用 ZFS (結合檔案系統與磁碟管理的儲存方式) 或 Ceph (跨多台主機的分散式儲存) 時, 每 TB 已用儲存空間約需 1GB 記憶體.
 - 建議使用具斷電保護的 SSD, 不建議消費級 SSD; ZFS 與 Ceph 不相容於硬體 RAID 控制器.
 - 要把 GPU 直通給推論區 VM, CPU 與主機板須支援 IOMMU (x86 為 Intel VT-d 或 AMD-Vi), 並通常要在 BIOS 或 UEFI 中開啟.
 
@@ -69,7 +73,7 @@ Proxmox VE 是安裝在實體主機上的虛擬化平台, 裝好之後用瀏覽�
 
 - 要直通的 PCI 裝置須位於獨立的 IOMMU 群組; 可用 `pvesh get /nodes/<節點名稱>/hardware/pci` 查看.
 - 開機後可用 `dmesg | grep -e DMAR -e IOMMU` 確認 IOMMU 已啟用.
-- 顯示卡的 ROM 支援 UEFI 時, 官方建議 VM 改用 OVMF (UEFI) 而非 SeaBIOS; 直通 PCIe 裝置時, Q35 機型提供虛擬 PCIe 匯流排.
+- 顯示卡的 ROM 支援 UEFI 時, 官方建議 VM 改用 OVMF (VM 用的 UEFI 韌體) 而非 SeaBIOS (VM 用的傳統 BIOS 韌體); 直通 PCIe 裝置時, Q35 機型 (VM 模擬的一種主機板晶片組) 提供虛擬 PCIe 匯流排.
 - 有直通裝置的 VM 無法即時遷移 (live migration). 推論區因此要以「停機後重建或還原」規劃維護 (推論).
 
 **安裝要點** (來源: Proxmox VE Administration Guide 第 2 章; 目前版本依官方文件):
@@ -81,7 +85,7 @@ Proxmox VE 是安裝在實體主機上的虛擬化平台, 裝好之後用瀏覽�
 
 **VM 與 LXC 的選擇**: 接觸不可信內容的元件 (介面, 文件解析, 工具伺服器, 沙箱, 隔離模型) 一律放 VM, 不放 LXC 容器. LXC 與主機共用核心, 一旦逃逸, 影響範圍是整台 Proxmox VE 主機 (推論, 信心: 中). 各 VM 區放什麼, 見[組裝總覽](/build/overview)的部署分區表.
 
-**由小到大**: 里程碑 2 不必一次建滿八個區. 可以先建入口區與推論區兩台 VM, 隨模組增加再拆出閘道區與稽核區; 只要「金鑰只在閘道區」與「推論區只接受閘道連線」兩條規則不變即可 (推論, 信心: 中).
+**由小到大**: 里程碑 2 不必一次建滿八個區. 可以先建入口區與推論區兩台 VM, 隨模組增加再拆出閘道區與稽核區. 還沒有閘道區時, 推論區暫時允許入口區直連 vLLM 的 8000 連接埠 (見 M0.2 節的對照表), 部署 M5 閘道後就收回這條規則, 改為「金鑰只在閘道區」與「推論區只接受閘道連線」 (推論, 信心: 中).
 
 ## M0.2 內網網段與防火牆
 
@@ -97,7 +101,7 @@ Proxmox VE 的軟體定義網路 (SDN) 以「區域 (zone)」劃分網路, 區�
 
 | SDN 區域類型 | 做法 | 適用 |
 |---|---|---|
-| VLAN zone | 使用各節點上既有的 Linux bridge 或 OVS, 連到實體網卡; VNet 的 tag 就是 VLAN ID | 各區要跨實體交換器, 或要讓上游防火牆在 VLAN 之間過濾 |
+| VLAN zone | 使用各節點上既有的 Linux bridge 或 OVS (兩者都是主機內的虛擬交換器), 連到實體網卡; VNet 的 tag 就是 VLAN ID | 各區要跨實體交換器, 或要讓上游防火牆在 VLAN 之間過濾 |
 | Simple zone | 建立不接實體網卡的獨立 bridge, 流量只留在該節點 | 單一節點, 而且區與區之間不需要經過實體網路 |
 
 操作上要注意三點 (來源同上):
@@ -119,23 +123,25 @@ Proxmox VE 內建防火牆, 可以替主機與每台 VM 分別設定規則. 它�
 - 啟用後, 預設會擋下送往所有主機的流量 (少數例外). 官方建議啟用前先開一個 SSH 連線, 以免設定錯誤後無法連回.
 - **每張虛擬網卡各有自己的防火牆開關**, VM 層級的 `enable` 預設為 0; 資料中心層級也要啟用, VM 規則才會生效.
 - 安全群組 (security group) 是在叢集層級定義的一組規則, 可以套用到任何 VM.
-- Forward 方向的規則與 VNet 層級的規則, 只在 nftables 版的 `proxmox-firewall` 中有效; 官方文件目前將它標為技術預覽, 不適合正式環境. 因此本手冊以 VM 層級的 In 與 Out 規則控管各區 (推論, 信心: 中).
+- Forward 方向的規則與 VNet 層級的規則, 只在 nftables (Linux 核心的封包過濾機制) 版的 `proxmox-firewall` 中有效; 官方文件目前將它標為技術預覽, 不適合正式環境. 因此本手冊以 VM 層級的 In 與 Out 規則控管各區 (推論, 信心: 中).
 - `policy_in` 與 `policy_out` 的預設值官方文件未列出, 設定檔中請明確寫出.
 
 ### 各區允許連線對照表
 
-下表依[組裝總覽](/build/overview)的部署分區表, 列出每一區「只允許」的連入來源. 未列出的連線一律拒絕 (預設拒絕).
+下表依[組裝總覽](/build/overview)的部署分區表, 列出每一區「只允許」的連入來源. 未列出的連線一律拒絕 (預設拒絕). 表中的 LiteLLM 是統一轉送模型請求的模型閘道 (M5), MCP gateway 是控管工具呼叫的工具閘道 (M7), vLLM 是跑模型的推論伺服器 (M1), LangGraph 是串接代理步驟的框架 (M8), n8n 是流程自動化平台 (M9).
 
 | 目的區 | 允許的來源 | 用途 |
 |---|---|---|
 | 入口區 | 使用者網段 | 只連反向代理的 HTTPS |
 | 閘道區 | 入口區, 控制區, 隔離區, 自動化區 | 呼叫 LiteLLM 與 MCP gateway |
 | 推論區 | 閘道區 | 呼叫 vLLM (預設 8000 連接埠, 見 M1.10 節) |
+| 推論區 (僅限尚未部署閘道區時) | 入口區 | 里程碑 2 先只建入口區與推論區時, 介面直接呼叫 vLLM 的 8000 連接埠; 部署 M5 閘道後刪除這條, 改回只允許閘道區 |
 | 隔離區 | 控制區 | LangGraph 呼叫隔離模型 |
 | 工具區 | 閘道區 | MCP gateway 呼叫 MCP 伺服器 |
+| 工具區 (僅 Open Terminal 的連接埠) | 入口區 | 例外: Open WebUI 的 Open Terminal 整合由 Open WebUI 伺服器直接連線, 官方文件只說明以網址加 API 金鑰直連, 未提供經 MCP gateway 的接法 (見 M7.4 節) |
 | 控制區 | 入口區 | 介面呼叫代理服務 (依實際設計調整) |
 | 稽核區 | 各區 | 接收紀錄 (OTLP 等) |
-| 自動化區 | 管理網段 | 只開放管理介面; n8n 對外只連閘道區 |
+| 自動化區 | 入口區 (反向代理), 閘道區, 管理網段 | 入口區的反向代理轉送 n8n 編輯介面 (5678 連接埠, 見 M9); 閘道區的 MCP gateway 呼叫 n8n 的 MCP 端點 (MCP Server Trigger); 管理網段只連管理介面 |
 | 所有 VM 與主機的管理連接埠 | 管理網段 | Proxmox VE 8006, SSH 22, Proxmox Backup Server 8007 |
 
 連出方向同樣要限制 (推論, 信心: 中):
@@ -144,7 +150,7 @@ Proxmox VE 內建防火牆, 可以替主機與每台 VM 分別設定規則. 它�
 - 推論區只能連 NAS 的 NFS (見 M3.3 節) 與稽核區.
 - 工具區的程式碼沙箱不給網路; MCP 伺服器只能連指定的內部系統.
 - 自動化區只能連閘道區.
-- Prometheus 是由稽核區主動抓取各區的指標端點, 因此各區要額外允許「稽核區 → 指標連接埠」這一條.
+- Prometheus (定期收集數值指標的監控系統) 是由稽核區主動抓取各區的指標端點, 因此各區要額外允許「稽核區 → 指標連接埠」這一條.
 
 ### VM 防火牆設定範例
 
@@ -161,6 +167,8 @@ enable: 1
 [group inference-in]
 IN ACCEPT -source <閘道區網段> -p tcp -dport 8000
 IN ACCEPT -source <稽核區網段> -p tcp -dport 8000
+# 尚未部署閘道區時暫時加上, 部署 M5 後刪除:
+# IN ACCEPT -source <入口區網段> -p tcp -dport 8000
 ```
 
 ```
@@ -180,16 +188,16 @@ vLLM 的 `/metrics` 與推論 API 共用同一個連接埠, 所以稽核區抓�
 
 管理介面能建立, 刪除與還原所有 VM, 是整個環境權限最高的入口, 因此要放在獨立的管理網段, 並要求密碼以外的第二種登入證明.
 
-Proxmox VE 的 8006, SSH 22, SPICE 3128 與 VNC 主控台 5900 至 5999 連接埠都是管理用途 (來源: Proxmox VE 文件 Firewall). 這些連接埠只對管理網段開放: 把管理網段的位址放進 `management` IPSet, 再讓主機防火牆只接受這個 IPSet.
+Proxmox VE 的 8006, SSH 22, SPICE 3128 與 VNC 主控台 5900 至 5999 連接埠都是管理用途 (SSH 是遠端登入主機的協定, SPICE 與 VNC 是遠端操作 VM 畫面的協定) (來源: Proxmox VE 文件 Firewall). 這些連接埠只對管理網段開放: 把管理網段的位址放進 `management` IPSet, 再讓主機防火牆只接受這個 IPSet.
 
 管理帳號一律開啟雙因素驗證 (TFA). Proxmox VE 支援下列方式 (來源: Proxmox VE 文件 User Management):
 
 | 方式 | 設定方式 | 注意事項 |
 |---|---|---|
 | TOTP | 使用者在使用者清單點 TFA, 以驗證器 App 掃描 QR code | 連續 8 次失敗後, 該使用者的 TOTP 會停用, 以復原金鑰登入後解除 |
-| WebAuthn | Datacenter → Permissions → Two Factor | 需要可信任的 HTTPS 憑證與有效網域; 憑證不受信任時, 瀏覽器可能拒絕 |
+| WebAuthn (以實體安全金鑰或裝置內建驗證登入的網頁標準) | Datacenter → Permissions → Two Factor | 需要可信任的 HTTPS 憑證與有效網域; 憑證不受信任時, 瀏覽器可能拒絕 |
 | 復原金鑰 | 同上 | 每把只能用一次, 每位使用者同時只有一組; 用於其他因素全部遺失時 |
-| Realm 強制 (TOTP 或 YubiKey OTP) | 在 realm 的 TFA 下拉選單設定 | 啟用後, 沒有設定 TFA 的使用者無法登入 |
+| Realm 強制 (TOTP 或 YubiKey OTP, 後者是 YubiKey 硬體金鑰產生的動態密碼) | 在 realm 的 TFA 下拉選單設定 | 啟用後, 沒有設定 TFA 的使用者無法登入 |
 
 WebAuthn 與復原金鑰的失敗上限是 100 次, 超過後所有第二因素封鎖一小時; 管理者可用 `pveum user tfa unlock <使用者>@<realm>` 解除 (來源同上). 官方文件指出 `root` 使用者永遠可以經 Linux PAM realm 登入; 建議 `root` 也設定 TFA, 日常管理改用個人帳號, 並妥善保存復原金鑰 (推論, 信心: 中).
 
@@ -199,12 +207,12 @@ Docker 把每個元件和它需要的檔案包成一個容器執行, 安裝與�
 
 | 設定 | 做法 | 依據 |
 |---|---|---|
-| 連接埠只綁本機 | 寫成 `-p 127.0.0.1:<主機連接埠>:<容器連接埠>`; IPv6 寫成 `-p '[::1]:<主機連接埠>:<容器連接埠>'` | 只寫 `-p 8080:80` 會綁定主機的任一位址 (來源: Docker 文件 Port publishing and mapping) |
-| 不以 ufw 當唯一防線 | 發布時就綁定 127.0.0.1 或內部網路 | Docker 與 ufw 的防火牆規則不相容, 已發布的連接埠可能不受 ufw 限制 (來源: Docker 文件 Packet filtering and firewalls; 見 M2.2 節) |
+| 連接埠只綁本機 | 寫成 `-p 127.0.0.1:<主機連接埠>:<容器連接埠>`; IPv6 寫成 `-p '[::1]:<主機連接埠>:<容器連接埠>'`; Docker Engine 使用 28.0.0 以上版本 | 只寫 `-p 8080:80` 會綁定主機的任一位址; 28.0.0 之前的版本, 同一個 L2 網段 (例如接在同一台交換器) 的主機連得到綁在 localhost 的連接埠 (來源: Docker 文件 Port publishing and mapping) |
+| 不以 ufw (Ubuntu 常用的主機防火牆設定工具) 當唯一防線 | 發布時就綁定 127.0.0.1 或內部網路 | Docker 與 ufw 的防火牆規則不相容, 已發布的連接埠可能不受 ufw 限制 (來源: Docker 文件 Packet filtering and firewalls; 見 M2.2 節) |
 | 映像以摘要值鎖定 | 寫成 `<映像>@sha256:<摘要值>` | 摘要值把映像固定在特定版本; Docker 文件同時提醒, 這樣不會自動取得安全更新, 須依 O2 升級 (來源: Docker 文件 docker image pull) |
 | 機密放 `.env`, 權限 600 | `chmod 600 .env`, 不進版本控制 | 見 K6.3 節 |
 
-在 Proxmox VE 上, VM 防火牆在 VM 外部執行, 不受 VM 內 Docker 改寫的封包規則影響. 這是改用 VM 劃分信任區的另一個理由 (推論, 信心: 中高).
+在 Proxmox VE 上, VM 防火牆在 VM 外部執行, 不受 VM 內 Docker 改寫的封包規則影響. 這是改用 VM 劃分信任區的另一個理由 (推論, 信心: 中).
 
 **共同範本** (依上述 Docker 文件整理, 未實機驗證): 第一行把 `.env` 設為只有擁有者能讀寫; 第二段啟動容器, 依序設定只綁本機的連接埠, 可寫的資料卷, 唯讀的目錄, 容器名稱與自動重啟, 最後以摘要值指定映像. 角括號內的文字要換成實際值.
 
@@ -255,11 +263,11 @@ pvesm status --storage <儲存名稱>
 
 ### 排程備份
 
-備份工作在 Datacenter → Backup 管理, 排程格式近似 systemd calendar events (來源: Proxmox VE 文件 Backup and Restore). 模式的取捨如下 (來源同上):
+備份工作在 Datacenter → Backup 管理, 排程格式近似 systemd (Linux 管理服務與排程的系統元件) 的 calendar events (來源: Proxmox VE 文件 Backup and Restore). 模式的取捨如下 (來源同上):
 
 | 模式 | 官方說明 | 建議用途 (推論) |
 |---|---|---|
-| stop | 一致性最高, 代價是 VM 短暫停機 | 有資料庫的 VM (閘道區的 PostgreSQL, 稽核區) |
+| stop | 一致性最高, 代價是 VM 短暫停機 | 有資料庫的 VM (閘道區存放金鑰等設定的 PostgreSQL 資料庫, 稽核區) |
 | snapshot | 停機時間最短, 代價是少量不一致的風險 | 無狀態或可重建的 VM (推論區) |
 | suspend | 為相容性保留, 官方建議改用 snapshot | 不建議 |
 

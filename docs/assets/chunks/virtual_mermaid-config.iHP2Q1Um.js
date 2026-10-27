@@ -1,0 +1,1 @@
+const e={securityLevel:"loose",startOnLoad:!1,htmlLabels:!1,flowchart:{htmlLabels:!1,useMaxWidth:!1},themeVariables:{fontFamily:"-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif"}};export{e as default};

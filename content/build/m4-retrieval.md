@@ -1,15 +1,19 @@
+---
+description: "家庭規模 (數萬至數十萬段落) 下, 向量庫的選擇差異遠小於嵌入模型與文件解析品質的差異, 因此以「備份是否簡單」當作主要選擇依據 (信心: 中)."
+---
+
 # M4 檢索增強生成 (RAG)
 
 ::: info 本章屬性
 - 等級: ○ 依情境, 有「問自己文件」的需求才讀
 - 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: 查無公開的繁體中文嵌入與重排序基準 (含 TAIDE 嵌入模型), 各嵌入模型卡也未列出繁體中文評測; 兩款重排序模型的模型卡均未列繁體中文評測; 多數嵌入模型的多語言總分在模型卡上無法直接對照 (來源待補); sqlite-vec 目前是否已提供近似最近鄰索引 (來源待補); 向量庫記憶體占用未引用公開實測; Chroma 與 LanceDB 的內嵌模式限制引自二手來源 (Actian 比較文); 文中的類比為整理者所寫, 不代表技術上完全等同
+- 資料基準日: 2026-10-27
+- 待查證: M4.5 節的架設步驟與驗收指令依官方文件整理, 未實機驗證; Qdrant 資料目錄路徑為訓練資料內資訊; 查無公開的繁體中文嵌入與重排序基準 (含 TAIDE 嵌入模型, 2026-10-27 查詢), 各嵌入模型卡也未列出繁體中文評測; 兩款重排序模型的模型卡均未列繁體中文評測; 四份嵌入模型卡各自採用不同的評測組合, 無法直接對照; sqlite-vec 的近似最近鄰索引仍為 alpha 預覽版, 正式版發布時間未定; 向量庫記憶體占用未引用公開實測; Chroma 與 LanceDB 的內嵌模式限制引自二手來源 (Actian 比較文); 文中的類比為整理者所寫, 不代表技術上完全等同
 :::
 
-**結論**: 家庭規模 (數萬至數十萬段落) 下, 向量庫的選擇差異遠小於嵌入模型與文件解析品質的差異, 因此以「備份是否簡單」當作主要選擇依據 (信心: 中高). 嵌入模型的排行榜名次不一定適用繁體中文, 請用自己的 50 題問答實測.
+**結論**: 家庭規模 (數萬至數十萬段落) 下, 向量庫的選擇差異遠小於嵌入模型與文件解析品質的差異, 因此以「備份是否簡單」當作主要選擇依據 (信心: 中). 嵌入模型的排行榜名次不一定適用繁體中文, 請用自己的 50 題問答實測.
 
-**這一塊在圖上的位置**: VM 入口區的 Docling 與 Qdrant, 嵌入模型跑在推論伺服器. **前置模組**: M1, M2. **完成後的狀態**: 使用者可以在介面中針對自己的文件提問, 回答附上出處.
+**這一塊在圖上的位置**: VM 入口區的 Docling (文件解析工具) 與 Qdrant (向量庫), 嵌入模型跑在推論伺服器. **前置模組**: M1, M2. **完成後的狀態**: 使用者可以在介面中針對自己的文件提問, 回答附上出處.
 
 檢索增強生成 (RAG) 讓模型回答前先查自己的文件, 像開書考試: 模型不必背下所有內容, 而是先翻到相關的那幾頁, 再根據那幾頁作答. 要做到這件事, 需要四個環節: 先把文件轉成文字 (文件解析), 替每一段文字標上意思座標 (嵌入模型), 把座標存起來方便查找 (向量庫), 必要時再從找到的段落中挑出最相關的幾段 (重排序). 「意思座標」的概念見 [K1](/know/k1-basics).
 
@@ -35,6 +39,8 @@
 | Docling | MIT (程式碼; 個別模型授權另見各模型) | 可在本機執行, 支援 macOS, Linux, Windows (x86_64 與 arm64); 輸入格式涵蓋 PDF, DOCX, PPTX, XLSX, HTML, 圖片等 (來源: Docling GitHub README) |
 | Marker (Datalab) | 程式碼 Apache 2.0; 模型權重為修改版 OpenRAIL-M, 研究, 個人及資金或營收 500 萬美元以下的新創可免費使用, 其他商業用途須另洽 | 可在 GPU, CPU 或 Apple MPS 執行; 輸出 Markdown, JSON 等; 作者表示支援所有語言 (來源: Marker GitHub README, 作者自報) |
 
+**Docling 的 OCR 引擎**: OCR (光學字元辨識) 負責把掃描檔或圖片中的文字辨識出來, 只有處理掃描檔或圖片時才會用到; 一般由文書軟體輸出的 PDF, DOCX 可直接讀出文字. Docling 預設自動挑選 OCR 引擎: 在 Linux 上依序嘗試 Nemotron-OCR (有安裝時), RapidOCR (onnxruntime 版), EasyOCR, RapidOCR (torch 版), 第一個能啟動的就採用 (來源: Docling 原始碼 auto_ocr_model.py, v2.142.1); 一般安裝的環境通常會選到 RapidOCR (推論, 信心: 中). RapidOCR 的說明文件寫明其 OCR 模型由 PaddleOCR 轉換而來, 模型著作權屬於百度 (來源: RapidOCR README). 需要時可改指定其他引擎: Docling 支援 RapidOCR, EasyOCR, Tesseract (tesseract-CLI, tesserocr), ocrmac 等, 命令列以 `--ocr-engine` 指定, Python 以 `EasyOcrOptions`, `TesseractCliOcrOptions` 等選項類別指定 (來源: Docling 文件 OCR engines). 透過 docling-serve 時的做法見 M4.5 節.
+
 Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請以自己的文件實測. 最小可行做法是先人工把文件轉成乾淨的文字或 Markdown, 再匯入 (整理者建議).
 
 ## M4.2 嵌入模型, 向量庫與重排序
@@ -43,18 +49,17 @@ Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請
 
 ### 嵌入模型
 
-嵌入模型決定意思座標畫得準不準, 是影響檢索品質最大的環節之一. 下表列出四個多語言嵌入模型.
+嵌入模型決定意思座標畫得準不準, 是影響檢索品質最大的環節之一. 下表列出三個多語言嵌入模型.
 
 | 模型 | 授權 | 參數量 | 上下文長度 | 多語言與輸出維度 |
 |---|---|---|---|---|
-| EmbeddingGemma-300m (Google) | Gemma 條款 | 約 3 億 | 2,048 token | 訓練資料涵蓋 100 種以上語言; 多語言 MTEB 平均 61.15 (Google 自報); Ollama 版約 622MB (二手來源: morphllm.com) |
+| EmbeddingGemma-300m (Google) | Gemma 條款 | 約 3 億 | 2,048 token | 訓練資料涵蓋 100 種以上語言; 預設 768 維, 可截短至 512, 256 或 128 維; 多語言 MTEB 平均 61.15 (Google 自報); Ollama 版 622MB (Ollama 標籤頁) |
 | multilingual-e5-large-instruct (intfloat) | MIT | 約 6 億 (F16) | 512 token | 模型卡稱支援 100 種語言; 1,024 維 |
-| snowflake-arctic-embed-l-v2.0 (Snowflake) | Apache 2.0 | 5.68 億 | 8,192 token | 模型卡標示 74 種語言; 預設 1,024 維, 可截短至 256 維 |
 | nomic-embed-text-v2-moe (Nomic) | Apache 2.0 | 總計 4.75 億, 每次啟用 3.05 億 | 512 token | 模型卡標示約 100 種語言; 預設 768 維, 可截短至 256 維 |
 
-來源為各模型的 Hugging Face 模型卡. 權重記憶體約為「參數量 x 每個參數的位元組數」(見 [K2](/know/k2-quantization)); 以 16 位元 (2 位元組) 估算, 四者依序約 0.6GB, 1.2GB, 1.1GB, 0.95GB (皆為算術結果, 非實測; nomic 的混合專家設計須載入全部 4.75 億參數). 各模型卡未提供可直接對照的多語言總分, 因此本手冊不列比較分數 (來源待補).
+來源為各模型的 Hugging Face 模型卡. 權重記憶體約為「參數量 x 每個參數的位元組數」(見 [K2](/know/k2-quantization)); 以 16 位元 (2 位元組) 估算, 三者依序約 0.6GB, 1.2GB, 0.95GB (皆為算術結果, 非實測; nomic 的混合專家設計須載入全部 4.75 億參數). 各模型卡採用的評測不同 (例如 EmbeddingGemma 列多語言 MTEB 平均分, 其他模型卡列的評測項目與比較對象各不相同), 分數不能互相對照, 因此本手冊不列比較分數. 需要橫向比較時, 可到 MTEB 排行榜以同一組工作篩選 (見[效能實測與基準分數](/ref/benchmarks)), 但仍以 M4.3 節的自測為準.
 
-四份模型卡都沒有繁體中文的檢索評測, 多語言名單與名次不一定能轉移到繁體中文. 一篇高棉語檢索研究 (arXiv 2605.22099) 同樣顯示, 特定語言上的最佳模型與一般排行榜名次可能不同. **更換嵌入模型就必須重建整個向量庫, 不可混用** (整理者說明, 信心: 高).
+三份模型卡都沒有繁體中文的檢索評測; 2026-10-27 查詢時, 也未找到由公部門或學術機構維護的公開繁體中文檢索基準. 多語言名單與名次不一定能轉移到繁體中文. 一篇高棉語檢索研究 (arXiv 2605.22099) 同樣顯示, 特定語言上的最佳模型與一般排行榜名次可能不同. **更換嵌入模型就必須重建整個向量庫, 不可混用** (整理者說明, 信心: 高).
 
 ### 向量庫
 
@@ -62,11 +67,11 @@ Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請
 
 | 資料庫 | 授權 | 最新版 (來源) | 單機適用性 |
 |---|---|---|---|
-| Qdrant | Apache 2.0 | 1.19.2, 2026-10-05 (GitHub Releases) | 以 Docker 單一容器啟動, 內建量化, 支援稀疏向量與混合檢索; 官方範例的預設啟動方式無驗證, 且對所有網路介面開放, 須自行加上保護 (Qdrant README); 適合標準組合 |
-| pgvector | PostgreSQL License (儲存庫 LICENSE 檔) | - | 支援 HNSW 與 IVFFlat 索引 (pgvector README); 已在用 PostgreSQL 者最省事, 備份一併處理 (整理者建議) |
-| Chroma | Apache 2.0 | 1.5.9, 2026-05-05 (PyPI) | 內嵌式最易上手, 為 Open WebUI 預設的向量庫; 內嵌模式為單一寫入者, 不適合多個行程同時寫入 (Actian 比較文, 二手來源) |
+| Qdrant | Apache 2.0 | 1.19.2, 2026-10-05 (GitHub Releases) | 獨立運作的向量資料庫伺服器; 以 Docker 單一容器啟動, 內建量化, 支援稀疏向量與混合檢索; 官方範例的預設啟動方式無驗證, 且對所有網路介面開放, 須自行加上保護 (Qdrant README); 適合標準組合 |
+| pgvector | PostgreSQL License (儲存庫 LICENSE 檔) | - | PostgreSQL 資料庫的向量擴充套件; 支援 HNSW 與 IVFFlat 索引 (pgvector README); 已在用 PostgreSQL 者最省事, 備份一併處理 (整理者建議) |
+| Chroma | Apache 2.0 | 1.5.9, 2026-05-05 (PyPI) | 內嵌式最易上手, 為 Open WebUI (M2 的對話介面) 預設的向量庫; 內嵌模式為單一寫入者, 不適合多個行程同時寫入 (Actian 比較文, 二手來源) |
 | LanceDB | Apache 2.0 | 0.40.0, 2026-10-07 (PyPI) | 內嵌, 資料以 Lance 檔案存放在本機磁碟或物件儲存 (Actian 比較文, 二手來源) |
-| sqlite-vec | Apache-2.0 與 MIT 雙授權 (GitHub 儲存庫標示) | - | SQLite 擴充套件, 資料存在 SQLite 檔案; 作者部落格表示目前專注於暴力搜尋 (逐筆比對), 近似最近鄰索引為規劃中 (2024 年文章, 現況來源待補); 資料量大時查詢時間會明顯變長 (推論), 請用自己的資料實測 |
+| sqlite-vec | Apache-2.0 與 MIT 雙授權 (GitHub 儲存庫標示) | - | SQLite 擴充套件, 資料存在 SQLite 檔案; 穩定版 (v0.1.9) 只提供暴力搜尋 (逐筆比對); 近似最近鄰索引 (rescore, DiskANN, 以及實驗性且預設未啟用的 IVF) 只出現在 v0.1.10 的 alpha 預覽版 (GitHub Releases, 2026-10-27 查詢). 正式環境建議先用穩定版, 資料量大時查詢時間會明顯變長 (推論), 請用自己的資料實測 |
 | Milvus | Apache 2.0 | - | 分散式架構, 計算與儲存分離 (Milvus README); 單機讀者不需要 (整理者判斷) |
 
 各向量庫的記憶體占用差異很大, 但公開實測多半未註明向量維度, 索引類型與參數, 無法互相對照, 因此本手冊不引用. 容量規劃可先算原始向量大小: 筆數 x 維度 x 4 位元組 (float32). 例如 10 萬筆 x 1,024 維 = 409,600,000 位元組, 約 410MB (計算值). 實際占用還會加上索引與中介資料, 請在自己的資料上實測.
@@ -86,7 +91,7 @@ Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請
 
 ## M4.3 繁體中文 50 題自測法
 
-排行榜上的名次多以英文或其他語言測得, 不一定適用自己的繁體中文文件. 最可靠的做法, 是拿自己實際會問的問題來考. 由於缺乏公開的繁體中文檢索基準, 請依下列步驟自行評測 (信心: 中高):
+排行榜上的名次多以英文或其他語言測得, 不一定適用自己的繁體中文文件. 最可靠的做法, 是拿自己實際會問的問題來考. 由於缺乏公開的繁體中文檢索基準, 請依下列步驟自行評測 (信心: 中):
 
 1. 從自己的文件中挑 50 個實際會問的問題, 每題記錄「正確答案所在的段落」.
 2. 對兩個候選嵌入模型分別建立向量庫.
@@ -108,26 +113,92 @@ Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請
 
 ### 進階組合
 
-Docling (CPU) 或 Marker (有 GPU) 解析 → EmbeddingGemma-300m, multilingual-e5-large-instruct 或 snowflake-arctic-embed-l-v2.0 → Qdrant (混合檢索) → 重排序 (選配, mMiniLMv2 或 Nemotron 重排序模型) → 用 50 至 100 題自建繁體中文測試集評估命中率.
+Docling (CPU) 或 Marker (有 GPU) 解析 → EmbeddingGemma-300m, multilingual-e5-large-instruct 或 nomic-embed-text-v2-moe → Qdrant (混合檢索) → 重排序 (選配, mMiniLMv2 或 Nemotron 重排序模型) → 用 50 至 100 題自建繁體中文測試集評估命中率.
 
 ### 安全提醒
 
-RAG 的文件來源就是攻擊面: 文件中若夾帶給模型的惡意指示, 模型讀到時可能照做. 只匯入可信資料夾, 對應 OWASP LLM08 與 ASI06 (見 [K6.4 節](/know/k6-security)).
+RAG 的文件來源就是攻擊面: 文件中若夾帶給模型的惡意指示, 模型讀到時可能照做. 只匯入可信資料夾, 對應 OWASP LLM05, LLM09 與 ASI06 (見 [K6.4 節](/know/k6-security)).
+
+## M4.5 架設與驗收
+
+前四節決定用哪些元件, 本節把它們接起來並確認能用. 最小可行組合只需要第 1 步; 進階組合再加第 2, 3 步. 本節依下列官方文件整理, 未實機驗證.
+
+### 1. 在 Open WebUI 設定嵌入模型
+
+Open WebUI 的檢索設定在管理者介面的 Settings → Admin → Documents, 嵌入模型可以改用 Ollama 或 OpenAI 相容 API 提供的模型 (來源: Open WebUI 文件 RAG). 做法是先在推論伺服器載入 M4.2 節選定的嵌入模型, 再到這個頁面選擇對應的嵌入引擎與模型名稱.
+
+官方文件提醒, 更換嵌入模型後, 所有知識庫都要重新建立索引: 在同一頁按 Reindex, 系統會刪除並以新模型重建每個知識庫的向量; 單獨上傳到對話中的檔案不在範圍內, 要重新上傳 (來源: 同上). 這與 M4.2 節「更換嵌入模型就必須重建整個向量庫」一致.
+
+### 2. 啟動 Docling 文件解析服務 (進階組合)
+
+docling-serve 是把 Docling 包成 API 服務的容器, Open WebUI 上傳文件時交給它把 PDF 等格式轉成文字. Open WebUI 官方範例以 `-p 5001:5001` 對所有位址開放; 下列寫法改為只綁本機, 映像以摘要值鎖定 (見 M0.3 節), 並不開啟網頁介面 (`DOCLING_SERVE_ENABLE_UI` 預設為 false) (來源: Open WebUI 文件 Docling Document Extraction; 改寫部分未實機驗證):
+
+```bash
+docker run -d --name docling --restart always \
+  -p 127.0.0.1:5001:5001 \
+  quay.io/docling-project/docling-serve@sha256:<摘要值>
+```
+
+接著在 Open WebUI 的 Settings → Admin → Documents, 把內容擷取引擎 (content extraction engine) 改為 Docling, 並填入 Docling Server URL: Open WebUI 跑在 Docker 時填 `http://host.docker.internal:5001`, 兩者在同一個 Docker 自訂網路時可填 `http://docling:5001` (來源: 同上). 大型文件可調高 `DOCLING_SERVE_MAX_SYNC_WAIT` (預設 120 秒) (來源: 同上). 要指定 OCR 引擎 (見 M4.1 節) 時, 在同一頁的 Docling 參數 (DOCLING_PARAMS JSON) 設定 `ocr_engine`, 可選 `tesseract`, `easyocr`, `ocrmac` 或 `rapidocr`, 例如 `{"do_ocr": true, "ocr_engine": "easyocr"}`; 語言代碼格式依引擎而定, Tesseract 用三字母代碼 (例如 eng), EasyOCR 用兩字母代碼 (例如 en) (來源: Open WebUI 文件 Docling Document Extraction; 未實機驗證). 所選引擎須已安裝在 docling-serve 映像中.
+
+### 3. 啟動 Qdrant 並設定 API 金鑰 (進階組合)
+
+Qdrant 官方 README 的啟動指令 `docker run -p 6333:6333 qdrant/qdrant` 會啟動一個沒有驗證, 對所有網路介面開放的實例 (來源: Qdrant GitHub README). 官方安全教學說明以環境變數 `QDRANT__SERVICE__API_KEY` 設定管理金鑰, `QDRANT__SERVICE__READ_ONLY_API_KEY` 設定唯讀金鑰, 用戶端以 `api-key` 標頭帶入; 並建議啟用 TLS, 否則同網段的人可以讀到金鑰與資料 (來源: Qdrant 文件 Secure a Self-Hosted Qdrant Instance). 下列寫法把金鑰放在權限 600 的 `qdrant.env` (內容為 `QDRANT__SERVICE__API_KEY=<高強度金鑰>`), 連接埠只綁本機; 資料目錄 `/qdrant/storage` 為訓練資料內資訊, 可能已過時, 請以 Qdrant 文件 Quickstart 確認:
+
+```bash
+docker run -d --name qdrant --restart always \
+  -p 127.0.0.1:6333:6333 \
+  --env-file ./qdrant.env \
+  -v qdrant_storage:/qdrant/storage \
+  qdrant/qdrant@sha256:<摘要值>
+```
+
+Open WebUI 連接外部向量庫的位置在 Settings → Admin → Integrations → External Knowledge Sources, 官方標示為實驗功能, 支援 Qdrant, Milvus 與 pgvector, 填入端點, API 金鑰與集合名稱; Open WebUI 映像中要有對應的 Python 用戶端 (Qdrant 為 `qdrant-client`), 而且資料庫中的向量必須與 Open WebUI 使用同一個嵌入模型與維度 (來源: Open WebUI 文件 RAG). 不需要外部向量庫時, 使用 Open WebUI 內建的 Chroma 即可 (見 M4.4 節最小可行組合).
+
+### 4. 驗收
+
+- [ ] 上傳一份已知內容的文件到知識庫, 提出只有這份文件才答得出的問題, 回答正確並附上出處.
+- [ ] 依 M4.3 節跑完 50 題自測, 記錄命中率, 作為之後更換模型或設定時的基準.
+- [ ] 從另一台電腦掃描 Docling 與 Qdrant 的連接埠, 確認連不到. `nmap` 是常用的連接埠掃描工具 (通用指令, 未實機驗證):
+
+```bash
+nmap -p 5001,6333,6334 <主機內網位址>
+```
+
+預期三個連接埠都不是 open 狀態.
+
+- [ ] 在主機上以不帶金鑰的請求連 Qdrant, 預期遭拒; 帶上 `api-key` 標頭後才有回應:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:6333/collections
+curl -s -o /dev/null -w "%{http_code}\n" -H "api-key: <金鑰>" http://127.0.0.1:6333/collections
+```
+
+- [ ] 更換嵌入模型後按 Reindex, 再跑一次 50 題自測, 確認命中率沒有異常下降.
 
 ## 參考來源
+
+架設與驗收:
+
+- [Open WebUI 文件: RAG (嵌入模型設定, Reindex, 外部向量庫)](https://docs.openwebui.com/features/chat-conversations/rag.md)
+- [Open WebUI 文件: Docling Document Extraction](https://docs.openwebui.com/features/chat-conversations/rag/document-extraction/docling.md)
+- [docling-serve GitHub 儲存庫](https://github.com/docling-project/docling-serve)
+- [Qdrant 文件: Secure a Self-Hosted Qdrant Instance](https://qdrant.tech/documentation/tutorials-operations/secure-qdrant/)
 
 文件解析:
 
 - [Docling GitHub 儲存庫 (README, 授權)](https://github.com/docling-project/docling)
+- [Docling 文件: OCR engines in Docling (支援的引擎與指定方式)](https://docling-project.github.io/docling/concepts/OCR/)
+- [Docling 原始碼: auto_ocr_model.py (v2.142.1, OCR 引擎自動選擇順序)](https://github.com/docling-project/docling/blob/v2.142.1/docling/models/stages/ocr/auto_ocr_model.py)
+- [RapidOCR README (專案授權與 OCR 模型著作權說明)](https://raw.githubusercontent.com/RapidAI/RapidOCR/main/README.md)
 - [Marker GitHub 儲存庫 (README, 授權, 硬體需求)](https://github.com/datalab-to/marker)
 
 嵌入模型:
 
 - [Hugging Face 模型卡: google/embeddinggemma-300m](https://huggingface.co/google/embeddinggemma-300m)
 - [Hugging Face 模型卡: intfloat/multilingual-e5-large-instruct](https://huggingface.co/intfloat/multilingual-e5-large-instruct)
-- [Hugging Face 模型卡: Snowflake/snowflake-arctic-embed-l-v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0)
 - [Hugging Face 模型卡: nomic-ai/nomic-embed-text-v2-moe](https://huggingface.co/nomic-ai/nomic-embed-text-v2-moe)
-- [morphllm.com: Ollama embedding models (二手來源, EmbeddingGemma 的 Ollama 下載大小)](https://www.morphllm.com/ollama-embedding-models)
+- [Ollama: embeddinggemma 標籤頁 (Ollama 版大小 622MB)](https://ollama.com/library/embeddinggemma/tags)
 - [Ros 等人, A Comparative Study of Language Models for Khmer Retrieval-Augmented Question Answering (arXiv 2605.22099)](https://arxiv.org/abs/2605.22099)
 
 向量庫與介面內建 RAG:
@@ -141,6 +212,7 @@ RAG 的文件來源就是攻擊面: 文件中若夾帶給模型的惡意指示, 
 - [LanceDB GitHub 儲存庫](https://github.com/lancedb/lancedb)
 - [sqlite-vec GitHub 儲存庫 (授權)](https://github.com/asg017/sqlite-vec)
 - [sqlite-vec 作者部落格: sqlite-vec stable release (暴力搜尋)](https://alexgarcia.xyz/blog/2024/sqlite-vec-stable-release/index.html)
+- [sqlite-vec GitHub Releases (v0.1.9 穩定版; v0.1.10 alpha 加入 rescore, DiskANN 與實驗性 IVF 索引)](https://github.com/asg017/sqlite-vec/releases)
 - [Milvus GitHub 儲存庫 (分散式架構, 授權)](https://github.com/milvus-io/milvus)
 - [Actian 部落格: Comparing embedded vector databases (二手來源, Chroma 與 LanceDB 的內嵌模式特性)](https://www.actian.com/blog/developer/comparing-embedded-vector-databases/)
 - [Open WebUI 文件: Scaling Open WebUI (預設向量庫為 Chroma, 可改用 PGVector 等)](https://docs.openwebui.com/getting-started/advanced-topics/scaling/)
@@ -159,4 +231,4 @@ RAG 的文件來源就是攻擊面: 文件中若夾帶給模型的惡意指示, 
 
 - 文中的類比 (開書考試, 圖書館索書號與卡片櫃, 初選與複選): 整理者所寫, 無外部來源, 不應當作技術定義引用.
 
-整理者建議 (推論, 無外部來源): M4.3 節的 50 題自測流程與「差距小於 5 個百分點」的判定門檻, M4.4 節的最小可行與進階組合, 以及容量規劃的算式 (算術結果); 重排序兩款模型的使用順序建議. 「備份是否簡單」作為選擇依據, 亦屬整理者判斷 (信心: 中高). 「查無繁體中文檢索評測」僅指上列四份模型卡未提供, 公開基準是否存在仍須另行查證 (來源待補).
+整理者建議 (推論, 無外部來源): M4.3 節的 50 題自測流程與「差距小於 5 個百分點」的判定門檻, M4.4 節的最小可行與進階組合, 以及容量規劃的算式 (算術結果); 重排序兩款模型的使用順序建議. 「備份是否簡單」作為選擇依據, 亦屬整理者判斷 (信心: 中). 「查無繁體中文檢索評測」指上列模型卡未提供, 且 2026-10-27 以網路搜尋未找到由公部門或學術機構維護的公開繁體中文檢索基準; 查詢範圍有限, 不排除有未收錄的資料集.

@@ -1,3 +1,7 @@
+---
+description: "內部知識庫問答需要里程碑 2 (M0 至 M6), 權限設計是一個部門一個知識庫, 只授權給對應的群組."
+---
+
 # E1 內部知識庫問答
 
 ::: info 本章屬性
@@ -37,58 +41,41 @@
 
 | 模組 | 里程碑 | 在本範例的用途 |
 |---|---|---|
-| [M0 基礎環境](/build/m0-foundation) | 里程碑 1 | Proxmox VE 的入口區, 閘道區, 推論區, 稽核區 VM; 備份伺服器 |
-| [M1 推論伺服器](/build/m1-inference) | 里程碑 1 | 多人並行用 vLLM, 只接受閘道區連線 |
-| [M2 使用者介面與反向代理](/build/m2-ui-proxy) | 里程碑 1 | Open WebUI 前面加 Nginx 或 Caddy, 只接受內網連線 |
+| [M0 基礎環境](/build/m0-foundation) | 里程碑 1 | 以 Proxmox VE (在實體主機上建立與管理多台 VM 的虛擬化平台) 切出入口區, 閘道區, 推論區, 稽核區 VM; 備份伺服器 |
+| [M1 推論伺服器](/build/m1-inference) | 里程碑 1 | 多人並行用 vLLM (能同時處理多人請求的推論伺服器), 只接受閘道區連線; 嵌入模型與對話模型各跑一個 vLLM 行程 (做法見 M1.11 節的「每個模型一個 vLLM 行程」) |
+| [M2 使用者介面與反向代理](/build/m2-ui-proxy) | 里程碑 1 | Open WebUI 是同事在瀏覽器裡提問的對話介面, 前面加 Nginx 或 Caddy 擔任反向代理, 只接受內網連線 |
 | [M3 模型入庫與存放](/build/m3-model-intake) | 里程碑 2 | 對話模型與嵌入模型都經入庫檢查, 推論伺服器唯讀掛載 |
-| [M4 檢索 (RAG)](/build/m4-retrieval) | 里程碑 2 | Docling 解析, Qdrant 向量庫, 依部門分知識庫 |
-| [M5 模型閘道與身分驗證](/build/m5-gateway-identity) | 里程碑 2 | LiteLLM 虛擬金鑰與配額; Keycloak 以 OIDC 提供單一登入與群組 |
-| [M6 可觀測, 稽核與評估](/build/m6-observability) | 里程碑 2 | 各部門的 50 題測試集; Langfuse 記錄呼叫軌跡, 轉送既有 SIEM |
+| [M4 檢索 (RAG)](/build/m4-retrieval) | 里程碑 2 | Docling 把 PDF, Word 等檔案解析成純文字, Qdrant 向量庫存放段落向量, 依部門分知識庫 |
+| [M5 模型閘道與身分驗證](/build/m5-gateway-identity) | 里程碑 2 | LiteLLM 是所有模型呼叫的閘道, 負責虛擬金鑰與配額; Keycloak 管理帳號與群組, 以 OIDC 提供單一登入 |
+| [M6 可觀測, 稽核與評估](/build/m6-observability) | 里程碑 2 | 各部門的 50 題測試集; Langfuse 記錄並顯示每次模型呼叫的軌跡, 紀錄另轉送既有 SIEM |
 
 ## 流程
 
 流程分三部分. 文件匯入由各部門的維護者負責, 文件解析後轉成向量, 依部門分開存放. 查詢時, 同事先經單一登入確認身分與群組, 系統只在這個群組能讀的知識庫裡找答案, 所有模型呼叫都經過閘道. 每次查詢的紀錄送到稽核區, 事後可以查到誰在什麼時候問了什麼.
 
-```
-文件匯入 (由各部門的知識庫維護者執行)
-
-[檔案伺服器: 各部門現行版文件]
-      | 維護者確認版本與生效日, 上傳到自己負責的知識庫
-      v
-[入口區 VM: Open WebUI] --HTTP--> [入口區 VM: docling-serve] (解析)
-      |
-      | 嵌入請求 (OpenAI 相容 API, 虛擬金鑰)
-      v
-[閘道區 VM: LiteLLM] --> [推論區 VM: vLLM 嵌入模型]
-      |
-      v
-[入口區 VM: Qdrant] (向量依知識庫分開存放)
-
-查詢 (每位同事)
-
-[同事的瀏覽器]
-      | 內網 HTTPS
-      v
-[入口區: Nginx 或 Caddy] --> [入口區: Open WebUI]
-      |
-      | 1. OIDC 登入, 轉到 Keycloak (串接 AD 或 LDAP), 取回 groups 宣告
-      v
-[入口區: Open WebUI 依群組同步結果, 決定可讀的知識庫與模型]
-      |
-      | 2. 只在可讀的知識庫中檢索 (Qdrant)
-      v
-[閘道區: LiteLLM (Open WebUI 專用虛擬金鑰)] --> [推論區: vLLM 對話模型]
-      |
-      | 3. 回答 + 出處 (文件名稱, 版本)
-      v
-[同事] --> 涉及權益時, 向承辦單位確認
-
-紀錄
-
-[Open WebUI, LiteLLM] --OTLP--> [稽核區: OTel Collector]
-      |
-      +--OTLP/HTTP--> [稽核區: Langfuse (/api/public/otel)]
-      +--> [既有 SIEM]
+```mermaid
+flowchart TD
+  subgraph S1["文件匯入 (由各部門的知識庫維護者執行)"]
+    A1["檔案伺服器: 各部門現行版文件"] -->|"維護者確認版本與生效日, 上傳到自己負責的知識庫"| A2["入口區 VM: Open WebUI"]
+    A2 -->|"HTTP"| A3["入口區 VM: docling-serve (解析)"]
+    A2 -->|"嵌入請求 (OpenAI 相容 API, 虛擬金鑰)"| A4["閘道區 VM: LiteLLM"]
+    A4 --> A5["推論區 VM: vLLM 嵌入模型"]
+    A4 --> A6["入口區 VM: Qdrant (向量依知識庫分開存放)"]
+  end
+  subgraph S2["查詢 (每位同事)"]
+    B1["同事的瀏覽器"] -->|"內網 HTTPS"| B2["入口區: Nginx 或 Caddy"]
+    B2 --> B3["入口區: Open WebUI"]
+    B3 -->|"1. OIDC 登入, 轉到 Keycloak (串接 AD 或 LDAP), 取回 groups 宣告"| B4["入口區: Open WebUI 依群組同步結果, 決定可讀的知識庫與模型"]
+    B4 -->|"2. 只在可讀的知識庫中檢索 (Qdrant)"| B5["閘道區: LiteLLM (Open WebUI 專用虛擬金鑰)"]
+    B5 --> B6["推論區: vLLM 對話模型"]
+    B5 -->|"3. 回答 + 出處 (文件名稱, 版本)"| B7["同事"]
+    B7 --> B8["涉及權益時, 向承辦單位確認"]
+  end
+  subgraph S3["紀錄"]
+    C1["Open WebUI, LiteLLM"] -->|"OTLP"| C2["稽核區: OTel Collector"]
+    C2 -->|"OTLP/HTTP"| C3["稽核區: Langfuse (/api/public/otel)"]
+    C2 --> C4["既有 SIEM"]
+  end
 ```
 
 ## 設定要點
@@ -125,14 +112,14 @@
 ### 檢索與模型
 
 - 向量庫改用 Qdrant: `VECTOR_DB=qdrant`, `QDRANT_URI` 指向入口區的 Qdrant, `QDRANT_API_KEY` 設定 API 金鑰 (官方環境變數文件).
-- 文件解析設為 Docling (見 P1 的設定要點); 嵌入模型例如 EmbeddingGemma 或 Snowflake Arctic Embed 2.0 (L), 依 M4.3 節以各部門文件實測後決定.
+- 文件解析設為 Docling (見 P1 的設定要點; 掃描檔會用到的 OCR 引擎見 [M4.1 節](/build/m4-retrieval)); 嵌入模型例如 EmbeddingGemma 或 nomic-embed-text-v2-moe, 依 M4.3 節以各部門文件實測後決定.
 - Open WebUI 連模型改經 LiteLLM, 使用 Open WebUI 專用的虛擬金鑰, 並限制可用模型 (LiteLLM 文件的 `/key/generate` 支援 `models` 與 `metadata` 欄位).
-- Open WebUI 以 `ENABLE_OTEL` 開啟 OpenTelemetry (預設關閉). 官方文件列出的預設匯出協定 (`OTEL_OTLP_SPAN_EXPORTER`) 為 gRPC, 而 Langfuse 只接收 HTTP 版的 OTLP, 因此先送到 OTel Collector, 再由 Collector 以 HTTP 轉送 Langfuse (見 M6.4 節).
+- Open WebUI 以 `ENABLE_OTEL` 開啟 OpenTelemetry (預設關閉). 官方文件列出的預設匯出協定 (`OTEL_OTLP_SPAN_EXPORTER`) 為 gRPC, 而 Langfuse 只接收 HTTP 版的 OTLP, 因此先送到 OTel Collector (接收紀錄, 轉換格式後再轉送的中繼程式), 再由 Collector 以 HTTP 轉送 Langfuse (見 M6.4 節).
 - 標為 `ConfigVar` 的環境變數只在第一次啟動時生效, 之後的變更要在管理介面調整, 並記錄在變更紀錄中 (見 O2).
 
 ### 提示範本
 
-下列範本附在每次提問前面, 要求模型只根據檢索到的規章回答, 並標出條次與版本; 範本最後的 CONTEXT 佔位符會換成檢索到的段落.
+下列範本附在每次提問前面, 要求模型只根據檢索到的規章回答, 並標出條次與版本; 範本最後的 CONTEXT 佔位符會換成檢索到的段落. 範本只在函式呼叫設為 Legacy 時自動填入檢索內容, 其他設定的差異見 P1 的設定要點第 7 點.
 
 ```
 角色: 公司內部規章查詢助理. 只根據參考資料回答, 使用繁體中文.
@@ -181,7 +168,7 @@
 | 舊版文件仍在知識庫 | 同事依過時規定辦事 | 匯入流程要求先刪舊版; 回答顯示版本與生效日; 每季比對 |
 | 模型誤讀條文 | 回答與規定不符, 同事據以申請或拒絕 | 提示範本要求附條次出處並聲明以原始文件為準; 承辦單位保有最終解釋 |
 | 紀錄平台保存完整對話 | 提問內容可能含個人資料或機密 | Langfuse 限稽核人員存取, 設定保存期限 (見 M6.4 節) |
-| 文件夾帶指令 (間接提示注入) | 惡意或不當內容影響其他人的回答 | 只有維護者能匯入; 文件來源只限檔案伺服器的正式目錄 (OWASP LLM08, 見 K6.4 節) |
+| 文件夾帶指令 (間接提示注入) | 惡意或不當內容影響其他人的回答 | 只有維護者能匯入; 文件來源只限檔案伺服器的正式目錄 (OWASP LLM01 提示注入, LLM05 資料與模型投毒; 見 K6.4 節) |
 | 元件漏洞 | 介面或閘道遭入侵即可讀取多個部門的資料 | 依 O2, O3 鎖定版本, 訂閱安全公告; 入口區只接受內網連線 |
 
 需要人工確認的步驟: 文件匯入前由維護者確認版本; 回答涉及權益 (請假, 報帳, 懲處) 時, 以承辦單位的確認為準.
