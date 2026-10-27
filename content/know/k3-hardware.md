@@ -6,9 +6,9 @@ description: "預算有限時, 先買「更大的顯示記憶體 (或統一記�
 
 ::: info 本章屬性
 - 等級: ● 必要
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: 等級 A 至 F 為整理者設計的分級, 非業界標準; 各等級可跑的模型大小為依 K2 公式的估算, 未實測; 價格見[硬體價格頁](/ref/hardware-prices), 本章不寫價格; K3.4 節的 KV cache 欄位語意與各配置的並行表現為推論, 未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 未進行 (二手顯示卡驗收的 nvidia-smi 檢查依官方說明整理; 需實機確認: K3.4 各配置的多人並行表現, 以及推論引擎實際配置 Gemma 4 完整注意力層的方式)
 :::
 
 **結論**: 預算有限時, 先買「更大的顯示記憶體 (或統一記憶體)」, 再考慮運算速度. 記憶體決定能不能跑, 運算速度只決定跑得多快 (信心: 高).
@@ -220,7 +220,7 @@ flowchart TD
 | gemma-4-31B-it, 完整注意力層 | 10 層 (共 60 層, 其餘 50 層為滑動視窗), 全域 KV heads 4, 全域 head_dim 512 | 2 x 10 x 4 x 512 x 2 | 80 KiB | 80 MiB |
 | gemma-4-31B-it, 滑動視窗層 | 50 層, KV heads 16, head_dim 256, 視窗 1,024 token | 2 x 50 x 16 x 256 x 2 | 800 KiB, 但超過視窗後不再增加 | 每條序列固定約 800 MiB |
 
-Gemma 4 的欄位 (`global_head_dim`, `num_global_key_value_heads`) 語意為整理者依欄位名稱解讀, 推論引擎實際的配置方式須實測 (信心: 低). 以 Mistral 的數字示範容量: 4 條序列各 32K token, 共 131,072 token, FP16 約 20GiB; 若 vLLM (多人同時使用時採用的推論伺服器, 見 M1) 的 KV cache 改用 FP8 (`--kv-cache-dtype fp8`), 每個元素 1 位元組, 約減半為 10GiB. vLLM 文件說明, 預設 FP8 在沒有校準時縮放係數為 1.0, 建議用 llm-compressor 校準, 並未提供準確度數字 (來源: vLLM 文件 Quantized KV Cache).
+Gemma 4 的 `global_head_dim` 與 `num_global_key_value_heads` 兩個欄位, 依 Hugging Face Transformers 的 Gemma 4 設定程式, 只套用在完整注意力層: 這些層的每頭維度改用 `global_head_dim`, KV 頭數改用 `num_global_key_value_heads` (來源: Transformers configuration_gemma4.py, 2026-10-27 主分支). 其他推論引擎是否採相同配置, 官方文件未說明, 實際用量以啟動後的記憶體為準. 以 Mistral 的數字示範容量: 4 條序列各 32K token, 共 131,072 token, FP16 約 20GiB; 若 vLLM (多人同時使用時採用的推論伺服器, 見 M1) 的 KV cache 改用 FP8 (`--kv-cache-dtype fp8`), 每個元素 1 位元組, 約減半為 10GiB. vLLM 文件說明, 預設 FP8 在沒有校準時縮放係數為 1.0, 建議用 llm-compressor 校準, 並未提供準確度數字 (來源: vLLM 文件 Quantized KV Cache).
 
 ### 硬體選項與適合度
 
@@ -279,6 +279,7 @@ flowchart TD
 模型卡與設定 (官方):
 
 - [google/gemma-4-31B-it](https://huggingface.co/google/gemma-4-31B-it) 與其 [config.json](https://huggingface.co/google/gemma-4-31B-it/raw/main/config.json)
+- [Hugging Face Transformers: configuration_gemma4.py (完整注意力層改用 global_head_dim 與 num_global_key_value_heads)](https://github.com/huggingface/transformers/blob/main/src/transformers/models/gemma4/configuration_gemma4.py)
 - [mistralai/Magistral-Small-2509](https://huggingface.co/mistralai/Magistral-Small-2509)
 - [mistralai/Mistral-Small-3.2-24B-Instruct-2506 config.json](https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506/raw/main/config.json)
 - [openai/gpt-oss-20b](https://huggingface.co/openai/gpt-oss-20b)

@@ -6,9 +6,9 @@ description: "單機單人不需要閘道. 只有多模型輪替而沒有多人�
 
 ::: info 本章屬性
 - 等級: ○ 依情境, 符合條件才讀
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: LiteLLM 官方事故報告提到一個預定於 2026-10-27 公開的漏洞, 截至 2026-10-27 查詢尚未見對應的 GHSA 或 CVE, 須再查證; M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令未實機驗證; Keycloak 的 Google Hosted Domain 欄位是否在登入時強制檢查網域, 須在測試環境驗證; Google 身分提供者的回呼網址格式來自社群論壇 (二手來源), 以主控台顯示為準; Open WebUI 的 `AIOHTTP_CLIENT_SSL_CERT_FILE` 是否涵蓋 OIDC 請求未確認; Langfuse `AUTH_KEYCLOAK_ISSUER` 的值為依 OIDC 慣例的推論; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 未進行 (M5.4 與 M5.5 節的 Keycloak, Open WebUI, LiteLLM 設定與指令依官方文件整理; 需實機確認: Keycloak Hosted Domain 以非公司帳號登入時確實遭拒, Open WebUI 掛載內部 CA 後能完成 OIDC 登入)
 :::
 
 **結論**: 單機單人不需要閘道. 只有多模型輪替而沒有多人治理需求時, 用 llama-swap 就夠. LiteLLM 有納入評估, 但不列為預設, 原因是一年內兩度成為供應鏈入侵的入口, 且集中保存上游金鑰 (信心: 高). 符合 M5.1 節的條件時, 閘道放在獨立的閘道區, 成為唯一保存 API 金鑰的地方; 帳號則交給身分驗證伺服器統一管理.
@@ -115,7 +115,7 @@ LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權. 管理介
 
 2026-03 事件的官方建議是把所有存在受影響系統上的憑證視為已外洩並輪替, 移除惡意的 `litellm_init.pth`, 並鎖定已知安全的版本 (例如 1.82.6 或更早); 官方之後以新的 CI/CD 流程發布乾淨的 1.83.0 (來源: LiteLLM 官方部落格 2026-03-24). 2026-10 事件的官方建議是鎖定 `litellm==1.106.2` 或更早發布的明確版本, 從頭重建映像與虛擬環境, 並輪替所有金鑰 (來源: LiteLLM 官方事故報告 2026-10-21).
 
-2026-10 事件的入口, 官方在 2026-10-23 的攻擊鏈報告中說明: LiteLLM Agent Platform 的 master key 於 2026-05-27 被提交到公開儲存庫, 之後沒有撤銷; 攻擊者於 2026-10-10 用這把金鑰呼叫 Agent Platform 的 API, 再一路取得開發者的 GitHub 憑證並修改發布流程. 官方表示已完成對攻擊者行為的調查, 改善措施另行公布 (來源: LiteLLM 官方部落格 The attack chain behind the v1.107.0 LiteLLM release). 官方說明企業版私有發行未受影響. 這起事件的起點是一把沒有撤銷的金鑰, 說明 O3 的「外洩後立即輪替」比任何單一防護更關鍵 (推論, 信心: 中).
+2026-10 事件的入口, 官方在 2026-10-23 的攻擊鏈報告中說明: LiteLLM Agent Platform 的 master key 於 2026-05-27 被提交到公開儲存庫, 之後沒有撤銷; 攻擊者於 2026-10-10 用這把金鑰呼叫 Agent Platform 的 API, 再一路取得開發者的 GitHub 憑證並修改發布流程. 官方表示已完成對攻擊者行為的調查, 改善措施另行公布 (來源: LiteLLM 官方部落格 The attack chain behind the v1.107.0 LiteLLM release). 官方說明企業版私有發行未受影響. 同一份報告提到, 企業版私有發行另修補了一個預定於 2026-10-27 公開的漏洞; 截至 2026-10-27 查詢, LiteLLM 官方部落格的安全文章與 GitHub Security Advisories 尚未公開這個漏洞的內容或編號. 公開後會列入[版本頁](/ref/versions), 屆時依 O2 的流程升級. 這起事件的起點是一把沒有撤銷的金鑰, 說明 O3 的「外洩後立即輪替」比任何單一防護更關鍵 (推論, 信心: 中).
 
 下圖依官方攻擊鏈報告與事故報告整理 2026-10 事件的經過, 以及兩項防護各自擋在哪一步 (防護的對應為推論, 信心: 中):
 
@@ -299,13 +299,13 @@ JWT_EXPIRES_IN=8h
 - `JWT_EXPIRES_IN` 預設 `4w`. 官方警告設為 `-1` (永不過期) 在正式環境極度危險.
 - 確認 SSO 可用後, 可將 `ENABLE_LOGIN_FORM` 設為 `false` 隱藏帳密表單; 官方提醒要先設好 SSO 或 LDAP 再關閉, 否則沒有人能登入. 這個設定也屬於 ConfigVar, 已啟動的實例改在管理面板 Settings > Admin > Authentication 的 Login Form 調整, 立即生效. 管理者仍可經 `/auth?form=true` 進入本機登入表單.
 - `ENABLE_PASSWORD_AUTH` 是另一個開關, 官方警告只有在已使用 `ENABLE_OAUTH_SIGNUP=true` 時才能設為 `False`, 沒有使用 SSO 時關閉會無法登入.
-- Keycloak 使用公司內部 CA 的憑證時, Open WebUI 要能信任該 CA. Open WebUI 提供 `AIOHTTP_CLIENT_SSL_CERT_FILE` 指定自訂 CA 檔, 但它是否涵蓋 OIDC 探索與權杖請求, 本輪未確認, 須在測試環境驗證.
+- Keycloak 使用公司內部 CA 的憑證時, Open WebUI 要能信任該 CA. 依 Open WebUI 原始碼 (2026-10-25 版), `AIOHTTP_CLIENT_SSL_CERT_FILE` 只作用在以 aiohttp 送出的請求, 例如連模型 API, 工具伺服器與 MCP OAuth; SSO 登入時的 OIDC 探索與權杖交換則由 Authlib 的用戶端 (底層為 httpx) 處理, 不讀這個設定. httpx 0.28.1 會讀取標準的 `SSL_CERT_FILE` 環境變數 (依 httpx 原始碼). 因此要讓 SSO 登入信任內部 CA, 兩個變數都要設, 並指向同一份「公開 CA 加上公司內部 CA」的憑證檔; 只放內部 CA 會讓 Open WebUI 連不上外部 HTTPS 服務 (推論, 信心: 中).
 
 ### 其他系統的串接
 
 | 系統 | 串接方式 | 注意事項 |
 |---|---|---|
-| Langfuse | 環境變數 `AUTH_KEYCLOAK_CLIENT_ID`, `AUTH_KEYCLOAK_CLIENT_SECRET`, `AUTH_KEYCLOAK_ISSUER`; 回呼路徑 `/api/auth/callback/keycloak` (來源: Langfuse 文件 Authentication and SSO) | `AUTH_DISABLE_SIGNUP=true` 關閉自行註冊; `AUTH_DISABLE_USERNAME_PASSWORD=true` 關閉帳密登入 (同上). Issuer 的值一般為 `https://sso.example.internal/realms/company` (推論, 依 OIDC 慣例, 須實機確認) |
+| Langfuse | 環境變數 `AUTH_KEYCLOAK_CLIENT_ID`, `AUTH_KEYCLOAK_CLIENT_SECRET`, `AUTH_KEYCLOAK_ISSUER`; 回呼路徑 `/api/auth/callback/keycloak` (來源: Langfuse 文件 Authentication and SSO) | `AUTH_DISABLE_SIGNUP=true` 關閉自行註冊; `AUTH_DISABLE_USERNAME_PASSWORD=true` 關閉帳密登入 (同上). Issuer 的值為 Keycloak realm 的網址, 例如 `https://sso.example.internal/realms/company`: Keycloak 文件說明 realm 的中繼資料放在 `/realms/{realm 名稱}/.well-known/openid-configuration`, 依 OIDC Discovery 規範, 去掉 `/.well-known/openid-configuration` 的部分就是 issuer; 設定前可開啟這個網址, 以 JSON 中的 `issuer` 欄位為準 |
 | LiteLLM 管理介面 | 以 `GENERIC_CLIENT_ID`, `GENERIC_CLIENT_SECRET`, `GENERIC_AUTHORIZATION_ENDPOINT`, `GENERIC_TOKEN_ENDPOINT`, `GENERIC_USERINFO_ENDPOINT` 串接通用 OIDC (來源: LiteLLM 文件 Admin UI SSO) | 官方說明 SSO 需要企業版授權; 自 v1.76.0 起 5 位使用者以內免費 (同上). 另設 `GENERIC_USER_ID_ATTRIBUTE=sub`: 未設定時 LiteLLM 以 `preferred_username` 識別使用者, 使用者若能自行修改這個值, 下次登入會被當成另一個人; `sub` 是 OIDC 中終生不變的帳號識別碼 (同上). 管理介面本身仍只限管理者 IP (見 M5.3 節) |
 
 每個系統各建一個 client, 不要共用 client secret (推論, 信心: 中).
@@ -336,10 +336,10 @@ flowchart TD
 
 **Google 帳號 (identity provider)**: Keycloak 內建 Google 身分提供者 (來源: Keycloak Server Administration Guide). 步驟如下:
 
-1. 在 Keycloak 的 **Identity Providers** 選擇 **Google**, 複製畫面上的 **Redirect URI**. 格式為 `https://sso.example.internal/realms/company/broker/google/endpoint` (二手來源: Keycloak 社群論壇; 以主控台顯示的值為準).
-2. 在 Google Cloud Console 的 APIs & Services 建立 OAuth 同意畫面, 再到 **Credentials** 點 **CREATE CREDENTIALS**, 選 **OAuth Client ID**, 應用程式類型選 **Web application**, 把上一步的網址填入 **Authorized redirect URIs**. Keycloak 官方步驟中, 同意畫面的使用者類型寫為 External; Google Workspace 組織是否改選其他類型, 本輪未查證.
+1. 在 Keycloak 的 **Identity Providers** 選擇 **Google**, 複製畫面上的 **Redirect URI**. 格式為 `https://sso.example.internal/realms/company/broker/google/endpoint`, 也就是 `/realms/{realm 名稱}/broker/{身分提供者別名}/endpoint` (來源: Keycloak 原始碼 IdentityBrokerService 與 Keycloak 文件的 broker 路徑; 以主控台顯示的值為準).
+2. 在 Google Cloud Console 的 APIs & Services 建立 OAuth 同意畫面, 再到 **Credentials** 點 **CREATE CREDENTIALS**, 選 **OAuth Client ID**, 應用程式類型選 **Web application**, 把上一步的網址填入 **Authorized redirect URIs**. Keycloak 官方步驟中, 同意畫面的使用者類型寫為 External. Google 文件說明, 只給 Google Workspace 組織內部使用的應用程式選 Internal 時, 同意畫面不列出權限範圍 (來源: Google for Developers, Configure the OAuth consent screen). 公司使用 Google Workspace, 而且只讓組織成員登入時, 可選 Internal, 再以下一步的 Hosted Domain 限制一次 (推論, 信心: 中).
 3. 把 Google 提供的 Client ID 與 Client secret 貼回 Keycloak.
-4. Keycloak 文件說明, 要限制只有 Google Workspace 組織成員可登入時, 在 **Hosted Domain** 欄位填入公司網域. Keycloak 是否會在登入時驗證 Google 回傳的網域, 官方文件沒有寫明; 上線前須在測試環境以非公司帳號實際登入一次, 確認登入遭拒.
+4. Keycloak 文件說明, 要限制只有 Google Workspace 組織成員可登入時, 在 **Hosted Domain** 欄位填入公司網域. 依 Keycloak 原始碼 (2026-10-26 版), 設定 Hosted Domain 後, Keycloak 會在送往 Google 的登入請求加上 `hd` 參數, 並在驗證 Google 回傳的 ID token 時比對其中的 `hd` 值, 不符合就以「Hosted domain does not match」拒絕登入; 可填多個網域, 以逗號分隔, 填 `*` 表示不限制. 上線前仍應以非公司帳號登入一次, 確認登入遭拒.
 
 採用 Google 登入前, 有兩個網路條件要先確認:
 
@@ -535,7 +535,17 @@ curl -sS -m 5 -H 'Authorization: Bearer <vLLM API 金鑰>' http://<推論區主�
 - [Keycloak 文件: Admin bootstrap and recovery](https://www.keycloak.org/server/bootstrap-admin-recovery)
 - [Keycloak 文件: Getting started with Docker](https://www.keycloak.org/getting-started/getting-started-docker)
 - [Keycloak Server Administration Guide](https://www.keycloak.org/docs/latest/server_admin/index.html)
-- [Keycloak 社群論壇: Change Redirect URI of Identity Provider in Keycloak (二手來源)](https://forum.keycloak.org/t/change-redirect-uri-of-identity-provider-in-keycloak/23588)
+- [Keycloak 原始碼: GoogleIdentityProvider.java (Hosted Domain 的 hd 參數與驗證, 2026-10-26 版)](https://github.com/keycloak/keycloak/blob/919a831/services/src/main/java/org/keycloak/social/google/GoogleIdentityProvider.java)
+- [Keycloak 原始碼: IdentityBrokerService.java (broker 端點路徑)](https://github.com/keycloak/keycloak/blob/919a831/services/src/main/java/org/keycloak/services/resources/IdentityBrokerService.java)
+- [Keycloak 文件原始檔: Google 身分提供者設定步驟](https://github.com/keycloak/keycloak/blob/919a831/docs/documentation/server_admin/topics/identity-broker/social/google.adoc)
+- [Keycloak 文件原始檔: OAuth 2.0 身分提供者 (realm 的 .well-known 中繼資料位置)](https://github.com/keycloak/keycloak/blob/919a831/docs/documentation/server_admin/topics/identity-broker/oauth2.adoc)
+- [OpenID Connect Discovery 1.0 (issuer 與 .well-known 網址的關係)](https://openid.net/specs/openid-connect-discovery-1_0.html)
+- [Google for Developers: Configure the OAuth consent screen and choose scopes](https://developers.google.com/calendar/auth?authuser=8)
+- [Open WebUI 原始碼: env.py (AIOHTTP_CLIENT_SSL_CERT_FILE 的作用範圍, 2026-10-25 版)](https://github.com/open-webui/open-webui/blob/33c1978/backend/open_webui/env.py)
+- [Open WebUI 原始碼: config.py (OAuth 用戶端註冊)](https://github.com/open-webui/open-webui/blob/33c1978/backend/open_webui/config.py)
+- [httpx 0.28.1 原始碼: _config.py (SSL_CERT_FILE)](https://github.com/encode/httpx/blob/0.28.1/httpx/_config.py)
+- [LiteLLM 官方部落格: security 標籤文章列表 (2026-10-27 查詢)](https://docs.litellm.ai/blog/tags/security)
+- [GitHub: BerriAI/litellm Security Advisories (2026-10-27 查詢)](https://github.com/BerriAI/litellm/security/advisories)
 - [Google for Developers: Using OAuth 2.0 for Web Server Applications](https://developers.google.com/identity/protocols/oauth2/web-server)
 - [Open WebUI 文件: SSO (OAuth, OIDC, Trusted Header)](https://docs.openwebui.com/features/authentication-access/auth/sso)
 - [Open WebUI 文件: Keycloak](https://docs.openwebui.com/features/authentication-access/auth/sso/keycloak)

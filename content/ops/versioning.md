@@ -6,9 +6,9 @@ description: "鎖定版本不等於不升級. 做法是「固定在已知版本,
 
 ::: info 本章屬性
 - 等級: ● 必要
-- 狀態: 可閱讀 (指令未實機驗證)
-- 資料基準日: 2026-10-26
-- 待查證: 容器映像摘要值的查詢指令 `docker image ls --digests` 已對照 Docker 文件, 但未實機驗證; 各應用程式是否支援資料庫降版, 須逐一查證 (Open WebUI 文件稱回退不會還原資料庫遷移); 升級流程的順序與緊急修補做法為整理者建議, 無來源; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 狀態: 可閱讀
+- 資料基準日: 2026-10-27
+- 實機驗證: 未進行 (`docker image ls --digests` 已對照 Docker 文件)
 :::
 
 **結論**: 鎖定版本不等於不升級. 做法是「固定在已知版本, 有公告或需求時, 先備份, 先在測試環境驗證, 再升級, 並保留回退的路」. 這樣能避開 2026 年已出現的浮動標籤事件, 又不會因久未更新而累積漏洞 (信心: 中, 屬推論).
@@ -79,7 +79,7 @@ docker pull ghcr.io/open-webui/open-webui:<新版本標籤>
 | 對象 | 回退做法 |
 |---|---|
 | 容器映像 | 保留上一版映像與啟動指令, 以上一版標籤重新啟動 |
-| 資料卷 | 部分應用程式升級時會轉換資料庫結構, 回退舊版可能無法讀取新結構 (Open WebUI 文件稱回退不會還原資料庫遷移; 一般化為其他應用程式屬推論, 信心: 中), 因此升級前的備份是回退的依據 |
+| 資料卷 | 部分應用程式升級時會轉換資料庫結構, 回退舊版可能無法讀取新結構, 因此升級前的備份是回退的依據. 各官方文件的說法: Open WebUI 稱回退不會還原資料庫遷移; Keycloak 不支援還原資料庫變更, 回到舊版要還原舊安裝與資料庫備份; LiteLLM 要求回退前先備份, 回到缺少某次遷移的版本時可能要清理 `_prisma_migrations` 中的紀錄; n8n 與 Langfuse 的升級文件未說明降版 (2026-10-27 查詢), 以升級前備份還原為準 |
 | Ollama | 以 `OLLAMA_VERSION` 重新安裝指定的舊版 (Linux) |
 | 模型 | 升級模型時保留舊模型, 確認新模型的測試結果後再移除 |
 
@@ -98,6 +98,9 @@ docker pull ghcr.io/open-webui/open-webui:<新版本標籤>
 - [Docker 文件: docker image ls (`--digests`)](https://docs.docker.com/reference/cli/docker/image/ls/)
 - [Open WebUI 文件: Quick Start (`WEBUI_SECRET_KEY`, `:main` 標籤, 更新步驟)](https://docs.openwebui.com/getting-started/quick-start/)
 - [Open WebUI 文件: Updating (固定版本標籤, 回退與資料庫遷移)](https://docs.openwebui.com/getting-started/updating/)
+- [Red Hat build of Keycloak 26.4: Upgrading Guide](https://docs.redhat.com/fr/documentation/red_hat_build_of_keycloak/26.4/html/upgrading_guide/upgrading) (不支援還原資料庫變更, 以備份回到舊版)
+- [LiteLLM 文件: Rollback](https://docs.litellm.ai/docs/troubleshoot/rollback) (回退前備份, 處理 `_prisma_migrations`)
+- [n8n 文件: Updating](https://docs.n8n.io/hosting/installation/updating), [Langfuse 文件: Versioning](https://langfuse.com/self-hosting/upgrade/versioning) (兩頁皆未說明降版, 2026-10-27 查詢)
 - [Open WebUI 文件: Environment Variable Configuration (`ConfigVar`)](https://docs.openwebui.com/reference/env-configuration)
 - [GitHub: protectai/llm-guard (2026-07-09 封存)](https://github.com/protectai/llm-guard)
 - 手冊內部連結: [M1.5 節](/build/m1-inference), [M1.7 節](/build/m1-inference), [M5.3 節](/build/m5-gateway-identity), [M6](/build/m6-observability), [O1](/ops/backup), [O3](/ops/advisories), [架構地圖](/start/map)

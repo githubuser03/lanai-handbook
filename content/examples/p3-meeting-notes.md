@@ -6,9 +6,9 @@ description: "里程碑 1 (M0 至 M2) 加上一個可地端執行的語音轉文
 
 ::: info 本章屬性
 - 等級: ○ 依情境
-- 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: whisper.cpp 與 OpenCC 指令依官方 README 整理, 未實機驗證; Whisper 對台灣華語, 中英夾雜與專有名詞的辨識準確度無公開基準; Open WebUI 內建語音轉文字是否支援直接上傳錄音檔, 官方文件未說明; 長逐字稿的分段長度建議屬推論; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 狀態: 可閱讀
+- 資料基準日: 2026-10-27
+- 實機驗證: 未進行 (whisper.cpp 與 OpenCC 指令依官方 README 整理; 需實機確認: Whisper 對台灣華語, 中英夾雜與專有名詞的辨識準確度)
 :::
 
 **結論**: 里程碑 1 (M0 至 M2) 加上一個可地端執行的語音轉文字程式, 就能把會議錄音整理成摘要, 決議與待辦清單. 本頁以 whisper.cpp 搭配 OpenAI Whisper 模型為例: Whisper 是把語音辨識成文字的模型, whisper.cpp 是在一般電腦上執行這個模型的程式 (兩者皆為 MIT 授權), 錄音與逐字稿都不離開本機. 模型產生的摘要一律由記錄者核對後才寄給與會者, 尤其是決議, 負責人與期限.
@@ -113,7 +113,7 @@ opencc -c s2twp.json -i meeting.txt -o meeting-tw.txt
 
 **5. 長逐字稿分段處理.** Open WebUI 官方疑難排解頁指出, Ollama 在顯示記憶體小於 24GiB 時預設上下文只有 4096 token. 一小時會議的逐字稿通常超過這個長度 (推論). 做法有兩種: 依 M1.8 節調高上下文長度; 或把逐字稿依議程切成幾段, 每段先各自整理, 最後再請模型合併 (推論, 信心: 中).
 
-**6. 可選: 介面內建的語音轉文字.** Open WebUI 內建本機 Whisper (以另一套 Whisper 執行程式 faster_whisper 執行, `WHISPER_MODEL` 預設為 `base`, 可用 `WHISPER_LANGUAGE` 指定語言), 適合用麥克風口述. 是否支援直接上傳錄音檔, 官方文件未說明, 因此本頁以 whisper.cpp 處理錄音檔.
+**6. 可選: 介面內建的語音轉文字.** Open WebUI 內建本機 Whisper (以另一套 Whisper 執行程式 faster_whisper 執行, `WHISPER_MODEL` 預設為 `base`, 可用 `WHISPER_LANGUAGE` 指定語言), 適合用麥克風口述. 官方 STT 設定文件列出音訊上傳端點預設接受的副檔名 (mp3, wav, m4a, webm, ogg, flac, mp4, mpga, mpeg), 但沒有說明檔案大小上限與介面上的操作方式 (2026-10-27 查詢). 長時間的會議錄音, 本頁以 whisper.cpp 處理, 轉錄過程可以分段檢查 (推論, 信心: 中).
 
 ## 驗收方式
 
@@ -141,6 +141,8 @@ opencc -c s2twp.json -i meeting.txt -o meeting-tw.txt
 需要人工確認的步驟: 轉錄後校對專有名詞與數字; 寄出前核對決議, 負責人與期限.
 
 ## 參考來源
+
+- [Open WebUI 文件: Speech-to-Text 設定](https://docs.openwebui.com/features/chat-conversations/audio/speech-to-text/stt-config.txt) (Allowed Extensions 的預設副檔名)
 
 - [whisper.cpp GitHub 儲存庫 (README)](https://github.com/ggml-org/whisper.cpp)
 - [whisper.cpp: whisper-cli 參數說明 (examples/cli/README.md)](https://raw.githubusercontent.com/ggml-org/whisper.cpp/master/examples/cli/README.md)

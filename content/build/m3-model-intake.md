@@ -6,9 +6,9 @@ description: "模型檔是推論伺服器會載入並執行的供應鏈輸入. �
 
 ::: info 本章屬性
 - 等級: ○ 依情境, 模型多於一兩個或多人共用時
-- 狀態: 可閱讀 (指令未實機驗證)
-- 資料基準日: 2026-10-26
-- 待查證: 本章指令與設定檔依官方文件整理, 尚未在實機執行; ModelAudit 的格式涵蓋與檢查能力取自 promptfoo 自家文件, 未見第三方評測; ModelAudit 是否檢查 GGUF 內嵌的對話範本, 官方文件未明寫; safetensors 格式倉庫的對話範本存放位置本輪未核對; TrueNAS 的 NFS 設定引用的是官方開發版文件頁, 正式版介面請依官方文件對照; 標示「推論」的段落沒有官方文件依據; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 狀態: 可閱讀
+- 資料基準日: 2026-10-27
+- 實機驗證: 未進行 (本章指令與設定檔依官方文件整理, 尚未在實機執行; 需實機確認: TrueNAS 上推論區唯讀與入庫主機可寫兩種權限的實際設定方式)
 :::
 
 **結論**: 模型檔是推論伺服器會載入並執行的供應鏈輸入. 下載後先檢查, 記錄雜湊值, 再放進唯讀的模型存放區; 推論伺服器只從存放區讀取, 不直接從網路下載. 掃描工具本手冊主推 ModelAudit, 但任何掃描工具都只涵蓋檔案與序列化層, 擋不住權重本身的後門, 所以來源白名單與行為測試仍不可少.
@@ -136,7 +136,7 @@ flowchart LR
 **主推 ModelAudit, 理由有三** (推論, 信心: 中):
 
 1. 它是四者中唯一同時涵蓋 safetensors, GGUF 與 pickle 的工具, 與 M1.5 節「優先 safetensors 或 GGUF」的建議一致.
-2. 它列有 Jinja2 範本的檢查, 對應 M3.1 節的對話範本風險; 但官方文件未明寫是否檢查 GGUF 內嵌的範本, 第 4 步的人工審查不能省.
+2. 它列有 Jinja2 範本的檢查, 對應 M3.1 節的對話範本風險. 官方文件未明寫是否檢查 GGUF 內嵌的範本 (2026-10-27 查詢), 但 0.2.54 版的套件原始碼中, GGUF 掃描器會讀出 `tokenizer.chat_template` 中繼資料並送進範本檢查 (來源: PyPI modelaudit 0.2.54 套件原始碼 scanners/gguf_scanner.py). 掃描只能找出已知的可疑寫法, 第 4 步的人工審查仍不能省.
 3. 它可輸出 SARIF (資安掃描結果的標準交換格式) 與 JSON, 結束碼可直接當作入庫關卡.
 
 架構圖上標的 ModelScan 仍可使用, 適合以 pickle, H5 與 SavedModel 為主的環境. pickle 檔建議再以 picklescan 或 Fickling 複查一次, 兩個工具的判斷方式不同, 可互相補足 (推論, 信心: 中).
@@ -166,7 +166,7 @@ ModelAudit 的結束碼依 promptfoo 文件 ModelAudit; picklescan 的結束碼�
 掃描工具只能找出已知的可疑寫法, 有些事項仍要由人判斷. 掃描通過後, 由一位審查者確認下列事項:
 
 - [ ] 倉庫內有沒有 `.py` 檔. 有的話, 先讀過程式碼; 無法確認時不入庫 (對應 `trust_remote_code` 與 GHSA-3c86-2m5g-59q7)
-- [ ] 對話範本的內容是否只做訊息排版, 沒有呼叫屬性或函式的可疑寫法. GGUF 的中繼資料可在 Hugging Face 的 GGUF 檢視器查看 (來源: Hugging Face 文件 GGUF)
+- [ ] 對話範本的內容是否只做訊息排版, 沒有呼叫屬性或函式的可疑寫法. GGUF 的中繼資料可在 Hugging Face 的 GGUF 檢視器查看 (來源: Hugging Face 文件 GGUF); safetensors 格式的倉庫, 對話範本放在根目錄的 `chat_template.jinja` (Transformers 目前預設的存法), 較早的倉庫則放在 `tokenizer_config.json` 的 `chat_template` 欄位, 兩者都有時以 `.jinja` 檔為準 (來源: Hugging Face Transformers 文件 Writing a chat template)
 - [ ] 授權是否允許預定用途 (見 [K4](/know/k4-licenses) 與[授權速查](/ref/licenses))
 - [ ] 模型卡上的發布者與白名單一致
 
@@ -238,7 +238,7 @@ flowchart TD
 
 ### TrueNAS
 
-TrueNAS 是常見的 NAS 作業系統, 以網頁介面設定共享. TrueNAS 的 NFS 共享設定中, Advanced Options 的 Read-Only 會禁止寫入; Authorized Networks 與 Authorized Hosts 可把存取限定在指定網段或主機, 留空則允許所有網路 (來源: TrueNAS 文件 Adding NFS Shares, 開發版文件頁). 推論區使用的共享請勾選 Read-Only, 並只授權推論區網段. 入庫主機的寫入路徑如何設定, 請依所用 TrueNAS 版本的官方文件規劃 (本輪未核對).
+TrueNAS 是常見的 NAS 作業系統, 以網頁介面設定共享. TrueNAS 的 NFS 共享設定中, Advanced Options 的 Read-Only 會禁止寫入; Authorized Networks 與 Authorized Hosts 可把存取限定在指定網段或主機, 留空則允許所有網路 (來源: TrueNAS 25.10 穩定版文件 Adding NFS Shares). 推論區使用的共享請勾選 Read-Only, 並只授權推論區網段. 入庫主機需要寫入權限; TrueNAS 文件未說明同一個資料集能否以兩個 NFS 共享分別設定唯讀與可寫 (2026-10-27 查詢), 設定時先在測試資料集上確認, 不行時改以只授權入庫主機的另一個共享寫入, 再由推論區唯讀讀取同一份檔案 (推論, 信心: 中).
 
 ### 推論區的掛載方式
 
@@ -299,12 +299,14 @@ flowchart TD
 - [Hugging Face 文件: CLI guide](https://huggingface.co/docs/huggingface_hub/guides/cli)
 - [promptfoo 文件: ModelAudit](https://www.promptfoo.dev/docs/model-audit/)
 - [ModelAudit GitHub](https://github.com/promptfoo/modelaudit)
+- ModelAudit 0.2.54 版套件原始碼 (scanners/gguf_scanner.py 讀取 tokenizer.chat_template): 以 pip download modelaudit==0.2.54 取得後檢視 (2026-10-27)
+- [Hugging Face Transformers 文件: Writing a chat template (chat_template.jinja 與 tokenizer_config.json)](https://huggingface.co/docs/transformers/main/en/chat_templating_writing)
 - [ModelScan GitHub (Protect AI)](https://github.com/protectai/modelscan)
 - [picklescan GitHub](https://github.com/mmaitre314/picklescan)
 - [Fickling GitHub (Trail of Bits)](https://github.com/trailofbits/fickling)
 - PyPI 專案頁 (發布日期): 於 pypi.org 搜尋 modelaudit, modelscan, picklescan, fickling
 - [Linux man page: exports(5)](https://man7.org/linux/man-pages/man5/exports.5.html)
 - [Linux man page: nfs(5)](https://man7.org/linux/man-pages/man5/nfs.5.html)
-- [TrueNAS 文件: Adding NFS Shares](https://www.truenas.com/docs/scale/scaletutorials/shares/addingnfsshares/)
+- [TrueNAS 25.10 文件: Adding NFS Shares](https://www.truenas.com/docs/scale/25.10/scaletutorials/shares/addingnfsshares/)
 - [Docker 文件: Bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
 - 文中的類比 (餐廳進貨流程, 防毒軟體, 檔案的指紋): 整理者所寫, 無外部來源, 不應當作技術定義引用.

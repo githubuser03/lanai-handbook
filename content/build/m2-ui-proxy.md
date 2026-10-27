@@ -6,9 +6,9 @@ description: "介面讓使用者能在瀏覽器裡和模型對話, 反向代理�
 
 ::: info 本章屬性
 - 等級: ● 必要
-- 狀態: 可閱讀 (指令未實機驗證)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: M2.3 節 Nginx 與 Caddy 設定範例, M2.4 節驗收指令皆未實機驗證; 在 Open WebUI 前疊加基本驗證是否與其 `Authorization` 標頭衝突, 未實機確認; 瀏覽器介面的對話請求是否都經過 `/api/chat/completions`, 未確認; caddy-ratelimit 的維護狀態與設定語法僅依其 README (非 Caddy 官方模組); 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 未進行 (M2.3 節 Nginx 與 Caddy 設定範例, M2.4 節驗收指令依官方文件整理, 尚未在實機執行)
 :::
 
 **結論**: 介面讓使用者能在瀏覽器裡和模型對話, 反向代理讓連線加密, 並在介面前面多一道驗證與流量控制. 單人單機只需要介面, 而且只綁 127.0.0.1; 要讓內網其他人連入時, 才在前面加反向代理.
@@ -209,7 +209,7 @@ Nginx 改裝在主機上時, 設定檔中的 `listen` 改寫為內網位址 (`li
 
 ### 基本驗證的適用範圍
 
-Open WebUI 有自己的帳號與登入. 在它前面再疊一層基本驗證時, 瀏覽器與 Open WebUI 前端都會用到 `Authorization` 標頭, 可能互相衝突 (推論, 信心: 中, 須實機驗證). 本手冊建議, 基本驗證只用在沒有自帶登入的服務, 例如讓內部腳本經反向代理呼叫 llama-server 的 API (見 M5.1 節). Open WebUI 本身則依賴介面帳號, 多人時再改用單一登入 (M5.4 節).
+Open WebUI 有自己的帳號與登入. Open WebUI 前端送出 API 請求時, 會自行在 `Authorization` 標頭放入 `Bearer <登入權杖>` (來源: Open WebUI 原始碼 0.12.4 版 src/lib/apis). 基本驗證也要用同一個標頭傳送帳號密碼, 一個請求只能帶一個 `Authorization` 標頭, 所以在 Open WebUI 前面疊加基本驗證, 前端的 API 請求會無法通過驗證 (推論, 信心: 高). 本手冊建議, 基本驗證只用在沒有自帶登入的服務, 例如讓內部腳本經反向代理呼叫 llama-server 的 API (見 M5.1 節). Open WebUI 本身則依賴介面帳號, 多人時再改用單一登入 (M5.4 節).
 
 ### 最小設定範例: Nginx
 
@@ -279,8 +279,8 @@ server {
 說明:
 
 - `limit_req` 的速率與 `burst` 是示意值. 官方文件說明, 超過 `burst` 的請求會以 `limit_req_status` 回應 (預設 503). 實際值請依使用人數與 M6 的紀錄調整 (推論).
-- `/api/chat/completions` 是 Open WebUI 官方 API 文件列出的對話端點 (來源: Open WebUI 文件 API Endpoints). 瀏覽器介面送出對話時是否都經過這個路徑, 本輪未實機確認.
-- `/inference/` 的 `proxy_pass` 結尾有斜線, 轉送時會去掉 `/inference/` 前綴 (Nginx 一般行為, 此為訓練資料內資訊, 可能已過時).
+- `/api/chat/completions` 是 Open WebUI 官方 API 文件列出的對話端點 (來源: Open WebUI 文件 API Endpoints). Open WebUI 前端送出對話的函式, 預設也是呼叫這個路徑 (來源: Open WebUI 原始碼 0.12.4 版 src/lib/apis/openai/index.ts), 所以速率限制套在這個路徑上即可涵蓋瀏覽器介面的對話.
+- `/inference/` 的 `proxy_pass` 結尾有斜線 (也就是帶有 URI), 轉送時請求網址中符合 `location` 的部分會換成 `proxy_pass` 的 URI, 也就是去掉 `/inference/` 前綴 (來源: nginx.org ngx_http_proxy_module 的 proxy_pass 說明).
 - 密碼檔以 `htpasswd` 或 `openssl passwd` 產生. 官方文件說明不加鹽的 `{SHA}` 格式只為移轉舊系統而保留, 新密碼不要使用 (來源: nginx.org ngx_http_auth_basic_module).
 
 ### 最小設定範例: Caddy
@@ -319,7 +319,7 @@ inference.example.internal {
 }
 ```
 
-需要速率限制時, 先以 xcaddy 編譯含 caddy-ratelimit 的 Caddy (`xcaddy build --with github.com/mholt/caddy-ratelimit`), 再加入 `rate_limit` 區塊; 用 Docker 時, 官方建議以 `caddy:<version>-builder` 映像建置, 再複製到 `caddy:<version>` 映像 (來源: Caddy 文件 Build from source, GitHub mholt/caddy-ratelimit). caddy-ratelimit README 的範例如下, 未實機驗證:
+需要速率限制時, 先以 xcaddy 編譯含 caddy-ratelimit 的 Caddy (`xcaddy build --with github.com/mholt/caddy-ratelimit`), 再加入 `rate_limit` 區塊; 用 Docker 時, 官方建議以 `caddy:<version>-builder` 映像建置, 再複製到 `caddy:<version>` 映像 (來源: Caddy 文件 Build from source, GitHub mholt/caddy-ratelimit). caddy-ratelimit 不是 Caddy 官方組織的儲存庫, README 寫明 "This is not an official repository of the Caddy Web Server organization"; 2026-10-27 查詢時, 儲存庫沒有發布任何 release, 因此要以 commit 雜湊鎖定版本, 並納入 O2 的追蹤 (來源: GitHub mholt/caddy-ratelimit). README 的範例如下, 未實機驗證:
 
 ```caddy
 rate_limit {
@@ -439,6 +439,8 @@ nmap -p- 192.168.10.5
 - [Caddy 文件: Build from source](https://caddyserver.com/docs/build)
 - [Caddy 文件: http.handlers.rate_limit 模組頁](https://caddyserver.com/docs/modules/http.handlers.rate_limit)
 - [GitHub: mholt/caddy-ratelimit](https://github.com/mholt/caddy-ratelimit)
+- [nginx.org: ngx_http_proxy_module (proxy_pass 帶 URI 時的網址替換)](https://nginx.org/en/docs/http/ngx_http_proxy_module.html)
+- [Open WebUI 原始碼 (0.12.4 版, src/lib/apis: 前端以 Authorization: Bearer 標頭與 /api/chat/completions 送出對話)](https://github.com/open-webui/open-webui)
 - [llama.cpp server README](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
 - [MDN Web Docs: HTTPS (詞彙表, 以 TLS 加密 HTTP 通訊)](https://developer.mozilla.org/docs/Glossary/https)
 - 文中的類比 (餐廳外場與菜單, 接待櫃台): 整理者所寫, 無外部來源, 不應當作技術定義引用.

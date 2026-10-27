@@ -69,7 +69,10 @@ try {
 
 // 3. 文字檢查: 標點與狀態標示 ----------------------------------------------
 const FULLWIDTH = /[，。；：（）]/
-const STATUS_OK = /^- 狀態: (撰寫中 \(僅有大綱\)|可閱讀 \(.+\)|可閱讀|已審閱)/m
+const STATUS_OK = /^- 狀態: (撰寫中 \(僅有大綱\)|可閱讀|已審閱)$/m
+// 頁面不留未完成事項: 查不到的事實寫「官方文件未說明 / 公開資料查無 (日期)」, 需要實機確認的寫在「實機驗證」欄
+const PENDING = /待查證|待核對|來源待補|本輪未|本輪無法|待確認|須再查證|研究 [12]|內部研究|內部模擬/
+const VERIFY_OK = /^- 實機驗證: (未進行|已驗證|不適用)/m
 function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const p = path.join(dir, e.name)
@@ -80,11 +83,15 @@ function walk(dir) {
 for (const f of walk(path.join(root, 'content'))) {
   const rel = path.relative(root, f)
   const text = fs.readFileSync(f, 'utf8')
+  let inCode = false
   text.split('\n').forEach((line, i) => {
     if (FULLWIDTH.test(line)) errors.push(`${rel}:${i + 1}: 含全形標點 (本手冊標點一律半形)`)
+    if (line.startsWith('```')) inCode = !inCode
+    if (!inCode && PENDING.test(line)) errors.push(`${rel}:${i + 1}: 含未完成事項字樣「${line.match(PENDING)[0]}」, 請查證後寫入正文或移到實機驗證欄`)
   })
   if (text.includes('::: info 本章屬性') || text.includes('::: info 本頁屬性')) {
-    if (!STATUS_OK.test(text)) errors.push(`${rel}: 狀態欄不是「撰寫中 (僅有大綱) / 可閱讀 (...) / 已審閱」`)
+    if (!STATUS_OK.test(text)) errors.push(`${rel}: 狀態欄不是「撰寫中 (僅有大綱) / 可閱讀 / 已審閱」`)
+    if (!VERIFY_OK.test(text)) errors.push(`${rel}: 缺少「實機驗證: 未進行 / 已驗證 / 不適用」欄`)
     // 每個有屬性框的內容頁都要有來源小節 (標題含「來源」或「參考資料」)
     if (!/^#{2,3} .*(來源|參考資料)/m.test(text)) errors.push(`${rel}: 缺少「參考來源」或「資料來源」小節`)
   }

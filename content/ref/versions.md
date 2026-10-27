@@ -6,15 +6,15 @@ description: "升級任何元件前, 先查本頁的最新版本, 已知漏洞�
 
 ::: info 本頁屬性
 - 等級: 參考資料
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: 版本號超過 30 天須重新核對; Langflow CVE-2026-0768 的 NVD 內容本輪未能擷取, 以 CSA 研究筆記為準; Flowise CVE-2025-71333 引自彙整站 (二手來源)
+- 實機驗證: 不適用
 :::
 
 **結論**: 升級任何元件前, 先查本頁的最新版本, 已知漏洞與惡意版本, 再依 [O2 版本與升級](/ops/versioning)的流程升級. 正文章節不寫版本號, 一律連到本頁.
 
 ::: warning 使用前請先看
-本頁的版本號與 CVE 變動很快. 每列都標示來源與查證日, 來源連結以實際擷取確認的第一手頁面為主 (二手來源另行標示) (官方 releases, PyPI, 官方更新日誌, GHSA, NVD, CISA). 版本號以查證當日為準, 超過 30 天須重新核對. 同一 CVE 的評分在 GHSA 與 NVD 可能不同, 表中並列. 正文章節不寫版本號, 一律連到本頁.
+本頁的版本號與 CVE 變動很快, 每列查證日超過 30 天就應重新核對. 每列都標示來源與查證日, 來源連結以實際擷取確認的第一手頁面為主 (二手來源另行標示) (官方 releases, PyPI, 官方更新日誌, GHSA, NVD, CISA). 版本號以查證當日為準, 超過 30 天須重新核對. 同一 CVE 的評分在 GHSA 與 NVD 可能不同, 表中並列. 正文章節不寫版本號, 一律連到本頁.
 :::
 
 表中的 CVE (Common Vulnerabilities and Exposures) 是公開漏洞的統一編號; GHSA 是 GitHub 安全公告的編號; NVD 是美國國家漏洞資料庫, 會為 CVE 評分; CISA KEV 是美國網路安全暨基礎設施安全局列出的已知遭實際利用漏洞清單.
@@ -82,7 +82,7 @@ LiteLLM 官方事故報告 (2026-10-21) 記載, 企業版客戶會收到一個�
 |---|---|---|---|
 | LibreChat | CVE-2026-32625 | CVSS 9.6, MCP URL 注入外洩伺服器機密; 0.8.3 以前受影響, 0.8.4-rc1 修補 | [GitHub Security Advisory GHSA-4pcc-j6m6-wcwx, NVD](https://github.com/danny-avila/LibreChat/security/advisories/GHSA-4pcc-j6m6-wcwx) |
 | AnythingLLM | CVE-2026-48116 | 代理檔案搜尋技能 (filesystem-search-files) 參數注入, 可執行指令; CVSS 7.5 (GHSA), 8.8 (NVD); GHSA 列 1.12.1 以前受影響且未列修補版本, NVD 記載 1.13.0 以前受影響 | [GitHub Security Advisory GHSA-6hrp-7mw6-8v59, NVD](https://github.com/Mintplex-Labs/anything-llm/security/advisories/GHSA-6hrp-7mw6-8v59) |
-| Langflow | CVE-2026-0768 | CVSS 9.8 (v3.0, ZDI), validate 端點程式碼注入, 未經身分驗證即以 root 執行程式碼; NVD 列 1.4.2 受影響. 不在 CISA KEV 目錄 (版本 2026.10.23). VulnCheck 的誘捕感測器 (Canary) 自 2026-08-29 至 08-30 起觀測到利用嘗試, VulnCheck 本身的公告為 LinkedIn 貼文, 此處引用 CSA 研究筆記與 Security Affairs 的轉述 (二手來源) | [NVD (ZDI 通報編號 ZDI-26-034); 利用情形見 CSA 研究筆記 (2026-09-04) 與 Security Affairs](https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2026-0768) |
+| Langflow | CVE-2026-0768 | CVSS 9.8 (v3.0, ZDI), validate 端點程式碼注入, 未經身分驗證即以 root 執行 Python 程式碼. ZDI 於 2026-01-09 以 0-day 公告發布, 公告未列受影響版本與修補版本, 建議的緩解方式是限制對服務的存取. 不在 CISA KEV 目錄 (版本 2026.10.23). VulnCheck 的誘捕感測器 (Canary) 自 2026-08-29 至 08-30 起觀測到利用嘗試, VulnCheck 本身的公告為 LinkedIn 貼文, 此處引用 CSA 研究筆記與 Security Affairs 的轉述 (二手來源) | [ZDI 公告 ZDI-26-034 (CNA); 利用情形見 CSA 研究筆記 (2026-09-04) 與 Security Affairs](https://zerodayinitiative.com/advisories/ZDI-26-034) |
 | n8n | CVE-2026-21858 | CVSS 10.0, Webhook 請求處理不當; 執行特定的表單型工作流程時, 未經身分驗證的遠端攻擊者可讀取伺服器上的檔案, 後續影響依部署設定而定; 1.65.0 至 1.121.0 之前受影響, 1.121.0 修補. 不在 CISA KEV 目錄 (版本 2026.10.23) | [GitHub Security Advisory GHSA-v4pr-fm98-w9pg, NVD](https://github.com/n8n-io/n8n/security/advisories/GHSA-v4pr-fm98-w9pg) |
 | MCP Inspector | CVE-2025-49596 | CVSS v4.0 9.4, 0.14.1 以前缺乏驗證, 可啟動 MCP 指令; 0.14.1 修補. 見 [M7.1 節](/build/m7-tools-sandbox) | [GitHub Security Advisory GHSA-7f8r-222p-6f5g, NVD](https://github.com/modelcontextprotocol/inspector/security/advisories/GHSA-7f8r-222p-6f5g) |
 | mcp-remote | CVE-2025-6514 | CVSS v3.1 9.6 (JFrog 為 CNA), 連線至不受信任的 MCP 伺服器時, 授權端點回應中的網址可造成作業系統命令注入. 見 [M7.1 節](/build/m7-tools-sandbox) | [NVD (CNA: JFrog)](https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2025-6514) |

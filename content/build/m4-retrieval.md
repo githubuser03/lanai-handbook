@@ -6,9 +6,9 @@ description: "家庭規模 (數萬至數十萬段落) 下, 向量庫的選擇差
 
 ::: info 本章屬性
 - 等級: ○ 依情境, 有「問自己文件」的需求才讀
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: M4.5 節的架設步驟與驗收指令依官方文件整理, 未實機驗證; Qdrant 資料目錄路徑為訓練資料內資訊; 查無公開的繁體中文嵌入與重排序基準 (含 TAIDE 嵌入模型, 2026-10-27 查詢), 各嵌入模型卡也未列出繁體中文評測; 兩款重排序模型的模型卡均未列繁體中文評測; 四份嵌入模型卡各自採用不同的評測組合, 無法直接對照; sqlite-vec 的近似最近鄰索引仍為 alpha 預覽版, 正式版發布時間未定; 向量庫記憶體占用未引用公開實測; Chroma 與 LanceDB 的內嵌模式限制引自二手來源 (Actian 比較文); 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 未進行 (M4.5 節的架設步驟與驗收指令依官方文件整理, 尚未在實機執行; 需實機確認: 各嵌入模型與重排序模型在自己的繁體中文文件上的命中率, 以 M4.3 節自測)
 :::
 
 **結論**: 家庭規模 (數萬至數十萬段落) 下, 向量庫的選擇差異遠小於嵌入模型與文件解析品質的差異, 因此以「備份是否簡單」當作主要選擇依據 (信心: 中). 嵌入模型的排行榜名次不一定適用繁體中文, 請用自己的 50 題問答實測.
@@ -99,8 +99,8 @@ Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請
 |---|---|---|---|
 | Qdrant | Apache 2.0 | 1.19.2, 2026-10-05 (GitHub Releases) | 獨立運作的向量資料庫伺服器; 以 Docker 單一容器啟動, 內建量化, 支援稀疏向量與混合檢索; 官方範例的預設啟動方式無驗證, 且對所有網路介面開放, 須自行加上保護 (Qdrant README); 適合標準組合 |
 | pgvector | PostgreSQL License (儲存庫 LICENSE 檔) | - | PostgreSQL 資料庫的向量擴充套件; 支援 HNSW 與 IVFFlat 索引 (pgvector README); 已在用 PostgreSQL 者最省事, 備份一併處理 (整理者建議) |
-| Chroma | Apache 2.0 | 1.5.9, 2026-05-05 (PyPI) | 內嵌式最易上手, 為 Open WebUI (M2 的對話介面) 預設的向量庫; 內嵌模式為單一寫入者, 不適合多個行程同時寫入 (Actian 比較文, 二手來源) |
-| LanceDB | Apache 2.0 | 0.40.0, 2026-10-07 (PyPI) | 內嵌, 資料以 Lance 檔案存放在本機磁碟或物件儲存 (Actian 比較文, 二手來源) |
+| Chroma | Apache 2.0 | 1.5.9, 2026-05-05 (PyPI) | 內嵌式最易上手, 為 Open WebUI (M2 的對話介面) 預設的向量庫; 預設以 SQLite 為後端的本機模式, SQLite 連線不能在多個行程間共用, 多個 worker 或多個容器同時寫入會出錯; 需要多行程時, 官方建議改用主從式向量庫或以 HTTP 模式執行 Chroma (Open WebUI 文件 Scaling) |
+| LanceDB | Apache 2.0 | 0.40.0, 2026-10-07 (PyPI) | 內嵌式檢索程式庫, 可在本機或自己的雲端環境執行, 資料以 Lance 欄式格式存放 (LanceDB GitHub README) |
 | sqlite-vec | Apache-2.0 與 MIT 雙授權 (GitHub 儲存庫標示) | - | SQLite 擴充套件, 資料存在 SQLite 檔案; 穩定版 (v0.1.9) 只提供暴力搜尋 (逐筆比對); 近似最近鄰索引 (rescore, DiskANN, 以及實驗性且預設未啟用的 IVF) 只出現在 v0.1.10 的 alpha 預覽版 (GitHub Releases, 2026-10-27 查詢). 正式環境建議先用穩定版, 資料量大時查詢時間會明顯變長 (推論), 請用自己的資料實測 |
 | Milvus | Apache 2.0 | - | 分散式架構, 計算與儲存分離 (Milvus README); 單機讀者不需要 (整理者判斷) |
 
@@ -116,7 +116,7 @@ flowchart TD
   MV["Milvus: 分散式架構<br/>單機讀者不需要"]
 ```
 
-各向量庫的記憶體占用差異很大, 但公開實測多半未註明向量維度, 索引類型與參數, 無法互相對照, 因此本手冊不引用. 容量規劃可先算原始向量大小: 筆數 x 維度 x 4 位元組 (float32). 例如 10 萬筆 x 1,024 維 = 409,600,000 位元組, 約 410MB (計算值). 實際占用還會加上索引與中介資料, 請在自己的資料上實測.
+各向量庫的記憶體占用差異很大, 但公開實測多半未註明向量維度, 索引類型與參數, 無法互相對照, 因此本手冊不引用. 容量規劃可先算原始向量大小: 筆數 x 維度 x 4 位元組 (float32); Qdrant 官方容量規劃文件的密集向量公式也是「點數 x 複本數 x 維度 x 每維位元組數」, float32 預設每維 4 位元組 (來源: Qdrant 文件 Capacity Planning). 例如 10 萬筆 x 1,024 維 = 409,600,000 位元組, 約 410MB (計算值). 實際占用還會加上索引與中介資料, 請在自己的資料上實測.
 
 ### 重排序
 
@@ -238,7 +238,7 @@ docker run -d --name docling --restart always \
 
 ### 3. 啟動 Qdrant 並設定 API 金鑰 (進階組合)
 
-Qdrant 官方 README 的啟動指令 `docker run -p 6333:6333 qdrant/qdrant` 會啟動一個沒有驗證, 對所有網路介面開放的實例 (來源: Qdrant GitHub README). 官方安全教學說明以環境變數 `QDRANT__SERVICE__API_KEY` 設定管理金鑰, `QDRANT__SERVICE__READ_ONLY_API_KEY` 設定唯讀金鑰, 用戶端以 `api-key` 標頭帶入; 並建議啟用 TLS, 否則同網段的人可以讀到金鑰與資料 (來源: Qdrant 文件 Secure a Self-Hosted Qdrant Instance). 下列寫法把金鑰放在權限 600 的 `qdrant.env` (內容為 `QDRANT__SERVICE__API_KEY=<高強度金鑰>`), 連接埠只綁本機; 資料目錄 `/qdrant/storage` 為訓練資料內資訊, 可能已過時, 請以 Qdrant 文件 Quickstart 確認:
+Qdrant 官方 README 的啟動指令 `docker run -p 6333:6333 qdrant/qdrant` 會啟動一個沒有驗證, 對所有網路介面開放的實例 (來源: Qdrant GitHub README). 官方安全教學說明以環境變數 `QDRANT__SERVICE__API_KEY` 設定管理金鑰, `QDRANT__SERVICE__READ_ONLY_API_KEY` 設定唯讀金鑰, 用戶端以 `api-key` 標頭帶入; 並建議啟用 TLS, 否則同網段的人可以讀到金鑰與資料 (來源: Qdrant 文件 Secure a Self-Hosted Qdrant Instance). 下列寫法把金鑰放在權限 600 的 `qdrant.env` (內容為 `QDRANT__SERVICE__API_KEY=<高強度金鑰>`), 連接埠只綁本機; 容器內的資料目錄是 `/qdrant/storage`, 與 Qdrant 官方 Quickstart 的掛載路徑相同 (來源: Qdrant 文件 Quickstart):
 
 ```bash
 docker run -d --name qdrant --restart always \
@@ -304,13 +304,14 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "api-key: <金鑰>" http://127.0.0.1
 - [pgvector LICENSE](https://github.com/pgvector/pgvector/blob/master/LICENSE)
 - [PyPI: chromadb (版本, 授權)](https://pypi.org/project/chromadb/)
 - [PyPI: lancedb (版本, 授權)](https://pypi.org/project/lancedb/)
-- [LanceDB GitHub 儲存庫](https://github.com/lancedb/lancedb)
+- [LanceDB GitHub 儲存庫 (內嵌式檢索程式庫, Lance 欄式格式)](https://github.com/lancedb/lancedb)
 - [sqlite-vec GitHub 儲存庫 (授權)](https://github.com/asg017/sqlite-vec)
 - [sqlite-vec 作者部落格: sqlite-vec stable release (暴力搜尋)](https://alexgarcia.xyz/blog/2024/sqlite-vec-stable-release/index.html)
 - [sqlite-vec GitHub Releases (v0.1.9 穩定版; v0.1.10 alpha 加入 rescore, DiskANN 與實驗性 IVF 索引)](https://github.com/asg017/sqlite-vec/releases)
 - [Milvus GitHub 儲存庫 (分散式架構, 授權)](https://github.com/milvus-io/milvus)
-- [Actian 部落格: Comparing embedded vector databases (二手來源, Chroma 與 LanceDB 的內嵌模式特性)](https://www.actian.com/blog/developer/comparing-embedded-vector-databases/)
-- [Open WebUI 文件: Scaling Open WebUI (預設向量庫為 Chroma, 可改用 PGVector 等)](https://docs.openwebui.com/getting-started/advanced-topics/scaling/)
+- [Open WebUI 文件: Scaling Open WebUI (預設向量庫為 Chroma, SQLite 後端不適合多行程同時寫入, 可改用 PGVector 等)](https://docs.openwebui.com/getting-started/advanced-topics/scaling/)
+- [Qdrant 文件: Quickstart (容器內資料目錄 /qdrant/storage)](https://qdrant.tech/documentation/quickstart/)
+- [Qdrant 文件: Capacity Planning (密集向量容量公式)](https://qdrant.tech/documentation/capacity-planning/)
 - [AnythingLLM GitHub 儲存庫 (預設向量庫為 LanceDB)](https://github.com/Mintplex-Labs/anything-llm)
 
 安全對照:

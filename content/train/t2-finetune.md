@@ -6,9 +6,9 @@ description: "一張消費級顯示卡就能用 QLoRA 微調 8B 等級的模型,
 
 ::: info 本章屬性
 - 等級: ○ 依情境
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: 本章所有指令依官方文件整理, 未實機驗證; 各工具的顯示記憶體數字為官方標示的最低值或估計值; 工具選擇建議為整理者推論; 繁體中文指令資料集僅檢視 Hugging Face 搜尋結果, 未逐一確認每份資料的產生方式; Wikipedia 內容用於訓練時「相同方式分享」條款對模型的效力, 本章不作判斷; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 未進行 (指令依官方文件整理; 需實機確認: 各框架實際的顯示記憶體用量與訓練時間, 以及轉檔後的模型能否正常載入)
 :::
 
 **結論**: 一張消費級顯示卡就能用 QLoRA 微調 8B 等級的模型, Unsloth 官方標示的最低顯示記憶體約 6GB. 微調的完整流程是: 準備資料, 用微調框架訓練出 LoRA 參數, 合併回原模型, 以 llama.cpp 轉成 GGUF 並量化, 再交給 Ollama 或 llama-server 提供服務. 上線前用 [M6](/build/m6-observability) 的同一份測試集比較微調前後的成績, 並保留原模型, 結果不如預期時可以立即切回.
@@ -108,7 +108,9 @@ pip install "mlx-lm[train]"
 | FineWeb2 的 `cmn_Hani` 子集 | Hugging Face | ODC-By 1.0 | 網頁文字, 不是問答格式, 適合持續預訓練而非指令微調; 資料卡未區分繁體與簡體; 該子集磁碟大小約 1.48TB, 已做全域去重 |
 | 中文維基百科資料庫備份 | Wikimedia 基金會 | GFDL 與 CC BY-SA 4.0 | 百科文字, 同樣不是問答格式; 內容繁簡混雜; CC BY-SA 有相同方式分享的要求 |
 
-指令微調用的繁體中文問答資料集, 本輪在 Hugging Face 搜尋結果中, 沒有找到同時滿足「授權允許商業使用」與「說明回答由哪個模型或哪些人產生」的資料集 (信心: 低, 搜尋範圍有限). 使用任何公開問答資料集前, 請讀資料卡確認授權 (CC BY-NC 這類授權不允許商業用途) 與產生方式; 若回答是由其他模型產生, 也要檢查該模型的授權是否限制用輸出內容訓練其他模型 (推論, 信心: 中).
+CC BY-SA 的相同方式分享條款是否及於以這類資料訓練出的模型, 公開資料查無定論 (2026-10-27 查詢). 打算對外散布以這類資料訓練的模型時, 請先洽法律顧問; 只在內部使用時, 至少保留資料來源與授權紀錄.
+
+指令微調用的繁體中文問答資料集, 公開資料查無同時滿足「授權允許商業使用」與「說明回答由哪個模型或哪些人產生」的資料集 (2026-10-27 查詢 Hugging Face 與網路搜尋, 信心: 低, 搜尋範圍有限). 例如台灣團隊發布的 TaiwanChat 對話資料集標示 CC BY-NC 4.0 (不允許商業用途), 資料卡也沒有說明對話如何產生 (來源: TaiwanChat 資料卡). 因此, 指令微調資料建議由自己的業務資料整理, 或由授權允許的模型產生後經人工逐筆審查. 使用任何公開問答資料集前, 請讀資料卡確認授權 (CC BY-NC 這類授權不允許商業用途) 與產生方式; 若回答是由其他模型產生, 也要檢查該模型的授權是否限制用輸出內容訓練其他模型 (推論, 信心: 中).
 
 實務上較穩妥的做法, 是從內部文件與歷史紀錄整理問答範例, 依 [T1.2](/train/t1-decide) 的清單檢查品質 (推論, 信心: 中).
 
@@ -159,6 +161,7 @@ ollama create <新模型名稱> -f Modelfile
 - **MLX LM 的授權與安裝**: [MLX LM GitHub 儲存庫](https://github.com/ml-explore/mlx-lm); **微調方式, 資料格式, 合併與 GGUF 匯出限制**: [MLX LM 文件: LORA.md](https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/LORA.md)
 - **FineWeb2 的授權, cmn_Hani 子集與去重**: [Hugging Face 資料集: HuggingFaceFW/fineweb-2](https://huggingface.co/datasets/HuggingFaceFW/fineweb-2)
 - **維基百科資料庫備份的授權**: [Wikimedia dumps: License information (Debian 鏡像站)](https://cdimage.debian.org/mirror/wikimedia.org/dumps/legal.html)
+- **TaiwanChat 的授權 (CC BY-NC 4.0)**: [Hugging Face 資料集: yentinglin/TaiwanChat (資料卡)](https://huggingface.co/datasets/yentinglin/TaiwanChat/commits/9492a3c3d566eed6d7cc60a95bce6380349ccbb2/README.md)
 - **GGUF 轉檔與量化指令, 量化的品質提醒**: [llama.cpp 文件: quantize README](https://github.com/ggml-org/llama.cpp/blob/master/tools/quantize/README.md); **轉換腳本與 adapter 轉換工具**: [llama.cpp GitHub 儲存庫](https://github.com/ggml-org/llama.cpp), [llama.cpp 文件: models.md](https://github.com/ggml-org/llama.cpp/blob/master/docs/models.md); **llama-server 的 --lora 參數**: [llama.cpp 文件: server README](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
 - **Ollama 匯入 GGUF 與不在匯入時量化**: [Ollama 文件: Importing a model](https://docs.ollama.com/import)
 - **整理者判斷 (推論, 無外部來源)**: 工具選擇建議, 「低秩」的說明方式, 繁體中文指令資料集的查詢結論, 測試集比較的注意事項, 保留 16 位元 GGUF 的做法, 回退方式.

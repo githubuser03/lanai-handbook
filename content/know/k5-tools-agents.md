@@ -6,9 +6,9 @@ description: "模型本身不會「動手」, 它只會輸出「要呼叫哪個�
 
 ::: info 本章屬性
 - 等級: ○ 依情境
-- 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: K5.4 節的 BFCL 分數取自官方排行榜提供的資料檔 data_overall.csv (頁面標示最後更新 2026-04-12), 模型範例已更換, 數字須對照官方排行榜與各模型卡; K5.4 節引用的 arXiv 2608.22472 只讀了摘要, 摘要未列具體數字; K5.5 節的 MCP 規格版本, NSA 指引日期本輪未重新核對; K5.3 節的題目配置與判定方式為整理者建議, 未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 狀態: 可閱讀
+- 資料基準日: 2026-10-27
+- 實機驗證: 未進行 (K5.3 的 20 題實測是建議讀者照做的流程, 整理者尚未實際執行)
 :::
 
 **結論**: 模型本身不會「動手」, 它只會輸出「要呼叫哪個工具, 帶什麼參數」, 由程式去執行. 多數情境不需要代理框架, 以「固定步驟的工作流程程式碼 + 每步一次函式呼叫 + 程式端驗證」取得的可靠度最高 (信心: 中). MCP 是讓多個客戶端共用同一組工具的標準協定, 代理則是讓模型自己決定下一步; 兩者都屬於符合特定條件才用的元件.
@@ -100,7 +100,7 @@ pie showData
 
 **2. 評測模式**: 排行榜把模型分成 FC 與 Prompt 兩種模式. FC 代表模型原生支援函式呼叫, Prompt 代表以一般文字生成模擬函式呼叫 (來源: BFCL 排行榜頁). 同一個模型在兩種模式下的分數不同, 比較時要對齊模式. 地端部署時, FC 模式能否發揮, 還取決於推論伺服器的 tool-call parser (把模型輸出的文字解析成函式名稱與參數的元件) 與 chat template (把對話排成模型訓練時格式的範本) 是否和模型相符 (見 M1).
 
-**3. 版本與資料日期**: 官方頁面標示的最後更新日與評測程式版本 (commit 與 PyPI (Python 套件的官方發布平台) 上套件 `bfcl-eval` 的版本), 是判斷分數是否可以互相比較的依據; 總分組成在 V3 與 V4 之間已經改變, V3 部落格也註明其總分組成已過時 (來源: BFCL 排行榜頁, BFCL V3 部落格). 彙整站轉載的分數可能來自不同時間點, 也可能混用不同版本的欄位. K5.4 節的表格取自官方排行榜網站提供的資料檔 (data_overall.csv), 資料版本須與頁面標示的最後更新日對照 (待核對).
+**3. 版本與資料日期**: 官方頁面標示的最後更新日與評測程式版本 (commit 與 PyPI (Python 套件的官方發布平台) 上套件 `bfcl-eval` 的版本), 是判斷分數是否可以互相比較的依據; 總分組成在 V3 與 V4 之間已經改變, V3 部落格也註明其總分組成已過時 (來源: BFCL 排行榜頁, BFCL V3 部落格). 彙整站轉載的分數可能來自不同時間點, 也可能混用不同版本的欄位. K5.4 節的表格取自官方排行榜網站提供的資料檔 (data_overall.csv). 2026-10-27 核對時, 排行榜頁面標示最後更新日為 2026-04-12, 評測程式為 commit f7cf735 (對應 PyPI 套件 bfcl-eval 2025.12.17), 表中數字與資料檔一致.
 
 **4. 模型卡自報分數**: 模型發布者在模型卡上自報的 BFCL 分數, 可能使用不同的評測版本, 子集或提示格式, 沒有經過排行榜團隊重跑. 這類分數只能當作發布者的宣稱, 不應與排行榜分數放在同一欄比較 (信心: 高).
 
@@ -196,13 +196,13 @@ xychart-beta
     line [11.12, 5.75, 10.75, 7.50, 70.00]
 ```
 
-讓通用 8B 模型自主串接 5 步以上的工具, 失敗是常態 (信心: 中). 另有一篇論文 (arXiv 2608.22472) 指出, 把函式呼叫改以「指令遵循式」(instruction-following) 對話處理, 準確率高於原生函式呼叫與提示式函式呼叫, 且量化後仍維持表現; 論文摘要未列具體數字. 這表示提示格式與流程設計的影響可能大於換框架 (信心: 中).
+讓通用 8B 模型自主串接 5 步以上的工具, 失敗是常態 (信心: 中). 另有一篇論文 (arXiv 2608.22472) 提出把函式呼叫交給一個小模型, 以一般「指令遵循式」(instruction-following) 對話處理, 並以 BFCL V3 比較原生函式呼叫與提示式函式呼叫. 結果依模型與題目類型而異: 以 Phi-4 Mini 為例, 非即時 (Non-Live) 題目上指令遵循式 77.4%, 提示式 41.9%, 原生 9.5%; 但即時 (Live) 題目上提示式 62.5% 高於指令遵循式 44.3%. 量化部分, 論文只比較 FP16 與 Q4_K_M, 表現依模型而異, Gemma-3 1B 由 23.9% 降到 8.7% (來源: 論文 Table 1, Table 2). 這表示提示格式與流程設計的影響可能和換模型一樣大, 但效果要用自己的題目驗證 (推論, 信心: 中).
 
 ## K5.5 函式呼叫與 MCP 的取捨
 
 MCP 可以想成電器的通用插座規格: 工具只要做成 MCP 伺服器, 不同的客戶端 (例如 Open WebUI 這類對話介面, 程式編輯器, 桌面助理) 都能直接接上使用, 不必為每個客戶端各寫一次. 只有一個客戶端時, 通用規格的好處就不明顯.
 
-MCP (Model Context Protocol) 最新規格是 2026-07-28 版 (依 MCP 官方部落格的發布候選公告), 核心改為無狀態, 取消 initialize 交握與 Mcp-Session-Id 標頭, 並新增正式的棄用政策 (12 個月棄用期). 美國國家安全局 (NSA) 於 2026-05-20 發布 MCP 安全設計指引《Model Context Protocol (MCP): Security Design Considerations for AI-Driven Automation》.
+MCP (Model Context Protocol) 目前的規格版本是 2026-07-28 版 (來源: MCP 官方文件 Versioning, 2026-10-27 核對). 這一版把協定改為無狀態, 取消 initialize 交握與 Mcp-Session-Id 標頭, 並訂定正式的棄用政策, 功能從標為棄用到可以移除至少相隔 12 個月 (來源: MCP 官方規格 2026-07-28 變更紀錄). 美國國家安全局 (NSA) 於 2026-05-20 發布 MCP 安全設計指引《Model Context Protocol (MCP): Security Design Considerations for AI-Driven Automation》 (來源: NSA 新聞稿, 2026-10-27 核對發布日).
 
 下圖依「同一組工具要給幾個客戶端用」判斷該用哪一種, 細節見下表.
 
@@ -360,10 +360,12 @@ flowchart TD
 - [BFCL 排行榜資料檔 (data_overall.csv)](https://gorilla.cs.berkeley.edu/data_overall.csv)
 - [BFCL 程式碼與資料 (GitHub)](https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard)
 - [Hugging Face: Salesforce/Llama-xLAM-2-8b-fc-r (授權 cc-by-nc-4.0, 僅供研究用途)](https://huggingface.co/Salesforce/Llama-xLAM-2-8b-fc-r)
-- [Small Reasoning Models are Instruction Followers in Function Calling (arXiv 2608.22472)](https://arxiv.org/abs/2608.22472)
+- [Small Reasoning Models are Instruction Followers in Function Calling (arXiv 2608.22472; 數字取自 HTML 全文的 Table 1, Table 2)](https://arxiv.org/html/2608.22472)
 - [OWASP GenAI: LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
 - [Simon Willison: The Dual LLM pattern](https://simonwillison.net/2023/Apr/25/dual-llm-pattern/)
 - [Debenedetti 等: Defeating Prompt Injections by Design (arXiv:2503.18813)](https://arxiv.org/abs/2503.18813)
-- [MCP 官方部落格: 2026-07-28 規格發布候選公告 (無狀態, 移除 initialize 交握與 Mcp-Session-Id, 棄用期至少 12 個月)](https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/)
+- [MCP 官方文件: Versioning (目前版本為 2026-07-28)](https://modelcontextprotocol.io/docs/learn/versioning)
+- [MCP 官方規格: 2026-07-28 變更紀錄 (無狀態, 移除 initialize 交握與 Mcp-Session-Id, 棄用期至少 12 個月)](https://modelcontextprotocol.io/specification/2026-07-28/changelog)
+- [MCP 官方部落格: 2026-07-28 規格發布候選公告](https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/)
 - [NSA 新聞稿 (2026-05-20): MCP 安全設計指引](https://www.nsa.gov/Press-Room/Press-Releases-Statements/Press-Release-View/Article/4496698/)
 - 文中的類比 (填申請單, 考試加權總分, 考照與實際開車, 照食譜做菜, 通用插座, 信件裡的紙條, 拆信員與主管, 簽核規則): 整理者所寫, 無外部來源, 不應當作技術定義引用.

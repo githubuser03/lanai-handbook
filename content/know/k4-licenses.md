@@ -6,9 +6,9 @@ description: "模型與軟體的授權各自獨立, 要分開檢查; 限制多�
 
 ::: info 本章屬性
 - 等級: ● 必要
-- 狀態: 可閱讀 (部分資料待核對)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: TAIDE 授權條款要點改依國研院 TAIDE 網站公布的條款全文整理, 見[授權速查](/ref/licenses); Gemma 4 授權檔原文 (本輪依 Google 開源部落格與 Gemma 條款頁的指引, 未直接讀授權檔); Mistral AI Research License 的要點為整理者依授權全文歸納, 非逐條對照; 模型範例已更換, 授權標示須對照各模型的 Hugging Face 頁面; 量化或轉檔版本是否沿用原模型授權為推論; 本章不構成法律意見; 文中的類比為整理者所寫, 不代表技術或法律上完全等同
+- 實機驗證: 不適用 (本章沒有要執行的指令)
 :::
 
 **結論**: 模型與軟體的授權各自獨立, 要分開檢查. 模型授權分兩類: Apache 2.0, MIT 這類通用開源授權, 以及 Llama, Gemma (Gemma 4 以前), Mistral Large, TAIDE 這類自訂授權; 後者常附使用政策, 標示, 規模門檻或用途限制. 軟體則要分清楚 OSI 開源與「原始碼公開」: n8n (流程自動化平台), Open WebUI (對話介面), Dify (AI 應用開發平台) 的原始碼都看得到, 但授權對使用方式設有限制. 個人與內部使用通常不受影響, 一旦對外提供服務, 最嚴格的條款決定能做什麼 (信心: 中). 每個模型入庫時就把授權記下來 (見 [M3](/build/m3-model-intake)), 之後才查得到.
@@ -28,7 +28,7 @@ description: "模型與軟體的授權各自獨立, 要分開檢查; 限制多�
 完整詞彙見[術語對照](/ref/glossary).
 :::
 
-本章說明判讀方法; 各元件的授權明細見[授權速查](/ref/licenses), 對外服務前的檢查清單見[授權紅旗](/decide/license-flags). 授權條款會改版, 正式使用前請以各專案的授權原文為準, 有疑義時請洽法律顧問.
+本章說明判讀方法; 各元件的授權明細見[授權速查](/ref/licenses), 對外服務前的檢查清單見[授權紅旗](/decide/license-flags). 本章不構成法律意見. 授權條款會改版, 正式使用前請以各專案的授權原文為準, 有疑義時請洽法律顧問.
 
 ## K4.1 模型授權: 通用開源授權與自訂授權
 
@@ -48,7 +48,7 @@ flowchart TD
   CU --> TA["TAIDE 模型授權條款"]
 ```
 
-模型的權重也有授權. 同一個模型家族的不同尺寸或不同世代, 授權可能不同, 因此要逐一看模型頁面, 不能只看家族名稱. 例如 Hugging Face (公開存放與下載模型的平台, 也是本手冊主要的模型來源) 上 Mistral-7B-Instruct-v0.3 標示 Apache 2.0, 同一家公司的 Mistral-Large-Instruct-2411 標示 `mrl` (Mistral AI Research License), 模型頁說明只允許非商業的使用與修改 (來源: 各模型的 Hugging Face 頁面).
+模型的權重也有授權. 同一個模型家族的不同尺寸或不同世代, 授權可能不同, 因此要逐一看模型頁面, 不能只看家族名稱. 例如 Hugging Face (公開存放與下載模型的平台, 也是本手冊主要的模型來源) 上 Mistral-7B-Instruct-v0.3 標示 Apache 2.0, 同一家公司的 Mistral-Large-Instruct-2411 標示 `mrl` (Mistral AI Research License), 模型頁說明只允許非商業的使用與修改 (來源: 各模型的 Hugging Face 頁面; 本章所舉模型的授權標示皆於 2026-10-27 核對).
 
 | 類型 | 代表 | 主要義務與限制 |
 |---|---|---|
@@ -56,10 +56,10 @@ flowchart TD
 | MIT | 常見於軟體, 模型較少 | 所有副本須保留著作權聲明與授權聲明; 不提供任何擔保 (來源: OSI 的 MIT 授權全文) |
 | Llama 4 Community License | Llama 4 系列 | 以 Llama 4 版本發布日為準, 發布日前一個月的月活躍使用者超過 7 億者須另向 Meta 申請授權 (一次性判定); 散布時須明顯標示「Built with Llama」; 以 Llama 建立或改良並散布的模型, 名稱開頭須加「Llama」; Acceptable Use Policy 納入合約 (來源: Llama 4 Community License, 2025-04-05 生效) |
 | Gemma Terms of Use | Gemma 4 以前的 Gemma 模型, EmbeddingGemma | 不得用於 Prohibited Use Policy 列出的用途; 散布時須把使用限制寫入下游合約, 附條款副本與 Notice 檔; Google 保留遠端或以其他方式限制違規使用的權利 (來源: Gemma Terms of Use, 2026-04-01 修訂) |
-| Mistral AI Research License | Mistral-Large-Instruct-2411 | 使用範圍限於 Research Purposes, 即個人, 科學或學術研究, 且為非營利, 非商業; 條文明列公司員工或外包人員的日常工作使用, 任何以營收為目的的活動 (含測試與 PoC), 以及商業單位提供的託管服務, 都不屬於研究用途; 其他用途須另向 Mistral AI 申請授權, 由其自行決定是否核發 (來源: Mistral AI Research License MRL-0.1 第 3.2 條與定義) |
+| Mistral AI Research License | Mistral-Large-Instruct-2411 | 使用範圍限於 Research Purposes, 即個人, 科學或學術研究, 且為非營利, 非商業; 條文明列公司員工或外包人員的日常工作使用, 任何以營收為目的的活動 (含測試與 PoC), 以及商業單位提供的託管服務, 都不屬於研究用途; 其他用途須另向 Mistral AI 申請授權, 由其自行決定是否核發 (來源: Mistral AI Research License MRL-0.1 第 3.2 條與定義, 2026-10-27 依原文核對) |
 | 其他自訂授權 | TAIDE | 條文各不相同, 須逐份閱讀; TAIDE 模型頁面標示「(Gemma 版次)-TAIDE 模型授權條款」, 須登入並同意條款才能下載 (來源: TAIDE Hugging Face 模型頁) |
 
-Gemma 是授權會變動的例子. Google 開源部落格說明 Gemma 4 是 Gemma 系列中第一批以 OSI 認可的 Apache 2.0 授權發布的模型; Gemma 條款頁則註明 Gemma 4 的條款另見 Gemma 4 授權, 不適用 Gemma Terms of Use (來源: Google Open Source Blog, Gemma Terms of Use). 因此, 舊版 Gemma 與 Gemma 4 要分開登記授權.
+Gemma 是授權會變動的例子. Google 開源部落格說明 Gemma 4 是 Gemma 系列中第一批以 OSI 認可的 Apache 2.0 授權發布的模型; Gemma 條款頁則註明 Gemma 4 的條款另見 Gemma 4 授權, 不適用 Gemma Terms of Use (來源: Google Open Source Blog, Gemma Terms of Use). Gemma 4 模型卡連到的授權頁, 內容就是標準的 Apache License 2.0 全文, 沒有加上 Google 自訂的條款 (2026-10-27 核對); 同一網站另有一頁 Prohibited use (禁止用途) 說明, 屬於獨立的頁面, 不在授權文字內. 因此, 舊版 Gemma 與 Gemma 4 要分開登記授權.
 
 自訂授權的共同特徵是附帶使用政策, 標示要求, 規模門檻或用途限制. 這些條款對內部使用的影響多半有限 (研究用途限定的授權除外, 例如 Mistral AI Research License 不含公司員工的日常工作使用), 但在對外提供服務, 散布微調後模型, 或替衍生模型命名時就會出現 (推論, 信心: 中).
 
@@ -74,7 +74,7 @@ Gemma 是授權會變動的例子. Google 開源部落格說明 Gemma 4 是 Gemm
 判斷來源時可以看三件事:
 
 - **發布者**: 是否為模型開發者的官方組織帳號. Hugging Face 文件建議只從可信的使用者與組織載入檔案 (來源: Hugging Face 文件 Pickle scanning).
-- **衍生關係**: 模型卡的 `base_model` 欄位標示衍生自哪個模型, `base_model_relation` 可標示為 `finetune`, `adapter`, `quantized` 或 `merge` (來源: Hugging Face 文件 Model cards). 量化或轉檔版本的授權應回到原模型確認; 轉檔不會讓授權變寬鬆 (推論, 信心: 中).
+- **衍生關係**: 模型卡的 `base_model` 欄位標示衍生自哪個模型, `base_model_relation` 可標示為 `finetune`, `adapter`, `quantized` 或 `merge` (來源: Hugging Face 文件 Model cards). 量化或轉檔版本的授權應回到原模型確認. 各授權對衍生作品的寫法如下: Apache 2.0 允許散布作品或其衍生作品 (Derivative Works), 條件相同; Llama 4 授權的散布條款涵蓋 Llama Materials「或其任何衍生作品」; Gemma Terms of Use 的 Model Derivatives 包含對 Gemma 的任何修改; Mistral AI Research License 的 Derivative 包含任何修改版本 (來源: 各授權原文, 2026-10-27 核對). 這幾份條文都沒有點名「量化」, 但量化與轉檔都是對權重的修改, 應比照衍生作品沿用原模型的授權, 不會因此變寬鬆 (推論, 信心: 高).
 - **存取條件**: 部分模型是 gated model, 使用者要先同意與作者分享聯絡資訊才能下載; 作者可設為人工核准, 也可隨時撤銷存取 (來源: Hugging Face 文件 Gated models). Llama 3.1 等模型即採此方式 (來源: meta-llama/Llama-3.1-8B-Instruct 模型頁).
 
 下圖把判斷來源與格式的步驟串起來; 實際的入庫掃描見 M3:
@@ -210,6 +210,8 @@ flowchart TD
 - [GNU AGPL v3 (OSI)](https://opensource.org/license/agpl-v3)
 - [Llama 4 Community License Agreement](https://dev.meta.ai/llama/llama4/license)
 - [Gemma Terms of Use](https://ai.google.dev/gemma/terms)
+- [Google AI for Developers: Gemma 4 授權頁 (Apache License 2.0 全文)](https://ai.google.dev/gemma/docs/gemma_4_license)
+- [Hugging Face: google/gemma-4-31B-it (模型卡標示 apache-2.0 並連到 Gemma 4 授權頁)](https://huggingface.co/google/gemma-4-31B-it)
 - [Google Open Source Blog: Gemma 4: Expanding the Gemmaverse with Apache 2.0](https://opensource.googleblog.com/2026/03/gemma-4-expanding-the-gemmaverse-with-apache-20.html)
 - [Mistral AI Research License (MRL-0.1)](https://mistral.ai/static/licenses/MRL-0.1.md)
 - [Hugging Face: mistralai/Mistral-7B-Instruct-v0.3](https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3)
