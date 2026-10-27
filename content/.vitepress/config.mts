@@ -183,8 +183,18 @@ export default withMermaid(defineConfig({
   mermaid: {
     htmlLabels: false,
     flowchart: { htmlLabels: false, useMaxWidth: false },
+    // 長條圖與折線圖: 加大 x 軸標籤的留白, 避免中文標籤下緣被切掉
+    xyChart: { useMaxWidth: false, xAxis: { labelPadding: 10 } },
+    // 圓餅圖維持自動縮放 (圖例才不會跑到畫面外); 配色用網站的灰青色系, 淺色與深色主題都看得清楚
     themeVariables: {
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif"
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif",
+      pie1: '#3f6b73',
+      pie2: '#9aa5ad',
+      pie3: '#6f9aa2',
+      pie4: '#c7cdd2',
+      pie5: '#2c4c52',
+      pieSectionTextColor: '#ffffff',
+      pieStrokeColor: '#ffffff'
     }
   }
 }))
