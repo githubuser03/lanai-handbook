@@ -1,3 +1,7 @@
+---
+description: "工具讓模型能讀寫系統, 也是風險最集中的地方. 所有工具都放在獨立的 VM 工具區, 經同一個工具閘道 (MCP gateway) 呼叫; 會執行程式碼的工具一律放進沙箱."
+---
+
 # M7 工具與沙箱
 
 ::: info 本章屬性
@@ -64,17 +68,11 @@ ToolHive 是管理 MCP 伺服器的開源工具 (細節見下一小節). 它的�
 
 下圖最上方是呼叫工具的一方: 對話介面 Open WebUI, 代理框架 LangGraph 與流程自動化平台 n8n.
 
-```
-[Open WebUI / LangGraph / n8n]
-        | MCP (Streamable HTTP) + 身分憑證
-        v
-[閘道區: 單一入口 (vMCP 或 LiteLLM)] -- 依身分過濾可用工具, 留下紀錄
-        |
-        v
-[工具區: thv proxy] -- OIDC 驗證, Cedar 授權, 稽核紀錄, OTel
-        |
-        v
-[MCP 伺服器容器] -- 網路隔離, 只能連指定主機
+```mermaid
+flowchart TD
+  A["Open WebUI / LangGraph / n8n"] -->|"MCP (Streamable HTTP) + 身分憑證"| B["閘道區: 單一入口 (vMCP 或 LiteLLM)<br/>依身分過濾可用工具, 留下紀錄"]
+  B --> C["工具區: thv proxy<br/>OIDC 驗證, Cedar 授權, 稽核紀錄, OTel"]
+  C --> D["MCP 伺服器容器<br/>網路隔離, 只能連指定主機"]
 ```
 
 ### ToolHive 的部署要點
@@ -257,15 +255,11 @@ gVisor 官方文件說明, 可經 nvproxy 支援部分 NVIDIA GPU (來源: gViso
 
 模型不直接呼叫 Docker, 而是呼叫一支小型 MCP 伺服器 (例如提供 `run_python` 一個工具). 流程如下 (推論, 信心: 中):
 
-```
-[代理 / 介面] --MCP--> [工具閘道] --MCP--> [沙箱 MCP 伺服器 (工具區)]
-                                              |
-   1. 檢查程式碼長度上限, 拒絕超過上限的請求
-   2. 寫入本次專用的暫存目錄, 產生唯一容器名稱
-   3. 以上述參數啟動 runsc 容器, 開始計時
-   4. 收集標準輸出與錯誤輸出, 截斷到固定長度
-   5. 逾時則 docker kill; 刪除暫存目錄
-   6. 回傳結果與結束碼
+```mermaid
+flowchart TD
+  A["代理 / 介面"] -->|"MCP"| B["工具閘道"]
+  B -->|"MCP"| C["沙箱 MCP 伺服器 (工具區)"]
+  C --> S["1. 檢查程式碼長度上限, 拒絕超過上限的請求<br/>2. 寫入本次專用的暫存目錄, 產生唯一容器名稱<br/>3. 以上述參數啟動 runsc 容器, 開始計時<br/>4. 收集標準輸出與錯誤輸出, 截斷到固定長度<br/>5. 逾時則 docker kill; 刪除暫存目錄<br/>6. 回傳結果與結束碼"]
 ```
 
 這支伺服器需要呼叫 Docker, 等同擁有主機的高權限. Open WebUI 官方文件也提醒, 掛載 `/var/run/docker.sock` 等於讓容器完全控制主機的 Docker (來源: Open Terminal 安全文件). 因此沙箱 MCP 伺服器只接受工具閘道的連線, 本身不接觸其他系統的憑證, 而且只開放「執行程式碼」這一個工具 (推論, 信心: 中).

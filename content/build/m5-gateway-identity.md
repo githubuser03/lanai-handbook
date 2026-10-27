@@ -1,3 +1,7 @@
+---
+description: "單機單人不需要閘道. 只有多模型輪替而沒有多人治理需求時, 用 llama-swap 就夠."
+---
+
 # M5 模型閘道與身分驗證
 
 ::: info 本章屬性
@@ -255,19 +259,13 @@ JWT_EXPIRES_IN=8h
 
 目標是停用一次, 所有系統都無法再使用. 各系統的登入狀態彼此獨立, 只停用 Keycloak 帳號並不夠:
 
-```
-[AD 停用帳號 (或 Keycloak 直接停用)]
-      |
-      v
-[Keycloak: 帳號 Enabled 關閉, 登出所有工作階段]
-      |
-      +--> [Open WebUI: back-channel logout 撤銷 JWT (需 Redis)]
-      +--> [Langfuse 等其他 OIDC 系統: 無法再登入]
-      v
-[LiteLLM: 封鎖該使用者的虛擬金鑰]
-      |
-      v
-[檢查各系統中該使用者自建的 API 金鑰, 記錄完成時間]
+```mermaid
+flowchart TD
+  A["AD 停用帳號 (或 Keycloak 直接停用)"] --> B["Keycloak: 帳號 Enabled 關閉, 登出所有工作階段"]
+  B --> C["Open WebUI: back-channel logout 撤銷 JWT (需 Redis)"]
+  B --> D["Langfuse 等其他 OIDC 系統: 無法再登入"]
+  B --> E["LiteLLM: 封鎖該使用者的虛擬金鑰"]
+  E --> F["檢查各系統中該使用者自建的 API 金鑰, 記錄完成時間"]
 ```
 
 1. **停用帳號**: 以 AD 為來源時, 在 AD 停用帳號, 並確認同步或 MSAD User Account Mapper 已讓 Keycloak 帳號變成停用. 也可直接在 Keycloak 的 **Users** 選取使用者, 把 **Enabled** 切為關閉; 官方文件說明這會阻止新的登入 (來源: Keycloak Server Administration Guide).

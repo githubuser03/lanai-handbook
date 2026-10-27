@@ -1,3 +1,7 @@
+---
+description: "一張消費級顯示卡就能用 QLoRA 微調 8B 等級的模型, Unsloth 官方標示的最低顯示記憶體約 6GB."
+---
+
 # T2 微調實作與部署
 
 ::: info 本章屬性
@@ -37,23 +41,14 @@ QLoRA 進一步把凍結的原模型量化成 4 位元, 梯度穿過這個 4 位
 
 微調流程中有三類工具, 各自負責不同的步驟. 可以想成做菜: 微調框架是主廚, 負責把食材 (資料) 和原料 (原模型) 做成新的料理 (adapter); llama.cpp 是包裝線, 負責把成品轉成店裡用的盒子 (GGUF) 並分裝 (量化); 推論引擎是外場, 負責把成品端給客人 (提供 API).
 
-```
-[訓練資料 JSONL] + [原模型 (safetensors)]
-   |
-   v
-微調框架: Unsloth, Axolotl, LLaMA-Factory 或 MLX LM (四選一)
-   |  輸出 LoRA adapter
-   v
-合併 adapter 與原模型 (多數框架內建合併或匯出功能)
-   |
-   v
-llama.cpp: convert_hf_to_gguf.py 轉成 GGUF, 再以 llama-quantize 量化
-   |
-   v
-推論引擎: Ollama 或 llama-server (M1) 載入新模型
-   |
-   v
-M6 測試集比較微調前後的成績, 通過才上線
+```mermaid
+flowchart TD
+  A["訓練資料 JSONL"] --> C["微調框架: Unsloth, Axolotl, LLaMA-Factory 或 MLX LM (四選一)"]
+  B["原模型 (safetensors)"] --> C
+  C -->|"輸出 LoRA adapter"| D["合併 adapter 與原模型 (多數框架內建合併或匯出功能)"]
+  D --> E["llama.cpp: convert_hf_to_gguf.py 轉成 GGUF, 再以 llama-quantize 量化"]
+  E --> F["推論引擎: Ollama 或 llama-server (M1) 載入新模型"]
+  F --> G["M6 測試集比較微調前後的成績, 通過才上線"]
 ```
 
 四個微調框架做的是同一件事, 差別在操作方式與支援的硬體. 讀者只需要選一個:

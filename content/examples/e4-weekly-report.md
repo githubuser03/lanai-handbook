@@ -1,3 +1,7 @@
+---
+description: "每週報告是規則固定的流程, 適合交給 n8n (流程自動化平台) 排程執行, 不需要代理自己決定步驟."
+---
+
 # E4 每週報告自動化
 
 ::: info 本章屬性
@@ -55,40 +59,29 @@ M9 的前置模組包含 M7: n8n 依本手冊的架構只經 LiteLLM 與 MCP gat
 
 n8n 每週五下午自動啟動, 經工具閘道從工單, 監控與工作紀錄系統取得資料; 程式先算好數字, 模型只寫文字說明, 程式再確認草稿裡的數字都來自計算結果. 草稿連同核准網址送給負責人, 流程停下來等待; 負責人核准後才寄出, 拒絕或逾時就不寄. 下圖的編號對應這七個步驟.
 
-```
-[自動化區: n8n]
-   |
-   | 1. Schedule Trigger: 每週五 14:00 (工作流程時區設為 Asia/Taipei)
-   v
-[MCP Client 節點] --Streamable HTTP, 依閘道的驗證方式--> [閘道區: MCP gateway]
-   |   --> [工具區: 工單 MCP 伺服器] ticket.list_closed (A0)
-   |   --> [工具區: 監控 MCP 伺服器] metrics.availability (A0)
-   |   --> [工具區: 工作紀錄 MCP 伺服器] worklog.list (A0)
-   v
-[程式節點] 2. 計算數字, 填入週報的固定表格 (模型不經手數字)
-   |
-   v
-[HTTP Request 節點] --POST /chat/completions, 虛擬金鑰--> [閘道區: LiteLLM] --> [推論區: vLLM]
-   |   3. 模型只撰寫文字說明
-   v
-[程式節點] 4. 檢查草稿中的數字都來自第 2 步的計算結果
-   |
-   v
-[MCP Client 節點] 5. 把草稿與核准網址 ($execution.resumeUrl) 送給負責人
-   |   --> MCP gateway --> 內部通訊或工單工具 (A1, 內部可見)
-   v
-[Wait 節點] 6. On Webhook Call, 最長等到當天下班前
-   |
-   +--> 逾時或拒絕: 不寄出, 通知負責人, 流程結束
-   |
-   | 負責人核准 (經反向代理呼叫核准網址, 需驗證)
-   v
-[MCP Client 節點] 7. mail.send (A3)
-   |   --> MCP gateway --> 郵件 MCP 伺服器: 先查稽核區有無對應的核准紀錄與草稿雜湊值, 有才寄出
-   v
-[收件者: 名單固定在郵件工具的設定中, 不由模型決定]
-
-紀錄: [n8n 執行紀錄, MCP gateway 與 LiteLLM 呼叫紀錄] --> [稽核區] --> [既有 SIEM]
+```mermaid
+flowchart TD
+  A["自動化區: n8n"] -->|"1. Schedule Trigger: 每週五 14:00 (工作流程時區設為 Asia/Taipei)"| B["MCP Client 節點"]
+  B -->|"Streamable HTTP, 依閘道的驗證方式"| G1["閘道區: MCP gateway"]
+  G1 --> T1["工具區: 工單 MCP 伺服器<br/>ticket.list_closed (A0)"]
+  G1 --> T2["工具區: 監控 MCP 伺服器<br/>metrics.availability (A0)"]
+  G1 --> T3["工具區: 工作紀錄 MCP 伺服器<br/>worklog.list (A0)"]
+  B --> C["程式節點<br/>2. 計算數字, 填入週報的固定表格 (模型不經手數字)"]
+  C --> D["HTTP Request 節點"]
+  D -->|"POST /chat/completions, 虛擬金鑰"| L["閘道區: LiteLLM"]
+  L --> V["推論區: vLLM"]
+  D -->|"3. 模型只撰寫文字說明"| E["程式節點<br/>4. 檢查草稿中的數字都來自第 2 步的計算結果"]
+  E --> F["MCP Client 節點<br/>5. 把草稿與核准網址 ($execution.resumeUrl) 送給負責人"]
+  F --> G2["MCP gateway"]
+  G2 --> N1["內部通訊或工單工具 (A1, 內部可見)"]
+  F --> W["Wait 節點<br/>6. On Webhook Call, 最長等到當天下班前"]
+  W -->|"逾時或拒絕"| X["不寄出, 通知負責人, 流程結束"]
+  W -->|"負責人核准 (經反向代理呼叫核准網址, 需驗證)"| M["MCP Client 節點<br/>7. mail.send (A3)"]
+  M --> G3["MCP gateway"]
+  G3 --> MS["郵件 MCP 伺服器: 先查稽核區有無對應的核准紀錄與草稿雜湊值, 有才寄出"]
+  MS --> R["收件者: 名單固定在郵件工具的設定中, 不由模型決定"]
+  Z1["紀錄: n8n 執行紀錄, MCP gateway 與 LiteLLM 呼叫紀錄"] --> Z2["稽核區"]
+  Z2 --> Z3["既有 SIEM"]
 ```
 
 ## 設定要點

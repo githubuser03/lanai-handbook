@@ -1,3 +1,7 @@
+---
+description: "一件資安事件同時交給三個專責代理, 分別查 SIEM, EDR 與內部情資平台, 再由彙整代理撰寫調查報告並提出處置建議."
+---
+
 # E5 多代理事件調查
 
 ::: info 本章屬性
@@ -54,39 +58,41 @@ E2 處理的是「每則告警要不要處理」. 確定是事件之後, 分析�
 
 分析師開啟一件調查後, 主流程同時派出三個調查代理, 各自用唯讀工具查自己負責的系統; 每次查詢前都先經 OPA 確認這個代理可以用這個工具, 而且沒有超過配額. 三份結果經程式檢查格式後, 交給彙整代理撰寫報告與處置建議, 處置再依 E2 的分級決定是否需要人工核准. 所有步驟共用同一個追蹤編號留下紀錄.
 
-```
-1. 建立調查
-
-[分析師在核准介面開啟調查] --> [主流程 LangGraph, thread_id = 調查編號]
-      |
-      | 事件欄位 (case_id, 主機, IP, 時間範圍) 由程式從工單讀取並檢查
-      v
-2. 平行調查 (同一個 super-step)
-
-      +--> [紀錄代理]  agent_id=log  金鑰 k-log  工具: siem.query
-      |
-      +--> [端點代理]  agent_id=edr  金鑰 k-edr  工具: edr.query
-      |
-      +--> [情資代理]  agent_id=ti   金鑰 k-ti   工具: ti.lookup
-               |
-               | 每次工具呼叫: 讀全域計數 --> 查 OPA (帶 agent_id) --> MCP gateway
-               v
-3. 結構檢查
-
-[程式檢查每份結果: 欄位, 列舉值, IOC 格式, 主機是否在資產清單]
-      |  不合格: 該份結果標為「無效」, 不交給下游
-      v
-4. 彙整與處置建議
-
-[彙整代理]  agent_id=lead  金鑰 k-lead  工具: ticket.create, edr.isolate_host
-      |  只收到檢查過的欄位; 各代理的自由文字摘要只給分析師看
-      v
-[報告草稿 + 處置建議] --> [OPA 判定] --> 依 E2 的 A0 至 A3 分流
-                                          A2: 雙模型審查; A3 或關鍵資產: 分析師核准
-
-5. 紀錄
-
-[所有代理, OPA 決策紀錄, MCP gateway] --> [稽核區: OTel Collector] --> [Langfuse, 既有 SIEM]
+```mermaid
+flowchart TD
+  subgraph S1["1. 建立調查"]
+    A1["分析師在核准介面開啟調查"] --> A2["主流程 LangGraph, thread_id = 調查編號"]
+    A2 --> A3["事件欄位 (case_id, 主機, IP, 時間範圍) 由程式從工單讀取並檢查"]
+  end
+  subgraph S2["2. 平行調查 (同一個 super-step)"]
+    B1["紀錄代理<br/>agent_id=log, 金鑰 k-log, 工具: siem.query"]
+    B2["端點代理<br/>agent_id=edr, 金鑰 k-edr, 工具: edr.query"]
+    B3["情資代理<br/>agent_id=ti, 金鑰 k-ti, 工具: ti.lookup"]
+    B4["每次工具呼叫: 讀全域計數, 查 OPA (帶 agent_id), 再經 MCP gateway"]:::note
+  end
+  A3 --> B1
+  A3 --> B2
+  A3 --> B3
+  subgraph S3["3. 結構檢查"]
+    C1["程式檢查每份結果: 欄位, 列舉值, IOC 格式, 主機是否在資產清單"]
+    C2["不合格: 該份結果標為「無效」, 不交給下游"]:::note
+    C1 -.- C2
+  end
+  B1 --> C1
+  B2 --> C1
+  B3 --> C1
+  subgraph S4["4. 彙整與處置建議"]
+    D1["彙整代理<br/>agent_id=lead, 金鑰 k-lead, 工具: ticket.create, edr.isolate_host"]
+    D1 -->|"只收到檢查過的欄位; 各代理的自由文字摘要只給分析師看"| D2["報告草稿 + 處置建議"]
+    D2 --> D3["OPA 判定"]
+    D3 --> D4["依 E2 的 A0 至 A3 分流<br/>A2: 雙模型審查; A3 或關鍵資產: 分析師核准"]
+  end
+  C1 --> D1
+  subgraph S5["5. 紀錄"]
+    E1["所有代理, OPA 決策紀錄, MCP gateway"] --> E2["稽核區: OTel Collector"]
+    E2 --> E3["Langfuse, 既有 SIEM"]
+  end
+  classDef note stroke-dasharray: 4 4
 ```
 
 三個調查代理只有唯讀工具, 即使讀到注入內容, 最多只能多查幾次資料, 而且受配額限制; 能改變系統狀態的只有彙整代理, 它看不到原始紀錄, 只看到檢查過的欄位 (推論, 信心: 中).

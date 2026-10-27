@@ -1,3 +1,7 @@
+---
+description: "代理讓模型自己決定下一步要呼叫哪個工具, 所以每個動作都要在模型之外再檢查一次."
+---
+
 # M8 代理與治理
 
 ::: info 本章屬性
@@ -329,22 +333,17 @@ LangChain 官方的 supervisor 遷移說明指出, `langgraph-supervisor` 套件
 
 固定流程協作的示意如下 (依上述文件整理的設計, 未實機驗證):
 
-```
-告警進入
-   |
-   v
-[主流程 LangGraph, thread_id = 本次執行編號]
-   |
-   +--> [分流代理]   金鑰 k-triage, 工具: siem.query
-   |        | 輸出固定欄位 JSON
-   |        v
-   |    [程式檢查結構, 長度, 列舉值]  不通過就整筆丟棄
-   |        |
-   +--> [調查代理]   金鑰 k-investigate, 工具: siem.query, ticket.create, host.isolate
-            | 每次工具呼叫先查 OPA (帶 agent_id)
-            v
-        [MCP gateway] --> 工具
-   A2 以上的動作: 雙模型審查或人工核准 (見 M8.4 節)
+```mermaid
+flowchart TD
+  A["告警進入"] --> B["主流程 LangGraph, thread_id = 本次執行編號"]
+  B --> C["分流代理<br/>金鑰 k-triage, 工具: siem.query"]
+  C -->|"輸出固定欄位 JSON"| D["程式檢查結構, 長度, 列舉值<br/>不通過就整筆丟棄"]
+  D --> E
+  B --> E["調查代理<br/>金鑰 k-investigate, 工具: siem.query, ticket.create, host.isolate"]
+  E -->|"每次工具呼叫先查 OPA (帶 agent_id)"| F["MCP gateway"]
+  F --> G["工具"]
+  N["A2 以上的動作: 雙模型審查或人工核准 (見 M8.4 節)"]:::note
+  classDef note stroke-dasharray: 4 4
 ```
 
 完整的應用範例 (三個調查代理平行執行, 一個彙整代理提出處置建議), 見 [E5 多代理事件調查](/examples/e5-multi-agent-investigation).

@@ -1,3 +1,7 @@
+---
+description: "資安告警分流需要組完整張圖 (M0 至 M8). 告警內容是不可信輸入, 由沒有工具的隔離模型整理成固定欄位的 JSON."
+---
+
 # E2 資安告警分流
 
 ::: info 本章屬性
@@ -58,55 +62,35 @@
 
 流程分四步. 代理先向 SIEM 取得告警, 每次呼叫工具前都經 OPA 判定. 接著由沒有工具的隔離模型把告警整理成固定欄位, 程式檢查合格後才交給規劃模型提出處置建議. 處置建議依動作等級分流: 唯讀與可回復的小動作自動執行, 影響較大的動作交兩個模型審查, 不可回復的動作暫停等待分析師核准. 每一步都留下紀錄, 送到稽核區與既有 SIEM.
 
-```
-1. 取得告警
-
-[控制區: LangGraph 代理服務] --每次工具呼叫先查 OPA--> [控制區: OPA]
-      |
-      | siem.query (A0), MCP (Streamable HTTP)
-      v
-[閘道區: MCP gateway] (再判定一次) --> [工具區: SIEM 的 MCP 伺服器] --> [既有 SIEM]
-
-2. 整理不可信內容
-
-[控制區: LangGraph]
-      | 原始告警文字 (不可信)
-      v
-[隔離區: 隔離模型程式] (沒有任何工具憑證)
-      | --OpenAI 相容 API--> [閘道區: LiteLLM] --> [推論區: vLLM]
-      |
-      | 固定欄位 JSON
-      v
-[控制區: 程式檢查格式, 列舉值, IP 格式與長度] --不合格--> 整筆退回分析師
-      |
-      | 只把檢查過的欄位交給規劃模型 (經 LiteLLM)
-      v
-[規劃模型產生處置建議]
-
-3. 依 OPA 判定分流
-
-[處置建議] --> [OPA 判定]
-      |
-      +--> A0 唯讀, A1 內部可回復: 自動執行 (經 MCP gateway)
-      |
-      +--> A2 影響範圍大: 兩個不同模型審查
-      |       一致: canary 分批執行; 不一致: 轉人工
-      |
-      +--> A3 不可回復, 或涉及關鍵資產: LangGraph interrupt() 暫停
-              |
-              v
-           [分析師: 核准介面 (反向代理之後, Keycloak 登入)]
-              |
-              | 核准或拒絕, 以同一個 thread 恢復執行
-              v
-           [核准後才經 MCP gateway 呼叫工具]
-
-4. 紀錄
-
-[LangGraph, OPA 決策紀錄, MCP gateway] --OTLP--> [稽核區: OTel Collector]
-      |
-      +--OTLP/HTTP--> [Langfuse]
-      +--> [既有 SIEM]
+```mermaid
+flowchart TD
+  subgraph S1["1. 取得告警"]
+    A1["控制區: LangGraph 代理服務"] -->|"每次工具呼叫先查 OPA"| A2["控制區: OPA"]
+    A1 -->|"siem.query (A0), MCP (Streamable HTTP)"| A3["閘道區: MCP gateway (再判定一次)"]
+    A3 --> A4["工具區: SIEM 的 MCP 伺服器"]
+    A4 --> A5["既有 SIEM"]
+  end
+  subgraph S2["2. 整理不可信內容"]
+    B1["控制區: LangGraph"] -->|"原始告警文字 (不可信)"| B2["隔離區: 隔離模型程式 (沒有任何工具憑證)"]
+    B2 -->|"OpenAI 相容 API"| B3["閘道區: LiteLLM"]
+    B3 --> B4["推論區: vLLM"]
+    B2 -->|"固定欄位 JSON"| B5["控制區: 程式檢查格式, 列舉值, IP 格式與長度"]
+    B5 -->|"不合格"| B6["整筆退回分析師"]
+    B5 -->|"只把檢查過的欄位交給規劃模型 (經 LiteLLM)"| B7["規劃模型產生處置建議"]
+  end
+  subgraph S3["3. 依 OPA 判定分流"]
+    C1["處置建議"] --> C2["OPA 判定"]
+    C2 --> C3["A0 唯讀, A1 內部可回復: 自動執行 (經 MCP gateway)"]
+    C2 --> C4["A2 影響範圍大: 兩個不同模型審查<br/>一致: canary 分批執行; 不一致: 轉人工"]
+    C2 --> C5["A3 不可回復, 或涉及關鍵資產: LangGraph interrupt() 暫停"]
+    C5 --> C6["分析師: 核准介面 (反向代理之後, Keycloak 登入)"]
+    C6 -->|"核准或拒絕, 以同一個 thread 恢復執行"| C7["核准後才經 MCP gateway 呼叫工具"]
+  end
+  subgraph S4["4. 紀錄"]
+    D1["LangGraph, OPA 決策紀錄, MCP gateway"] -->|"OTLP"| D2["稽核區: OTel Collector"]
+    D2 -->|"OTLP/HTTP"| D3["Langfuse"]
+    D2 --> D4["既有 SIEM"]
+  end
 ```
 
 ## 設定要點

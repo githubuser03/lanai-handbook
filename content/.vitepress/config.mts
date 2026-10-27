@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
 // GitHub Pages 的網址是 https://<帳號>.github.io/<repo 名稱>/,
 // 所以 base 必須和 repo 名稱一致. 改 repo 名稱時, 這裡要跟著改.
@@ -11,7 +12,8 @@ const tokenize = (text: string) =>
     .filter((s) => s.isWordLike)
     .map((s) => s.segment)
 
-export default defineConfig({
+// withMermaid 讓 ```mermaid 區塊在網頁上畫成流程圖
+export default withMermaid(defineConfig({
   lang: 'zh-Hant-TW',
   title: '地端 LAN-AI 自建手冊',
   description: '地端 LAN-AI 自建手冊: 從底層原理到模組化組裝, 讓 AI 留在內網',
@@ -25,6 +27,11 @@ export default defineConfig({
     'start/usage.md': 'index.md'
   },
   lastUpdated: true,
+
+  // 產生 sitemap.xml, 方便搜尋引擎收錄
+  sitemap: {
+    hostname: 'https://githubuser03.github.io/lanai-handbook/'
+  },
 
   // 程式碼上色: 低飽和的 GitHub 配色
   markdown: {
@@ -169,5 +176,15 @@ export default defineConfig({
     darkModeSwitchTitle: '切換為深色',
     sidebarMenuLabel: '選單',
     returnToTopLabel: '回到頂端'
+  },
+
+  // Mermaid 流程圖: 文字改以 SVG 文字繪製, 避免中文標籤量測不準而被截斷;
+  // 不自動縮到容器寬度, 圖較寬時在圖框內左右捲動 (見 theme/custom.css)
+  mermaid: {
+    htmlLabels: false,
+    flowchart: { htmlLabels: false, useMaxWidth: false },
+    themeVariables: {
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif"
+    }
   }
-})
+}))

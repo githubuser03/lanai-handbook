@@ -1,3 +1,7 @@
+---
+description: "第二部的十個模組依相依關係由下往上組裝, 中途有三個里程碑, 每個里程碑都是可以獨立使用的系統."
+---
+
 # 組裝總覽與里程碑
 
 ::: info 本頁屬性
@@ -63,14 +67,14 @@
 
 下圖是里程碑 1 的連線關係: 瀏覽器只連本機的介面, 介面再把問題轉給推論伺服器.
 
-```
-[瀏覽器 / 桌面 App]
-      | http://127.0.0.1:3000
-      v
-[Open WebUI 或 AnythingLLM] ----> [Ollama / llama-server]
-      |
-   (本機資料卷: 對話, 設定) --> 每週備份
-   對外: 無開放連接埠
+```mermaid
+flowchart TD
+  A["瀏覽器 / 桌面 App"] -->|"http://127.0.0.1:3000"| B["Open WebUI 或 AnythingLLM"]
+  B --> C["Ollama / llama-server"]
+  B --- D["本機資料卷: 對話, 設定"]
+  D --> E["每週備份"]
+  N["對外: 無開放連接埠"]:::note
+  classDef note stroke-dasharray: 4 4
 ```
 
 **里程碑 1 檢核表**
@@ -104,16 +108,16 @@
 
 llama-swap 負責依請求切換要載入的模型; Docling 把 PDF 等文件轉成文字; promptfoo 用固定題目檢查升級後回答品質有沒有變差. 下圖是里程碑 2 在單機上的連線關係: 所有元件以 Docker 跑在同一台主機, 只有介面經反向代理對內網開放, Qdrant 與 llama-swap 只在內部 Docker 網路中, 不對外發布連接埠. 在 Proxmox VE 上分成多台 VM 時, 連線改依 [M0.2 節](/build/m0-foundation)的對照表.
 
-```
-[家人 / 同事裝置] --內網 HTTPS--> [主機 192.168.x.y]
-                                              |
-                     +------------------------+-----------------+
-                     v                        v                 v
-               [Open WebUI / LibreChat]  [Qdrant :6333]    [Docling 批次]
-                     |  (內部 Docker 網路, 不對外)
-                     v
-               [llama-swap :8080] --> [llama-server: 對話模型 / 嵌入模型]
-   公網: 無連接埠轉發
+```mermaid
+flowchart TD
+  A["家人 / 同事裝置"] -->|"內網 HTTPS"| H["主機 192.168.x.y"]
+  H --> W["Open WebUI / LibreChat"]
+  H --> Q["Qdrant :6333"]
+  H --> D["Docling 批次"]
+  W -->|"內部 Docker 網路, 不對外"| S["llama-swap :8080"]
+  S --> L["llama-server: 對話模型 / 嵌入模型"]
+  N["公網: 無連接埠轉發"]:::note
+  classDef note stroke-dasharray: 4 4
 ```
 
 **里程碑 2 檢核表 (在里程碑 1 之上, 另加)**:

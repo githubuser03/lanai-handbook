@@ -264,3 +264,13 @@
   line-height: 1.7;
   color: var(--vp-c-text-3);
 }
+
+/* Mermaid 流程圖: 保留原始大小確保文字可讀, 圖比內容區寬時在圖框內左右捲動 */
+.vp-doc .mermaid {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+.vp-doc .mermaid svg {
+  max-width: none;
+  height: auto;
+}

@@ -1,3 +1,7 @@
+---
+description: "介面讓使用者能在瀏覽器裡和模型對話, 反向代理讓連線加密, 並在介面前面多一道驗證與流量控制."
+---
+
 # M2 使用者介面與反向代理
 
 ::: info 本章屬性
@@ -29,14 +33,14 @@ M1 的推論伺服器只能用指令操作; 這一章裝上一般人熟悉的聊
 
 介面決定使用者看到的畫面與操作方式. AnythingLLM 桌面版像一般軟體一樣下載安裝即可使用; Open WebUI 以 Docker 容器執行, 透過瀏覽器操作, 之後要多人共用也比較容易. 等級 A 與 C 建議用 AnythingLLM 桌面版, 其他等級用 Open WebUI 單一容器. 不加閘道, 代理框架與 MCP. 下圖是單人使用時的連線關係:
 
-```
-[瀏覽器 / 桌面 App]
-      | http://127.0.0.1:3000
-      v
-[Open WebUI 或 AnythingLLM] ----> [Ollama / llama-server]
-      |
-   (本機資料卷: 對話, 設定) --> 每週備份
-   對外: 無開放連接埠
+```mermaid
+flowchart TD
+  A["瀏覽器 / 桌面 App"] -->|"http://127.0.0.1:3000"| B["Open WebUI 或 AnythingLLM"]
+  B --> C["Ollama / llama-server"]
+  B --- D["本機資料卷: 對話, 設定"]
+  D --> E["每週備份"]
+  N["對外: 無開放連接埠"]:::note
+  classDef note stroke-dasharray: 4 4
 ```
 
 ## M2.2 用 Docker 執行介面時的連接埠與位址

@@ -1,3 +1,7 @@
+---
+description: "初階讀者不需要追蹤平台, 需要的是一份 30 至 100 題的固定測試集."
+---
+
 # M6 可觀測, 稽核與評估
 
 ::: info 本章屬性
@@ -122,19 +126,15 @@ Langfuse 光 ClickHouse 最低就要 8GiB, 會與模型搶記憶體, 因此對�
 
 送出紀錄的來源包括模型閘道 LiteLLM (M5), 對話介面 Open WebUI (M2) 與代理服務 (M8). 三個元件分工不同: Langfuse 存放每次模型呼叫的軌跡 (提示, 回應, token 數, 延遲, 代理每一步), OpenTelemetry Collector 負責收集紀錄並分送到 Langfuse 與既有 SIEM, Prometheus 與 Grafana 處理服務指標與警示. 本節設定依官方文件整理, 未實機驗證.
 
-```
-[LiteLLM / Open WebUI / 代理服務]
-      | OTLP (gRPC 或 HTTP)
-      v
-[OTel Collector (稽核區)] --OTLP/HTTP 軌跡--> [Langfuse]
-      |
-      +--OTLP/HTTP 軌跡與日誌--> [既有 SIEM]
-
-[Prometheus (稽核區)] --抓取 /metrics--> [vLLM, llama-server, LiteLLM]
-      |
-      v
-[Alertmanager] --> 電子郵件或 webhook --> 維運人員
-[Grafana] --查詢--> [Prometheus]
+```mermaid
+flowchart TD
+  A["LiteLLM / Open WebUI / 代理服務"] -->|"OTLP (gRPC 或 HTTP)"| B["OTel Collector (稽核區)"]
+  B -->|"OTLP/HTTP 軌跡"| C["Langfuse"]
+  B -->|"OTLP/HTTP 軌跡與日誌"| D["既有 SIEM"]
+  P["Prometheus (稽核區)"] -->|"抓取 /metrics"| T["vLLM, llama-server, LiteLLM"]
+  P --> M["Alertmanager"]
+  M -->|"電子郵件或 webhook"| O["維運人員"]
+  G["Grafana"] -->|"查詢"| P
 ```
 
 ### Langfuse 自架要點
