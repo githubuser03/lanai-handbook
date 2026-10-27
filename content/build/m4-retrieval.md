@@ -17,6 +17,24 @@ description: "家庭規模 (數萬至數十萬段落) 下, 向量庫的選擇差
 
 檢索增強生成 (RAG) 讓模型回答前先查自己的文件, 像開書考試: 模型不必背下所有內容, 而是先翻到相關的那幾頁, 再根據那幾頁作答. 要做到這件事, 需要四個環節: 先把文件轉成文字 (文件解析), 替每一段文字標上意思座標 (嵌入模型), 把座標存起來方便查找 (向量庫), 必要時再從找到的段落中挑出最相關的幾段 (重排序). 「意思座標」的概念見 [K1](/know/k1-basics).
 
+下圖是四個環節在建庫與提問兩個階段的位置:
+
+```mermaid
+flowchart TD
+  subgraph B["建庫 (匯入文件時)"]
+    D1["PDF, Word, 簡報"] --> P1["文件解析<br/>Docling 或 Marker"]
+    P1 --> C1["切塊"]
+    C1 --> E1["嵌入模型"]
+    E1 --> V["向量庫<br/>Chroma, Qdrant 等"]
+  end
+  subgraph Q["提問 (每次對話時)"]
+    Q1["使用者的問題"] --> E2["同一個嵌入模型"]
+    E2 -->|"找最相近的段落"| V
+    V --> RR["重排序 (選配)"]
+    RR --> M["模型根據段落回答<br/>附上出處"]
+  end
+```
+
 ::: tip 本章常見名詞
 | 詞 | 意思 |
 |---|---|
@@ -40,6 +58,18 @@ description: "家庭規模 (數萬至數十萬段落) 下, 向量庫的選擇差
 | Marker (Datalab) | 程式碼 Apache 2.0; 模型權重為修改版 OpenRAIL-M, 研究, 個人及資金或營收 500 萬美元以下的新創可免費使用, 其他商業用途須另洽 | 可在 GPU, CPU 或 Apple MPS 執行; 輸出 Markdown, JSON 等; 作者表示支援所有語言 (來源: Marker GitHub README, 作者自報) |
 
 **Docling 的 OCR 引擎**: OCR (光學字元辨識) 負責把掃描檔或圖片中的文字辨識出來, 只有處理掃描檔或圖片時才會用到; 一般由文書軟體輸出的 PDF, DOCX 可直接讀出文字. Docling 預設自動挑選 OCR 引擎: 在 Linux 上依序嘗試 Nemotron-OCR (有安裝時), RapidOCR (onnxruntime 版), EasyOCR, RapidOCR (torch 版), 第一個能啟動的就採用 (來源: Docling 原始碼 auto_ocr_model.py, v2.142.1); 一般安裝的環境通常會選到 RapidOCR (推論, 信心: 中). RapidOCR 的說明文件寫明其 OCR 模型由 PaddleOCR 轉換而來, 模型著作權屬於百度 (來源: RapidOCR README). 需要時可改指定其他引擎: Docling 支援 RapidOCR, EasyOCR, Tesseract (tesseract-CLI, tesserocr), ocrmac 等, 命令列以 `--ocr-engine` 指定, Python 以 `EasyOcrOptions`, `TesseractCliOcrOptions` 等選項類別指定 (來源: Docling 文件 OCR engines). 透過 docling-serve 時的做法見 M4.5 節.
+
+下圖是 Docling 處理文件時是否用到 OCR, 以及 OCR 引擎怎麼決定:
+
+```mermaid
+flowchart TD
+  F{"文件類型?"}
+  F -->|"文書軟體輸出的 PDF, DOCX"| T["直接讀出文字<br/>不需要 OCR"]
+  F -->|"掃描檔或圖片"| O{"OCR 引擎"}
+  O -->|"預設: 自動挑選"| A["Linux 依序嘗試:<br/>1. Nemotron-OCR<br/>2. RapidOCR (onnxruntime)<br/>3. EasyOCR<br/>4. RapidOCR (torch)"]
+  A --> A1["第一個能啟動的就採用;<br/>一般安裝通常選到<br/>RapidOCR (推論)"]
+  O -->|"自行指定"| S["EasyOCR, Tesseract, ocrmac 等<br/>命令列 --ocr-engine<br/>docling-serve 見 M4.5"]
+```
 
 Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請以自己的文件實測. 最小可行做法是先人工把文件轉成乾淨的文字或 Markdown, 再匯入 (整理者建議).
 
@@ -74,11 +104,33 @@ Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請
 | sqlite-vec | Apache-2.0 與 MIT 雙授權 (GitHub 儲存庫標示) | - | SQLite 擴充套件, 資料存在 SQLite 檔案; 穩定版 (v0.1.9) 只提供暴力搜尋 (逐筆比對); 近似最近鄰索引 (rescore, DiskANN, 以及實驗性且預設未啟用的 IVF) 只出現在 v0.1.10 的 alpha 預覽版 (GitHub Releases, 2026-10-27 查詢). 正式環境建議先用穩定版, 資料量大時查詢時間會明顯變長 (推論), 請用自己的資料實測 |
 | Milvus | Apache 2.0 | - | 分散式架構, 計算與儲存分離 (Milvus README); 單機讀者不需要 (整理者判斷) |
 
+依上表的單機適用性, 選擇順序可以畫成下圖 (整理者建議):
+
+```mermaid
+flowchart TD
+  Q1{"已在用 PostgreSQL?"}
+  Q1 -->|"是"| PG["pgvector<br/>備份一併處理"]
+  Q1 -->|"否"| Q2{"先求可用,<br/>用介面內建 RAG?"}
+  Q2 -->|"是"| IN["介面內建<br/>Open WebUI: Chroma<br/>AnythingLLM: LanceDB"]
+  Q2 -->|"否, 標準組合"| QD["Qdrant<br/>混合檢索, 須自行加金鑰"]
+  MV["Milvus: 分散式架構<br/>單機讀者不需要"]
+```
+
 各向量庫的記憶體占用差異很大, 但公開實測多半未註明向量維度, 索引類型與參數, 無法互相對照, 因此本手冊不引用. 容量規劃可先算原始向量大小: 筆數 x 維度 x 4 位元組 (float32). 例如 10 萬筆 x 1,024 維 = 409,600,000 位元組, 約 410MB (計算值). 實際占用還會加上索引與中介資料, 請在自己的資料上實測.
 
 ### 重排序
 
 重排序在向量庫找出候選段落之後, 再用另一個模型逐段比對問題, 調整先後順序. 可以想成初選與複選: 向量庫先快速挑出一批可能相關的段落, 重排序模型再把問題和每一段放在一起仔細比對, 重新排名. 重排序為選配, 會多花一次模型運算.
+
+下圖是初選與複選的流程:
+
+```mermaid
+flowchart TD
+  Q["使用者的問題"] --> V["向量庫: 初選<br/>快速找出一批候選段落"]
+  V --> R["重排序模型: 複選<br/>問題與每一段逐一比對"]
+  R --> T["取最相關的幾段<br/>交給對話模型"]
+  R -.- N["選配, 多一次模型運算<br/>mMiniLMv2 或 Nemotron 重排序模型"]
+```
 
 下列兩款授權允許商業使用, 模型卡都列出支援中文:
 
@@ -99,9 +151,41 @@ Marker 的基準分數為專案自行測得, 本手冊不引用; 解析品質請
 4. 選命中率較高者; 差距小於 5 個百分點時, 選記憶體較小者.
 5. 把這 50 題併入 M6 的回歸測試集, 之後每次換模型或調整切塊都重跑.
 
+下圖是同樣五個步驟的流程:
+
+```mermaid
+flowchart TD
+  S1["1. 挑 50 個實際會問的問題<br/>記錄正確答案所在的段落"] --> S2["2. 兩個候選嵌入模型<br/>各建一個向量庫"]
+  S2 --> S3["3. 每題取前 5 筆<br/>算命中率"]
+  S3 --> D{"4. 命中率差距<br/>小於 5 個百分點?"}
+  D -->|"是"| SM["選記憶體較小者"]
+  D -->|"否"| HI["選命中率較高者"]
+  SM --> S5["5. 50 題併入 M6 回歸測試集<br/>換模型或切塊時重跑"]
+  HI --> S5
+```
+
 ## M4.4 組合建議
 
 下列兩種組合分別對應「先求可用」與「追求檢索品質」.
+
+下圖並列兩種組合的元件:
+
+```mermaid
+flowchart TD
+  subgraph A["最小可行組合: 先求可用"]
+    direction TB
+    A1["文件先人工轉成<br/>乾淨的文字或 Markdown"] --> A2["介面內建 RAG<br/>Open WebUI 或 AnythingLLM"]
+    A2 --> A3["嵌入: EmbeddingGemma-300m<br/>或 multilingual-e5-large-instruct"]
+    A3 --> A4["介面內建向量庫<br/>額外記憶體約 1 至 2GB (推論)"]
+  end
+  subgraph B["進階組合: 追求檢索品質"]
+    direction TB
+    B1["Docling (CPU)<br/>或 Marker (有 GPU)"] --> B2["三款嵌入模型擇一"]
+    B2 --> B3["Qdrant 混合檢索"]
+    B3 --> B4["重排序 (選配)"]
+    B4 --> B5["50 至 100 題自建測試集"]
+  end
+```
 
 ### 最小可行組合
 
@@ -122,6 +206,17 @@ RAG 的文件來源就是攻擊面: 文件中若夾帶給模型的惡意指示, 
 ## M4.5 架設與驗收
 
 前四節決定用哪些元件, 本節把它們接起來並確認能用. 最小可行組合只需要第 1 步; 進階組合再加第 2, 3 步. 本節依下列官方文件整理, 未實機驗證.
+
+下圖是接好之後的連線關係, 以及驗收時的掃描方向 (依本節步驟繪製, 未實機驗證):
+
+```mermaid
+flowchart TD
+  W["Open WebUI<br/>Settings → Admin → Documents"]
+  W -->|"嵌入引擎: Ollama 或 OpenAI 相容 API"| E["推論伺服器上的嵌入模型"]
+  W -->|"http://host.docker.internal:5001"| D["docling-serve<br/>127.0.0.1:5001"]
+  W -->|"api-key 標頭"| Q["Qdrant<br/>127.0.0.1:6333<br/>金鑰在 qdrant.env (600)"]
+  X["另一台電腦: nmap<br/>5001, 6333, 6334"] -.->|"預期都不是 open"| H["主機內網位址"]
+```
 
 ### 1. 在 Open WebUI 設定嵌入模型
 

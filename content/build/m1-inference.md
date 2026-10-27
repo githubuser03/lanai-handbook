@@ -43,9 +43,31 @@ description: "Ollama 是負責載入模型並提供 API 的推論伺服器, 初�
 
 以上定位為整理者的歸納 (信心: 中). 版本資訊見[版本頁](/ref/versions).
 
+下圖依上表與 M1.10 節整理選擇方式 (信心: 中).
+
+```mermaid
+flowchart TD
+  Q{"使用情境"} -->|"想最快開始"| O["Ollama<br/>本章提供步驟"]
+  Q -->|"想精細控制<br/>或搭配 llama-swap"| L["llama.cpp<br/>(llama-server)"]
+  Q -->|"不想用命令列"| S["LM Studio"]
+  Q -->|"多人同時使用"| V["vLLM<br/>(M1.10 節)"]
+```
+
 ## M1.2 用 Ollama 完成第一次對話
 
 這一節從安裝到第一次對話, 只需要幾個步驟. Ollama 裝好後會在背景執行一個服務, 之後用 `ollama` 開頭的指令操作.
+
+下圖是這一節的步驟, 以及其他程式之後如何連到 Ollama.
+
+```mermaid
+flowchart TD
+  I["安裝 Ollama<br/>macOS, Windows 或 Linux"] --> R["ollama run 模型名稱"]
+  R --> P["第一次執行時下載模型"]
+  P --> C["在終端機對話<br/>輸入 /bye 離開"]
+  C --> A["用 curl 送問題到 API<br/>確認有回傳文字"]
+  A --> SV["Ollama 背景服務<br/>127.0.0.1:11434"]
+  X["其他程式<br/>(例如 M2 的介面)"] --> SV
+```
 
 ### 安裝
 
@@ -99,6 +121,15 @@ curl http://localhost:11434/api/generate -d '{"model": "<模型名稱>", "prompt
 - [ ] 回答時查看 GPU 使用量 (NVIDIA 可用 `nvidia-smi`), 確認模型確實在 GPU 上
 - [ ] 其他裝置無法連到 11434 連接埠 (尚未打算對外開放時)
 
+下圖依序列出四項檢核.
+
+```mermaid
+flowchart TD
+  V["ollama -v 顯示版本<br/>記入版本紀錄 (O2)"] --> R["ollama run<br/>完成一次回答"]
+  R --> G["回答時看 GPU 使用量<br/>NVIDIA 用 nvidia-smi"]
+  G --> N["其他裝置<br/>連不到 11434"]
+```
+
 ## M1.4 GPU 驅動確認
 
 GPU (顯示卡) 是讓模型跑得快的關鍵, 但作業系統要裝對驅動程式, 推論伺服器才看得到它. 未確認驅動時, 模型可能自動改用 CPU 執行, 速度差距很大, 且不易察覺 (信心: 高, 屬一般經驗).
@@ -118,6 +149,21 @@ GPU (顯示卡) 是讓模型跑得快的關鍵, 但作業系統要裝對驅動�
 2. Linux 在休眠喚醒後找不到 GPU 時, 官方提供的暫時解法是重新載入驅動模組: `sudo rmmod nvidia_uvm && sudo modprobe nvidia_uvm`.
 3. 設定 `OLLAMA_DEBUG=1` 後, GPU 偵測期間會輸出額外資訊.
 4. 多張顯示卡時, 以 `CUDA_VISIBLE_DEVICES` 指定使用的卡; 官方建議用 UUID 而非數字編號, UUID 可用 `nvidia-smi -L` 查詢.
+
+下圖把上表的驅動條件與排除方式畫成判斷順序 (依 Ollama 文件整理).
+
+```mermaid
+flowchart TD
+  S{"nvidia-smi<br/>能列出顯示卡?"} -->|"否"| DRV["安裝或更新驅動<br/>550 以上 (舊卡 570 以上)"]
+  S -->|"是"| C{"用容器執行?"}
+  C -->|"是"| T["docker run --gpus all<br/>ubuntu nvidia-smi"]
+  T -->|"失敗"| TF["Ollama 也看不到顯示卡"]
+  T -->|"成功"| Z{"休眠喚醒後<br/>找不到 GPU?"}
+  C -->|"否"| Z
+  Z -->|"是 (Linux)"| M["重新載入<br/>nvidia_uvm 模組"]
+  Z -->|"否"| D["設 OLLAMA_DEBUG=1<br/>查看偵測資訊"]
+  D --> MC["多張卡時以<br/>CUDA_VISIBLE_DEVICES 指定 UUID"]
+```
 
 ## M1.5 模型下載與驗證
 
@@ -142,6 +188,18 @@ hf cache verify <組織/模型庫>
 全部相符時會顯示 `All checksums match.`; 有不符時會列出清單並以非零狀態碼結束. 預設只對缺少或多餘的檔案發出警告, 要視為錯誤須加 `--fail-on-missing-files --fail-on-extra-files`.
 
 注意: 校驗碼比對只證明「和 Hub 上的一致」, 不證明發布者可信.
+
+下圖是從下載模型到匯入 Ollama 的流程; 「來源可信」與「檔案完整」是兩道不同的檢查.
+
+```mermaid
+flowchart TD
+  SRC["確認來源可信<br/>官方組織或知名發布者, 確認授權"] --> DL["hf download<br/>指定 revision"]
+  DL --> VF{"hf cache verify<br/>比對校驗碼"}
+  VF -->|"All checksums match."| REG["記入登記表"]
+  VF -->|"有不符"| X["列出不符清單<br/>以非零狀態碼結束"]
+  REG --> MF["Modelfile 寫<br/>FROM 檔案路徑"]
+  MF --> CR["ollama create 名稱"]
+```
 
 **登記表**: 每個模型記錄下列欄位, 之後回退或稽核時才查得到.
 
@@ -168,6 +226,23 @@ hf cache verify <組織/模型庫>
    - 下載 GGUF 檔, 在離線機器用 Modelfile 匯入 (見 M1.5 節).
 3. **容器映像**: 在可連網機器用 `docker pull` 取得固定版本映像, 再以 `docker save` 匯出, 離線機器以 `docker load` 匯入. Docker 把軟體與執行環境打包成映像, 再以容器執行, 因此搬移映像檔就等於搬移整套軟體 (Docker 指令的通用做法, 未實機驗證).
 4. **校驗碼**: 為每個檔案產生 SHA-256, 複製到離線機器後重新計算並比對 (如 `sha256sum`).
+
+下圖是離線安裝的整體流程.
+
+```mermaid
+flowchart TD
+  subgraph ON["可連網的機器"]
+    O1["Ollama 程式"]
+    O2["模型: 複製模型目錄<br/>或下載 GGUF"]
+    O3["容器映像: docker save"]
+    O4["每個檔案產生 SHA-256"]
+  end
+  ON --> MED["可移除媒體<br/>傳入前掃毒, 保留校驗碼清單"]
+  MED --> OFF["離線機器<br/>重新計算 SHA-256 並比對"]
+  OFF --> INS["安裝 Ollama<br/>(Linux 手動安裝與 systemd)"]
+  OFF --> LD["docker load<br/>匯入映像"]
+  OFF --> IMP["放入模型目錄<br/>或以 Modelfile 匯入"]
+```
 
 **Linux 手動安裝** (來源: Ollama 文件 Linux): 下列三行依序解壓縮程式, 建立專門執行 Ollama 的系統帳號, 再把目前登入的帳號加入 `ollama` 群組.
 
@@ -197,6 +272,17 @@ sudo usermod -a -G ollama $(whoami)
 | 手動執行 `ollama serve` | 日誌顯示在該終端機 |
 | Windows | 檔案總管開啟 `%LOCALAPPDATA%\Ollama`, 最新的是 `server.log` |
 
+下圖依執行環境找出日誌位置.
+
+```mermaid
+flowchart LR
+  Q{"Ollama 怎麼執行?"} -->|"macOS"| A["~/.ollama/logs/server.log"]
+  Q -->|"Linux systemd"| B["journalctl -u ollama"]
+  Q -->|"Docker 容器"| C["docker logs 容器名稱"]
+  Q -->|"手動 ollama serve"| D["該終端機畫面"]
+  Q -->|"Windows"| E["LOCALAPPDATA 下<br/>Ollama 資料夾的 server.log"]
+```
+
 **維運建議** (信心: 中, 屬一般經驗):
 
 - 記錄日誌的保留期間與磁碟占用, 避免日誌占滿磁碟空間.
@@ -217,6 +303,18 @@ sudo usermod -a -G ollama $(whoami)
 | `OLLAMA_MAX_QUEUE` | 512 | 忙碌時的排隊上限, 超過時回應 503 |
 | `OLLAMA_MODELS` | 見 M1.6 節 | 模型存放目錄; Linux 標準安裝須讓 `ollama` 使用者有讀寫權限: `sudo chown -R ollama:ollama <directory>` |
 
+下圖是表中幾個參數與記憶體, 連線範圍的關係.
+
+```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 280}}}%%
+flowchart LR
+  CTX["OLLAMA_CONTEXT_LENGTH<br/>上下文長度"] --> MEM["記憶體占用<br/>隨上下文長度與<br/>並行數的乘積增加"]
+  PAR["OLLAMA_NUM_PARALLEL<br/>同時處理的請求數"] --> MEM
+  MEM -.->|"放不下時"| CPU["部分退回 CPU 執行<br/>ollama ps 的 PROCESSOR 欄位可確認"]
+  HOST["OLLAMA_HOST<br/>改成 0.0.0.0"] --> OPEN["其他裝置連得到<br/>須先有防火牆與存取控制"]
+  Q["OLLAMA_MAX_QUEUE"] --> F["排隊超過上限<br/>回應 503"]
+```
+
 **Linux 以 systemd 設定環境變數**: 第一行開啟服務的設定編輯畫面, 加入環境變數後存檔; 後兩行讓系統重新讀取設定並重新啟動 Ollama.
 
 ```bash
@@ -230,6 +328,18 @@ sudo systemctl restart ollama
 **上下文長度的兩種設定方式與預設值**: `OLLAMA_CONTEXT_LENGTH` 設定整個 Ollama 服務的預設上下文長度; Modelfile 或 API 請求中的 `num_ctx` 參數只影響該模型或該次請求. 三份官方文件對預設值的寫法不同: Context length 頁依顯示記憶體分成 4k, 32k, 256k 三級; FAQ 寫預設 4096 個 token; Modelfile 頁的參數表則寫 `num_ctx` 預設 2048 (來源: Ollama 文件 Context length, FAQ 與 Modelfile, 2026-10-27 擷取). 實際生效的值以 `ollama ps` 輸出的 CONTEXT 欄位為準; 同一指令的 PROCESSOR 欄位可確認模型是否有部分退回 CPU 執行 (來源: Ollama 文件 Context length). 建議上線前明確設定上下文長度, 不依賴預設值 (推論, 信心: 中).
 
 **調校順序** (信心: 中, 屬推論): 先用預設值跑通; 只在實際需要時調整一項, 並用 [M6](/build/m6-observability)測試集與耗時記錄比較前後差異; 一次只改一項, 才知道哪個變動有效.
+
+下圖是上述調校順序 (推論, 信心: 中).
+
+```mermaid
+flowchart TD
+  D["用預設值跑通"] --> N{"有明確需求?"}
+  N -->|"否"| K["維持預設"]
+  N -->|"是"| C["只調整一項"]
+  C --> T["用 M6 測試集<br/>與耗時記錄比較"]
+  T --> P["ollama ps 確認<br/>CONTEXT 與 PROCESSOR"]
+  P --> N
+```
 
 macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對.
 
@@ -246,11 +356,46 @@ macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對
 | 模型目錄權限錯誤 | `ollama` 使用者無權限 | `sudo chown -R ollama:ollama <directory>` |
 | 休眠後改用 CPU | NVIDIA 驅動模組狀態異常 | 見 M1.4 節 |
 
+下圖把上表整理成排除順序, 從日誌開始.
+
+```mermaid
+flowchart TD
+  S["出現問題"] --> L["先看日誌 (M1.7 節)"]
+  L --> A{"載入失敗<br/>或極慢?"}
+  A -->|"是"| A1["換較小模型或量化, 降低上下文<br/>確認 GPU (M1.4 節)"]
+  A -->|"否"| B{"回應 503?"}
+  B -->|"是"| B1["檢視 OLLAMA_MAX_QUEUE<br/>與使用人數"]
+  B -->|"否"| C{"11434 被占用?"}
+  C -->|"是"| C1["ss -ltnp<br/>查占用的程式"]
+  C -->|"否"| D{"下載中斷或<br/>目錄權限錯誤?"}
+  D -->|"下載中斷"| D1["重新執行 ollama pull"]
+  D -->|"權限錯誤"| D2["chown 給 ollama 使用者"]
+```
+
 ## M1.10 多人共用時改用 vLLM
 
 Ollama 適合一個人用; 多人同時提問時, 回答會排隊. vLLM 會把同時進來的多個問題一起處理, 可以想成餐廳從一次炒一盤, 改成一鍋同時炒多份. 代價是設定較多, 也只支援 Linux.
 
 多人同時使用, 或需要 Prometheus 指標 (Prometheus 是定期收集服務運作數據的監控系統, 見 M6) 與更廣的 GPU 支援時, 推論區改用 vLLM 的 OpenAI 相容伺服器. 個人或低階硬體仍以 Ollama 或 llama.cpp 為首選 (選型判斷為本手冊的架構決定, 信心: 中). vLLM 的安全前提是「只有閘道區連得到它」: 它的 API 金鑰只保護部分路徑, 不能當作唯一防線.
+
+下圖是多人共用時, 一個問題從使用者到 vLLM 的路徑, 以及稽核區抓取指標的方向.
+
+```mermaid
+sequenceDiagram
+  participant U as 使用者
+  participant W as 介面<br/>(入口區)
+  participant G as LiteLLM<br/>(閘道區)
+  participant V as vLLM<br/>(推論區)
+  participant P as Prometheus<br/>(稽核區)
+  U->>W: 提問
+  W->>G: 轉送 (個別金鑰)
+  G->>V: /v1 帶 API 金鑰
+  V->>V: 產生回答
+  V-->>G: 回答
+  G-->>W: 回答
+  W-->>U: 顯示
+  P->>V: 抓取 /metrics
+```
 
 ### 硬體與平台需求
 
@@ -330,6 +475,16 @@ docker run -d --name vllm --restart always \
 2. **需要更細的控管時, 在推論區 VM 內加反向代理**: vLLM 文件指出最有效的做法是放在反向代理之後, 只放行預定開放的端點, 其餘一律封鎖. 實務上可只開放 `/v1` 給閘道區, `/metrics` 給稽核區 (後半為推論, 信心: 中).
 3. **多人隔離交給閘道**: vLLM 文件說明同一個伺服器行程內的租戶之間沒有隔離, 建議每個租戶各跑一個實例, 或改用閘道. 本手冊由 LiteLLM (M5 的模型閘道, 位於使用者與推論伺服器之間) 發給每位使用者個別金鑰與配額 (見 M5).
 
+下圖是推論區由外而內的防線; 主要防線是網路限制, API 金鑰只保護部分路徑.
+
+```mermaid
+flowchart TD
+  N["第 1 道: 網路限制 (M0.2 節)<br/>只接受閘道區, 稽核區抓指標"] --> R["第 2 道 (需要更細時)<br/>推論區內的反向代理, 只放行預定端點"]
+  R --> K["第 3 道: API 金鑰<br/>只保護 /v1, /v2, /inference, /cohere"]
+  K --> V["vLLM"]
+  UP["不受金鑰保護的端點<br/>/invocations, /metrics, /tokenize 等"] -.->|"只能靠前兩道擋下"| V
+```
+
 **其他設定** (來源: vLLM 文件 Security, CLI serve, Engine Arguments):
 
 - `--trust-remote-code` 預設為 False, 保持關閉. 即使如此, 引擎本身仍可能有缺陷, 例如 GHSA-3c86-2m5g-59q7 在特定架構下忽略了這個設定 (見 M3.1 節), 因此模型一律經 M3 入庫流程.
@@ -369,6 +524,17 @@ vllm serve meta-llama/Llama-3.1-8B-Instruct \
 | `--tool-call-parser` | `<解析器名稱>` |
 | `--chat-template` | 範本檔的路徑與 SHA-256 |
 
+下圖是上線時要一起記錄的四項; 任一項變動都視為升級.
+
+```mermaid
+flowchart TD
+  M["模型路徑 (含 revision)"] --> REC["O2 版本紀錄表"]
+  I["vLLM 映像摘要值"] --> REC
+  P["--tool-call-parser"] --> REC
+  T["--chat-template<br/>路徑與 SHA-256"] --> REC
+  REC -->|"任一項變動"| TEST["先跑 M6 測試集"]
+```
+
 自訂的範本檔與模型一起經 M3 入庫, 放在模型存放區, 以唯讀方式掛載. 範本是會在伺服器上渲染的程式邏輯 (見 M3.1 節), 不要從網路直接引用.
 
 ### Prometheus 指標
@@ -401,6 +567,17 @@ curl http://<推論區位址>:8000/metrics
 
 **結論**: 同機常駐 3 個約 35B 的模型時, 先確認權重加上 KV cache 放得進顯示記憶體 (估算見 K3.4 節), 再選擇服務方式. 高並行且要穩定常駐, 建議每個模型各跑一個 vLLM 行程, 前面由 LiteLLM 分流 (M5.5 節); 低並行的小團隊可用 Ollama 或 llama-swap 依需求載入與卸載. 不建議把「單一 vLLM 伺服器同時服務多個模型」當作選項, 因為 vLLM 官方 FAQ 說明單一 OpenAI 相容伺服器不支援同時服務多個模型, 建議以多個實例加路由層處理 (來源: vLLM 文件 FAQ).
 
+下圖是上述選擇方式.
+
+```mermaid
+flowchart TD
+  S["同機常駐多個模型"] --> C["先確認權重加 KV cache<br/>放得進顯示記憶體 (K3.4 節)"]
+  C --> Q{"使用情境"}
+  Q -->|"高並行, 要穩定常駐"| V["每個模型一個 vLLM 行程<br/>前面由 LiteLLM 分流 (M5.5 節)"]
+  Q -->|"低並行的小團隊"| O["Ollama 或 llama-swap<br/>依需求載入與卸載"]
+  Q -.->|"不建議"| X["單一 vLLM 伺服器<br/>同時服務多個模型"]
+```
+
 | 方式 | 官方說法 | 優點 | 限制 | 適用情境 |
 |---|---|---|---|---|
 | 每個模型一個 vLLM 行程, 以 `--gpu-memory-utilization` 分配 | 該參數是「單一實例的使用上限」, 預設 0.92, 同一張卡上有其他 vLLM 實例也無妨, 例如兩個實例各設 0.5 (來源: vLLM 文件 Engine Arguments) | 模型常駐, 沒有切換延遲; 各模型可獨立重啟 | 比例須手動配置, 總和須小於 1; vLLM 論壇 (二手來源) 有回報指出 V1 引擎在同卡啟動第二個行程常因記憶體剖析失敗, 與官方說明有出入, 須實測啟動順序 | 高並行, 3 個模型都要常駐 |
@@ -413,6 +590,19 @@ curl http://<推論區位址>:8000/metrics
 vLLM 官方文件沒有「多模型輪替」功能 (查無). 輪替的實際延遲取決於儲存讀取速度, 引擎初始化與 CUDA graph 建立, 須在自己的硬體上實測, 本手冊不提供估計值.
 
 **建議的啟動方式** (推論, 信心: 中): 先啟動最大的模型, 再依序啟動其他兩個; 每啟動一個, 就用 `nvidia-smi` 確認剩餘顯示記憶體, 再決定下一個行程的 `--gpu-memory-utilization`. 三個行程都穩定後, 重新啟動其中一個, 確認它能在其他兩個運作的狀態下重新取得記憶體. 這個「單獨重啟」測試列入驗收 (M1.11 節末的檢核).
+
+下圖是上述啟動與驗收順序 (推論, 信心: 中).
+
+```mermaid
+%%{init: {"flowchart": {"wrappingWidth": 280}}}%%
+flowchart TD
+  A["啟動最大的模型"] --> B["nvidia-smi<br/>確認剩餘顯示記憶體"]
+  B --> C["決定下一個行程的<br/>--gpu-memory-utilization<br/>並啟動"]
+  C --> D{"三個都啟動了?"}
+  D -->|"否"| B
+  D -->|"是"| E["單獨重啟其中一個"]
+  E --> F["確認能重新取得記憶體<br/>其餘行程不受影響"]
+```
 
 **檢核**
 
