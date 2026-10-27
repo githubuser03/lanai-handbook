@@ -17,6 +17,16 @@ description: "初階讀者不需要追蹤平台, 需要的是一份 30 至 100 �
 
 本章分兩層. 第一層是測試集: 一份固定的考卷, 每次換模型或改設定都考一次, 用分數判斷系統變好或變壞. 第二層是可觀測與稽核: 多人共用後, 系統要留下紀錄, 事後才能查出誰在什麼時候問了什麼, 模型回了什麼, 花了多久. 可以想成行車紀錄器加上儀表板, 平常看儀表板知道車況, 出事時調紀錄器還原經過.
 
+下圖是本章兩層工作的分工: 第一層在每次變更時考一次固定考卷, 第二層在多人共用後持續留下紀錄.
+
+```mermaid
+flowchart TD
+  C["換模型, 換提示, 升級元件"] --> T["第一層: 固定測試集<br/>30 至 100 題"]
+  T --> R["比較前後分數<br/>回答「變好還是變壞」"]
+  U["多人共用之後"] --> O["第二層: 可觀測與稽核"]
+  O --> W["記錄誰在什麼時候<br/>讓 AI 做了什麼"]
+```
+
 ::: tip 本章常見名詞
 | 詞 | 意思 |
 |---|---|
@@ -50,6 +60,19 @@ description: "初階讀者不需要追蹤平台, 需要的是一份 30 至 100 �
 | 工具呼叫題 | 10 至 20 | 確認函式呼叫格式正確 (K5) |
 | 邊界與安全題 | 5 至 10 | 確認拒答與權限邊界 |
 
+下圖是測試集的組成與使用方式: 四類題目合成一份固定考卷, 每次變更都考一次, 並記下這次變更的版本.
+
+```mermaid
+flowchart TD
+  A["日常任務題<br/>10 至 30 題"] --> S["固定測試集<br/>每題含問題與期望答案或關鍵字"]
+  B["檢索問答題<br/>50 題 (M4.3 節)"] --> S
+  C["工具呼叫題<br/>10 至 20 題"] --> S
+  D["邊界與安全題<br/>5 至 10 題"] --> S
+  S --> E["每次變更跑一次"]
+  E --> F["保留介面的對話紀錄"]
+  E --> G["記錄這次變更的版本 (O2)"]
+```
+
 T2 微調後的驗證, 沿用同一份測試集.
 
 ## M6.2 promptfoo 實作
@@ -59,6 +82,17 @@ promptfoo 的用途是把測試集自動跑一遍, 並比較不同模型或提�
 promptfoo 是命令列工具, 不需要常駐服務, 採 MIT 授權. OpenAI 於 2026-03-09 宣布收購, 官方聲明 "remains open source under MIT" (來源: 研究 2 引用之官方聲明). 收購案的完成日期未能確認; 長期所有權變動屬鎖定風險, 須持續追蹤 (信心: 中).
 
 下列最小可行步驟依 promptfoo 官方文件 Installation, Getting Started 與 OpenAI provider 整理, 未實機驗證. 設定檔語法會隨版本變動, 升級後請對照官方文件.
+
+下圖是 promptfoo 跑一次測試集的流程 (依同上官方文件整理, 未實機驗證):
+
+```mermaid
+flowchart TD
+  Y["promptfooconfig.yaml<br/>prompts, providers, tests"] --> E["promptfoo eval"]
+  K["環境變數<br/>LOCAL_LLM_API_KEY"] --> E
+  E -->|"逐題代入題目"| M["地端模型<br/>OpenAI 相容 API (/v1)"]
+  M --> A["依 assert 判定<br/>icontains, not-icontains"]
+  A --> V["promptfoo view<br/>在瀏覽器檢視每一題的結果"]
+```
 
 **1. 安裝**: promptfoo 以 npm (Node.js 的套件管理工具) 安裝, 官方要求 Node.js 22.22.0 以上. 安裝後以 `promptfoo --version` 確認.
 
@@ -120,6 +154,16 @@ promptfoo view
 
 Langfuse 光 ClickHouse 最低就要 8GiB, 會與模型搶記憶體, 因此對硬體等級 A 至 D 不划算 (信心: 高, 依官方最低需求推論). 多人環境且有專人維運時, 才值得評估.
 
+下圖把是否值得裝追蹤平台的判斷畫成流程 (依上段推論):
+
+```mermaid
+flowchart TD
+  Q1{"硬體等級 A 至 D?"} -->|"是"| N["不裝追蹤平台<br/>ClickHouse 最低就要 8GiB, 會與模型搶記憶體"]
+  Q1 -->|"否"| Q2{"多人環境且有專人維運?"}
+  Q2 -->|"否"| N2["先用固定測試集 (M6.1 節)"]
+  Q2 -->|"是"| Y["評估 Langfuse 等追蹤平台 (M6.4 節)"]
+```
+
 ## M6.4 可觀測與稽核平台
 
 多人共用後, 需要一套能回答「發生了什麼事」的紀錄系統. 本節的做法是讓各服務把紀錄送到同一個收集點, 再分送到兩個地方: 一份給 Langfuse 看模型呼叫的細節, 一份給公司既有的 SIEM 做資安稽核. 服務的健康狀態則由 Prometheus 定期抓取, 異常時發出警示.
@@ -142,6 +186,23 @@ flowchart TD
 Langfuse 是專門記錄模型呼叫的開源平台, 每一筆提示, 回應, token 數與耗時都能在介面上逐筆查看.
 
 **需要的服務**: Langfuse 官方架構包含六個元件: Langfuse Web (介面與 API), Langfuse Worker (非同步處理事件), PostgreSQL (交易資料), ClickHouse (存放軌跡, observation 與評分), Redis 或 Valkey (佇列與快取), S3 相容的物件儲存 (例如 MinIO; 保存所有進來的事件與大型匯出) (來源: Langfuse 文件 Self-hosting). 各元件的最低資源見 M6.3 節.
+
+下圖把 Langfuse 官方架構的六個元件分成應用程式與資料儲存兩組 (來源同上):
+
+```mermaid
+flowchart TD
+  subgraph APP["Langfuse 應用程式"]
+    W["Langfuse Web<br/>介面與 API"]
+    WK["Langfuse Worker<br/>非同步處理事件"]
+  end
+  subgraph DATA["資料儲存"]
+    PG["PostgreSQL<br/>交易資料"]
+    CH["ClickHouse<br/>軌跡, observation 與評分"]
+    R["Redis 或 Valkey<br/>佇列與快取"]
+    S3["S3 相容物件儲存 (例如 MinIO)<br/>進來的事件與大型匯出"]
+  end
+  APP --> DATA
+```
 
 **部署方式**: Docker Compose 是用一個設定檔同時啟動多個容器的工具, Kubernetes 是管理大量容器的叢集平台 (Helm 是它的套件管理工具). 官方把 Docker Compose 定位為本機使用與測試, 標示為單一 VM, 沒有高可用, 擴充與備份; 正式環境的選項為 Kubernetes (Helm) 與各雲端平台 (來源: 同上). 依官方 Docker Compose 文件, 步驟為 `git clone https://github.com/langfuse/langfuse.git`, 進入目錄後修改所有標示 `# CHANGEME` 的機密值, 再執行 `docker compose up`. 介面在 3000 連接埠; worker (3030), MinIO 主控台 (9091) 與資料庫只綁 127.0.0.1 (來源: Langfuse 文件 Docker Compose). 但官方 compose 檔中, Web 介面的 `3000:3000` 與 MinIO API 的 `9090:9000` 沒有指定位址, 會綁定主機所有介面; 映像也使用浮動標籤 (例如 `langfuse:4`) (來源: Langfuse GitHub 儲存庫 docker-compose.yml). 部署到稽核區時, 這兩個連接埠改綁稽核區的內網位址並以防火牆限制來源, 所有 `CHANGEME` 的值都要替換, 映像改以摘要值鎖定 (見 M0.3 節). 本手冊的稽核區若採 Docker Compose, 須自行排程備份 PostgreSQL, ClickHouse 與 MinIO 的資料卷 (見 O1) (推論, 信心: 中).
 
@@ -294,11 +355,32 @@ groups:
 
 規則格式依 Prometheus 官方的 alerting rules 範例 (groups, alert, expr, for, labels, annotations). 修改後先以 Prometheus 附帶的檢查工具 `promtool check rules <檔案>` 檢查語法, 再對 Prometheus 行程送出 `SIGHUP` 重新載入; 只有全部規則檔格式正確時才會套用 (來源: Prometheus 文件 Recording rules). Prometheus 本身不發通知, 由 Alertmanager 依 `receivers` 設定送出, 可用的整合包括 `email_configs` 與 `webhook_configs` 等; Alertmanager 設定檔可用它附帶的命令列工具 `amtool check-config` 檢查 (來源: Prometheus 文件 Alerting rules, Alertmanager configuration).
 
+下圖以上例的延遲規則, 說明一則警示從抓取指標到通知送達的路徑 (依同上官方文件整理, 未實機驗證):
+
+```mermaid
+flowchart TD
+  P["Prometheus<br/>每 15 秒抓取 /metrics"] --> E{"規則運算式成立?<br/>第 95 百分位延遲大於 30 秒"}
+  E -->|"否"| P
+  E -->|"是, 且持續 10 分鐘 (for)"| F["警示進入 firing"]
+  F --> A["Alertmanager<br/>依 receivers 設定"]
+  A --> N["電子郵件或 webhook<br/>送達維運人員"]
+  G["Grafana 儀表板"] -.->|"查詢"| P
+```
+
 **Grafana**: 以 Prometheus 為資料來源建立儀表板 (來源: Grafana 文件 Prometheus data source). 建議至少放四張圖: 執行中與排隊中的請求數, 第一個 token 的延遲, 端到端延遲, 每秒生成 token 數 (推論, 信心: 中).
 
 ## M6.5 驗收測試
 
 驗收時以實際操作確認紀錄真的留下, 警示真的送達, 權限真的擋住. 以下步驟依各官方文件整理, 未實機驗證.
+
+下圖是四項驗收依序確認的事:
+
+```mermaid
+flowchart TD
+  A["1. Langfuse 看得到<br/>完整軌跡"] --> B["2. SIEM 查得到<br/>閘道與政策判定的紀錄"]
+  B --> C["3. 延遲超過門檻時<br/>警示送達維運人員"]
+  C --> D["4. 存取權限與保存期限<br/>符合規劃"]
+```
 
 **1. 一次對話能在 Langfuse 看到完整軌跡**
 
