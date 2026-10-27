@@ -36,6 +36,20 @@ description: "模型檔是推論伺服器會載入並執行的供應鏈輸入. �
 
 模型檔的風險來自三個層次: 序列化格式本身, 檔案內附帶的對話範本, 以及倉庫裡的程式碼. 三者的檢查方式不同.
 
+下圖把三個層次, 加上權重本身的後門, 與各自的因應方向對應起來:
+
+```mermaid
+flowchart TD
+  R["一個模型倉庫"] --> F["序列化格式<br/>pickle 讀取時可執行程式碼"]
+  R --> T["對話範本<br/>GGUF 內的 Jinja 範本會被渲染"]
+  R --> P["倉庫裡的 .py 程式碼<br/>trust_remote_code"]
+  R --> W["權重本身的後門<br/>格式完全正常"]
+  F --> F1["優先 safetensors 或 GGUF<br/>pickle 須掃描並人工確認"]
+  T --> T1["用已修補的推論引擎<br/>入庫時檢視範本內容"]
+  P --> P1["不開啟 trust_remote_code<br/>.py 檔列入人工審查"]
+  W --> W1["掃描工具無法確認<br/>靠來源白名單與 M6 行為測試"]
+```
+
 | 風險來源 | 說明 | 因應方向 |
 |---|---|---|
 | pickle 格式 (`.bin`, `.pt`, `.pth`, `.pkl` 等) | Python 官方文件指出 pickle 不安全, 可以構造在反序列化時執行任意程式碼的資料 (來源: Python 文件 pickle) | 優先選 safetensors 或 GGUF; 必須用 pickle 時, 入庫前掃描並人工確認 |
@@ -57,6 +71,24 @@ flowchart TD
   A["Hugging Face 等模型來源"] -->|"1. 來源白名單 + 固定 revision 下載"| B["入庫主機: 暫存目錄"]
   B -->|"2. hf cache verify 比對校驗碼<br/>3. ModelAudit 掃描 (pickle 檔另以 picklescan 複查)<br/>4. 人工審查: .py 檔, 對話範本, 授權<br/>5. 計算 SHA-256, 寫入登記表<br/>6. 複製到存放區, 在目的地以 sha256sum -c 再比對"| C["NAS: NFS 模型存放區"]
   C -->|"唯讀"| D["推論區 VM"]
+```
+
+每一步都是一道關卡, 任一步沒有通過就停下. 下圖是各步沒有通過時的處理:
+
+```mermaid
+flowchart TD
+  S1["1. 發布者在白名單內?"] -->|"是"| S2["2. hf cache verify 一致?"]
+  S2 -->|"是"| S3["3. ModelAudit 與 picklescan<br/>結束碼都是 0?"]
+  S3 -->|"是"| S4["4. 人工審查通過?<br/>.py 檔, 對話範本, 授權, 發布者"]
+  S4 -->|"是"| S5["5. 產生 manifest.sha256<br/>寫入登記表"]
+  S5 --> S6["6. 複製到存放區<br/>sha256sum -c 全部 OK?"]
+  S6 -->|"是"| OK["上線: 推論區唯讀讀取"]
+  S1 -->|"否"| STOP["停止入庫, 轉人工判斷"]
+  S2 -->|"否"| STOP
+  S3 -->|"否"| STOP
+  S4 -->|"否"| STOP
+  S6 -->|"有 FAILED"| RE["刪除目的地目錄, 重新複製"]
+  RE --> S6
 ```
 
 ### 第 1, 2 步: 來源白名單, 固定版本下載與校驗
@@ -85,6 +117,21 @@ hf cache verify <組織/模型庫> --local-dir <暫存目錄> --fail-on-missing-
 | ModelScan | Protect AI, Apache-2.0 | H5, pickle (含 PyTorch, joblib, dill 等衍生格式), SavedModel 與 Keras V3; README 未列 safetensors 與 GGUF; 同頁推廣商用版 Guardian | 2026-02 |
 | picklescan | 個人維護, MIT | pickle, PyTorch `.bin`, NumPy `.npy`; 可掃本機路徑, URL 與 Hugging Face 倉庫 | 2026-07 |
 | Fickling | Trail of Bits, LGPL-3.0 | pickle 的反編譯, 靜態分析與改寫; 以符號執行取代實際反序列化; 提供 ML 函式庫匯入的允許清單 | 2026-06 |
+
+下圖對照各工具涵蓋的格式 (依各專案自述, 未經第三方評測):
+
+```mermaid
+flowchart LR
+  MA["ModelAudit<br/>(主推)"] --> ST["safetensors"]
+  MA --> GG["GGUF"]
+  MA --> PK["pickle"]
+  MA --> J2["Jinja2 範本檢查"]
+  MS["ModelScan"] --> PK
+  MS --> H5["H5, SavedModel, Keras V3"]
+  PS["picklescan"] --> PK
+  FK["Fickling"] --> PK
+  N["所有工具都只涵蓋<br/>檔案與序列化層,<br/>擋不住權重本身的後門"]
+```
 
 **主推 ModelAudit, 理由有三** (推論, 信心: 中):
 
@@ -160,6 +207,17 @@ sha256sum -c manifest.sha256
 
 **原則**: NAS 以 NFS 提供兩種權限. 推論區只能唯讀掛載; 入庫主機是唯一能寫入的來源. 這兩件事都在 NAS 端設定, 不依賴推論區 VM 自律.
 
+下圖是存放區的權限關係: 只有入庫主機能寫入, 推論區唯讀掛載, 再以唯讀方式掛進容器 (依本節設定繪製, 未實機驗證):
+
+```mermaid
+flowchart TD
+  NAS["NAS: /srv/models<br/>(/etc/exports, root_squash)"]
+  ING["入庫主機"] -->|"rw: 唯一能寫入的來源"| NAS
+  NAS -->|"ro: 唯讀"| VM["推論區 VM<br/>/mnt/models (fstab: ro)"]
+  VM -->|"-v /mnt/models:/models:ro"| CT["推論容器<br/>/models 唯讀"]
+  OT["其他 VM"] -.->|"掛載遭拒<br/>(防火牆 + 授權網段)"| NAS
+```
+
 ### Linux NFS 伺服器 (`/etc/exports`)
 
 `exports(5)` 說明了下列行為 (來源: Linux man page exports(5)):
@@ -205,6 +263,19 @@ docker run ... -v /mnt/models:/models:ro ...
 ## M3.4 驗收測試
 
 驗收重點是兩件事: 推論區確實寫不進存放區, 以及每個上線模型都查得到完整紀錄. `touch` 是建立空白檔案的指令, 在唯讀的位置執行會失敗.
+
+下圖把下列檢查項目分組:
+
+```mermaid
+flowchart TD
+  W["推論區寫不進存放區"] --> W1["推論區 VM: touch 失敗"]
+  W1 --> W2["推論容器: 寫入 /models 失敗"]
+  W2 --> W3["其他 VM: 掛載遭拒"]
+  R["每個上線模型都有完整紀錄"] --> R1["登記表: 來源, revision, 雜湊,<br/>授權, 掃描報告, 審查者"]
+  R1 --> R2["sha256sum -c 全部 OK"]
+  G["流程會擋下不合規的檔案"] --> G1["不合規測試檔: 流程停下"]
+  G1 --> G2["沒有開啟 --trust-remote-code"]
+```
 
 - [ ] 在推論區 VM 執行 `touch /mnt/models/test`, 應出現唯讀錯誤
 - [ ] 在推論容器內嘗試寫入 `/models`, 同樣失敗

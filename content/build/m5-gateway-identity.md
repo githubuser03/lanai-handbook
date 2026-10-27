@@ -50,6 +50,20 @@ Ollama, llama-server 與 LM Studio 都已提供與 OpenAI 相容的 API, 介面�
 - 在反向代理 (Nginx 或 Caddy) 上做基本驗證與速率限制. Nginx 的速率限制 (`limit_req`) 為標準模組; Caddy 標準版不內建, 須另裝 caddy-ratelimit 外掛並重新編譯 (見 M2.3 節; 來源: caddyserver.com 模組頁)
 - 使用介面本身的使用者與權限管理 (Open WebUI, LibreChat)
 
+下圖是同一個判斷 (信心: 中):
+
+```mermaid
+flowchart TD
+  C["檢查三項條件"] --> C1["1. 3 人以上共用<br/>需要個別金鑰, 配額或用量紀錄"]
+  C --> C2["2. 混用雲端與地端<br/>需要故障轉移"]
+  C --> C3["3. 多個應用程式<br/>要統一入口"]
+  C1 --> D{"符合任兩項?"}
+  C2 --> D
+  C3 --> D
+  D -->|"是"| G["加閘道 (M5.3)"]
+  D -->|"否"| A["不加閘道:<br/>介面直連推論引擎, llama-swap 換模型,<br/>反向代理做驗證與速率限制,<br/>介面本身的權限管理"]
+```
+
 ## M5.2 llama-swap: 多模型輪替
 
 一張顯示卡的記憶體通常只夠放一個模型. 想輪流使用對話模型與嵌入模型時, 需要一個程式依請求自動卸下目前的模型, 換上需要的模型. 可以想成只有一個爐口的廚房, 由同一位廚師依點單換鍋.
@@ -58,9 +72,33 @@ llama-swap 是 Go 撰寫的單一執行檔, 以 YAML 設定, 依請求中的 mod
 
 適用情境是一張顯示卡要輪流載入對話模型與嵌入模型, 也就是硬體等級 B, D, E (信心: 中). 它只做模型切換, 不做多租戶治理, 因此風險等級低於完整閘道.
 
+下圖是 llama-swap 依請求切換模型的方式:
+
+```mermaid
+flowchart TD
+  R1["對話請求<br/>model: 對話模型"] --> S["llama-swap<br/>依請求中的 model 欄位切換"]
+  R2["嵌入請求<br/>model: 嵌入模型"] --> S
+  S -->|"卸下目前的模型, 啟動需要的"| G["一張顯示卡<br/>一次放一個模型"]
+  G --> L["llama-server 或 vLLM"]
+  N["只做模型切換<br/>不做多租戶治理"] -.- S
+```
+
 ## M5.3 LiteLLM 的使用條件與限制
 
 LiteLLM 是常見的開源模型閘道, 能統一接地端與雲端模型, 並發放虛擬金鑰與設定配額. 功能完整, 但它集中保存所有上游金鑰, 一旦被入侵, 損失也集中, 所以本節先說明現況與事件, 再列出採用時要做的防護.
+
+下圖是閘道在架構中的位置: 各介面與程式只拿到虛擬金鑰, 上游金鑰只存在閘道區:
+
+```mermaid
+flowchart TD
+  U1["使用者介面"] -->|"虛擬金鑰 A"| G
+  U2["應用程式"] -->|"虛擬金鑰 B"| G
+  U3["代理"] -->|"虛擬金鑰 C"| G
+  G["閘道區: LiteLLM<br/>驗證金鑰, 配額, 用量紀錄, 轉送"]
+  G -->|"上游金鑰只存在這裡"| L["地端 vLLM (推論區)"]
+  G -->|"上游金鑰只存在這裡"| C["雲端 API"]
+  K["集中保存上游金鑰,<br/>是高價值目標:<br/>鎖摘要值, 只放內網,<br/>最低權限, 準備輪替流程"] -.- G
+```
 
 ### 現況
 
@@ -78,6 +116,19 @@ LiteLLM 程式庫採 MIT 授權, 但 `enterprise/` 目錄另有授權. 管理介
 2026-03 事件的官方建議是把所有存在受影響系統上的憑證視為已外洩並輪替, 移除惡意的 `litellm_init.pth`, 並鎖定已知安全的版本 (例如 1.82.6 或更早); 官方之後以新的 CI/CD 流程發布乾淨的 1.83.0 (來源: LiteLLM 官方部落格 2026-03-24). 2026-10 事件的官方建議是鎖定 `litellm==1.106.2` 或更早發布的明確版本, 從頭重建映像與虛擬環境, 並輪替所有金鑰 (來源: LiteLLM 官方事故報告 2026-10-21).
 
 2026-10 事件的入口, 官方在 2026-10-23 的攻擊鏈報告中說明: LiteLLM Agent Platform 的 master key 於 2026-05-27 被提交到公開儲存庫, 之後沒有撤銷; 攻擊者於 2026-10-10 用這把金鑰呼叫 Agent Platform 的 API, 再一路取得開發者的 GitHub 憑證並修改發布流程. 官方表示已完成對攻擊者行為的調查, 改善措施另行公布 (來源: LiteLLM 官方部落格 The attack chain behind the v1.107.0 LiteLLM release). 官方說明企業版私有發行未受影響. 這起事件的起點是一把沒有撤銷的金鑰, 說明 O3 的「外洩後立即輪替」比任何單一防護更關鍵 (推論, 信心: 中).
+
+下圖依官方攻擊鏈報告與事故報告整理 2026-10 事件的經過, 以及兩項防護各自擋在哪一步 (防護的對應為推論, 信心: 中):
+
+```mermaid
+flowchart TD
+  A["2026-05-27<br/>Agent Platform master key<br/>提交到公開儲存庫, 未撤銷"] --> B["2026-10-10<br/>攻擊者以這把金鑰<br/>呼叫 Agent Platform API"]
+  B --> C["取得開發者的 GitHub 憑證<br/>修改發布流程"]
+  C --> D["2026-10-21<br/>惡意 v1.107.0 推送到<br/>Docker registry 與 PyPI"]
+  D --> E["latest 等浮動標籤<br/>指向惡意映像"]
+  E --> F["使用者更新, Python 啟動即執行<br/>(cook.pth, sitecustomize.py)"]
+  A -.->|"外洩後立即輪替"| X1["擋在起點"]
+  E -.->|"以摘要值鎖定版本"| X2["不會自動拉到惡意版本"]
+```
 
 2026 年的 CVE 紀錄見[元件版本與安全公告頁](/ref/versions). 其中 3 個程式漏洞已列入 CISA KEV (美國網路安全暨基礎設施安全局的已知遭利用漏洞目錄): 未經身分驗證即可利用的 SQL 注入, 經 MCP 預覽端點的命令注入, 以及 MCP 驗證繞過; 受影響與修補版本見版本頁 (來源: CISA KEV 目錄, 版本頁所列 GitHub Security Advisories).
 
@@ -173,6 +224,18 @@ server {
 
 Nginx 的前綴比對採最長符合, 因此 `/realms/master/` 會優先於 `/realms/` (Nginx 一般行為, 此為訓練資料內資訊, 可能已過時). `proxy_set_header` 等標頭設定請沿用 M2.3 節.
 
+下圖是第 4 點的路徑限制 (依官方對外路徑建議與上方範例繪製, 未實機驗證):
+
+```mermaid
+flowchart TD
+  U["內網使用者"] --> R["反向代理<br/>sso.example.internal:443"]
+  R -->|"/realms/, /resources/, /.well-known/"| K["Keycloak<br/>127.0.0.1:8081"]
+  R -->|"/admin/, /realms/master/<br/>只限管理者 IP"| K
+  R -->|"其他路徑"| X["回應 404"]
+  M["管理連接埠 9000<br/>/health, /metrics"] -.-|"不對外"| K
+  K --> DB["PostgreSQL<br/>(不用 dev-file)"]
+```
+
 ### 建立 realm 與 OIDC client
 
 這一步在 Keycloak 裡開一個放員工帳號的空間 (realm), 再為每個要串接登入的系統登記一筆資料 (client). 登記後, Keycloak 才知道登入成功時要把使用者送回哪個網址.
@@ -190,6 +253,22 @@ Nginx 的前綴比對採最長符合, 因此 `/realms/master/` 會優先於 `/re
 ### Open WebUI 的 OIDC 設定
 
 Keycloak 端登記完成後, 換到 Open WebUI 這一端, 告訴它要去哪裡確認身分, 以及登記時拿到的 client ID 與 secret. 下列設定寫在 Open WebUI 的環境變數檔.
+
+設定完成後, 登入的往返如下圖 (依 Open WebUI 與 Keycloak 文件整理, 未實機驗證):
+
+```mermaid
+sequenceDiagram
+  participant U as 使用者
+  participant W as Open WebUI<br/>ai.example.internal
+  participant K as Keycloak<br/>sso.example.internal
+  U->>W: 點選「公司帳號」登入
+  W->>K: 轉到 realm company 的登入頁
+  U->>K: 輸入帳密 (或經 AD, Google 驗證)
+  K->>W: 登入成功, 送回 /oauth/oidc/callback
+  W->>K: 以 client ID 與 secret 確認身分
+  K-->>W: 使用者資料 (openid, email, profile)
+  W-->>U: 登入完成, 之後使用 Open WebUI 自己的 JWT
+```
 
 依 Open WebUI 官方 SSO 與 Keycloak 文件整理的環境變數 (未實機驗證). 下列內容加進 M2.2 節建立的同一個 `.env`, 以 `docker run --env-file` 或 Docker Compose 的 `env_file` 載入; 環境變數只在容器建立時讀入, 改完 `.env` 要先移除容器 (`docker rm -f open-webui`), 再以 M2.2 節的同一個指令重建, 資料卷中的對話與設定會保留 (推論, 依 Docker 環境變數的一般行為). `OAUTH_SCOPES` 的值含空白, 不要用 shell 的 `. ./.env` 方式載入:
 
@@ -234,6 +313,18 @@ JWT_EXPIRES_IN=8h
 ### 串接公司既有帳號
 
 公司若已經有 AD, LDAP 或 Google Workspace, 可以讓 Keycloak 直接沿用這些帳號, 不必再建一份. 這樣人事異動只在原本的帳號系統處理一次.
+
+下圖是帳號來源與各系統的關係:
+
+```mermaid
+flowchart TD
+  AD["公司 AD 或 LDAP<br/>密碼驗證留在 LDAP 端"] -->|"User Federation"| K["Keycloak<br/>realm: company"]
+  GG["Google Workspace"] -->|"Identity Provider"| K
+  K -->|"OIDC client: open-webui"| W["Open WebUI"]
+  K -->|"OIDC client"| L["Langfuse"]
+  K -->|"通用 OIDC"| G["LiteLLM 管理介面"]
+  N["每個系統各建一個 client<br/>不共用 client secret"] -.- K
+```
 
 **LDAP 或 AD (user federation)**: 在 realm 的 **User Federation** 點選 **Add LDAP providers** 設定 (來源: Keycloak Server Administration Guide). 官方文件的重點如下:
 
@@ -289,6 +380,19 @@ curl -X POST 'http://<閘道區主機>:4000/key/block' \
 
 **結論**: LiteLLM 可以在同一個入口同時接地端 vLLM 與雲端模型, 並在地端故障時自動退到雲端. 但「退到雲端」等於請求內容離開內網, 因此備援要有明確的範圍. LiteLLM 官方文件提供兩種金鑰層的控制: `disable_fallbacks` 讓特定金鑰「失敗就報錯, 不退到雲端」; 金鑰可用模型清單 (`models`) 只列地端模型時, 備援也不會改送雲端. 依請求標籤精確限制備援目的地的專門機制, 官方文件查無, 須自行實測 (信心: 中). 本手冊的架構中, 只有閘道區能對外連線, 所以即使設定錯誤, 地端各區也無法直接連到雲端; 控制點在閘道區的設定與防火牆.
 
+下圖是本節設定下一個請求的路徑 (依 LiteLLM 文件 Reliability 整理, 未實機驗證):
+
+```mermaid
+flowchart TD
+  R["請求進入閘道區 LiteLLM"] --> L["local-chat<br/>推論區 vLLM :8000"]
+  L -->|"成功"| OK["地端回應"]
+  L -->|"失敗, num_retries: 3 用盡"| K{"這把金鑰<br/>可以備援嗎?"}
+  K -->|"一般金鑰"| C["fallbacks: cloud-chat<br/>請求內容離開內網"]
+  K -->|"disable_fallbacks: true<br/>或 models 只列地端"| E["回傳錯誤, 不退到雲端"]
+  C --> LOG["紀錄: 哪把金鑰, 何時, 為何退到雲端"]
+  FW["防火牆: 只有閘道區能對外連線"] -.- C
+```
+
 ### 設定範例
 
 下列設定檔定義一個地端模型與一個雲端模型, 並指定地端失敗時改用雲端.
@@ -339,6 +443,16 @@ LiteLLM 管理端的 `fallback_management` 頁面僅提供 `/fallback` 端點與
 ## M5.6 驗收測試
 
 驗收的目的是確認每道關卡真的擋得住, 而不只是設定檔寫了. 以下五項測試分別檢查閘道轉送, 配額, 網路隔離, 帳號停用與備援範圍.
+
+下圖是五項測試的順序與預期結果:
+
+```mermaid
+flowchart TD
+  T1["1. 閘道轉送<br/>介面經閘道對話正常"] --> T2["2. 配額<br/>超過 rpm_limit 回應 429"]
+  T2 --> T3["3. 網路隔離<br/>入口區連推論區 :8000 失敗<br/>閘道區連得到"]
+  T3 --> T4["4. 帳號停用<br/>各系統都無法登入"]
+  T4 --> T5["5. 備援範圍<br/>一般金鑰退到雲端<br/>敏感金鑰回傳錯誤"]
+```
 
 以下指令依各官方文件整理, `curl` 為通用工具, 未實機驗證. LiteLLM 位址以官方文件範例的 4000 連接埠為例.
 
