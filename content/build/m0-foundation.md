@@ -6,9 +6,9 @@ description: "後續每個模組都放在這一章準備的環境裡: 一台主�
 
 ::: info 本章屬性
 - 等級: ● 必要
-- 狀態: 可閱讀 (指令未實機驗證)
-- 資料基準日: 2026-10-26
-- 待查證: 本章指令與設定檔依官方文件整理, 尚未在實機執行; Proxmox VE 與 Proxmox Backup Server 的版本請以官方文件為準, 本章不列版本號; Proxmox VE 防火牆 `policy_in` 與 `policy_out` 的預設值官方文件未列出, 本章一律寫成明確設定; 各區服務的連接埠除 vLLM, Proxmox VE, Proxmox Backup Server 與 SSH 外, 請以各模組章節為準; Docker Desktop 容器能否使用 Apple GPU 本輪未查證; 標示「推論」的段落沒有官方文件依據; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 狀態: 可閱讀
+- 資料基準日: 2026-10-27
+- 實機驗證: 未進行 (本章指令與設定檔依官方文件整理, 尚未在實機執行; 需實機確認: 防火牆規則套用後各區的實際連通結果, 備份還原演練的耗時)
 :::
 
 **結論**: 後續每個模組都放在這一章準備的環境裡: 一台主機, 一個不對外開放的內網網段, 以及能還原的備份. 單人單機可以只用一台 Linux 或 Mac 加 Docker (把每個服務包成容器執行的工具); 多人共用時, 改用 Proxmox VE (在實體主機上建立多台 VM 的虛擬化平台) 以 VM 劃分信任區, 並以 Proxmox Backup Server (Proxmox 的備份伺服器) 備份 VM. 不論哪一種起點, 進入 M1 之前都要先完成一次還原演練.
@@ -66,13 +66,13 @@ flowchart TD
 
 單機起點適合一個人在自己的電腦上使用.
 
-- 作業系統用 Linux 或 macOS, 容器引擎用 Docker. 推論引擎依 M1.2 節安裝; macOS 上建議以 Ollama 原生應用程式執行推論引擎, 介面等其他元件再用 Docker (Docker Desktop 是在 Mac 與 Windows 上執行 Docker 的桌面應用程式, 其容器能否使用 Apple GPU 本輪未查證).
+- 作業系統用 Linux 或 macOS, 容器引擎用 Docker. 推論引擎依 M1.2 節安裝; macOS 上建議以 Ollama 原生應用程式執行推論引擎, 介面等其他元件再用 Docker (Docker Desktop 是在 Mac 與 Windows 上執行 Docker 的桌面應用程式). Docker 官方文件說明, 以 `--gpus` 把 GPU 交給容器的功能只支援 Windows 的 WSL 2 後端與 NVIDIA GPU; Docker 部落格也說明 Metal 沒有容器 GPU 直通, 所以 Docker Model Runner 的 Apple GPU 推論是在主機上原生執行. 因此 Mac 上的推論引擎要裝在主機上, 不放進容器 (來源: Docker 文件 GPU support, Docker 部落格 2026-02-26).
 - 所有服務只綁 127.0.0.1, 不開放給其他裝置; Docker Engine 使用 28.0.0 以上版本 (見 M0.3 節).
 - 主機若要讓內網其他裝置連入, 代表需求已接近里程碑 2, 建議同時規劃反向代理 (M2.3 節) 與主機防火牆.
 
 ### Proxmox VE 起點
 
-Proxmox VE 是安裝在實體主機上的虛擬化平台, 裝好之後用瀏覽器就能建立與管理多台 VM. 下列是安裝前要確認的硬體條件與安裝步驟.
+Proxmox VE 是安裝在實體主機上的虛擬化平台, 裝好之後用瀏覽器就能建立與管理多台 VM. 下列是安裝前要確認的硬體條件與安裝步驟. 本章不列 Proxmox VE 與 Proxmox Backup Server 的版本號, 安裝時以官方下載頁的最新穩定版為準.
 
 **硬體需求** (來源: Proxmox VE wiki System Requirements):
 
@@ -157,7 +157,7 @@ Proxmox VE 內建防火牆, 可以替主機與每台 VM 分別設定規則. 它�
 - **每張虛擬網卡各有自己的防火牆開關**, VM 層級的 `enable` 預設為 0; 資料中心層級也要啟用, VM 規則才會生效.
 - 安全群組 (security group) 是在叢集層級定義的一組規則, 可以套用到任何 VM.
 - Forward 方向的規則與 VNet 層級的規則, 只在 nftables (Linux 核心的封包過濾機制) 版的 `proxmox-firewall` 中有效; 官方文件目前將它標為技術預覽, 不適合正式環境. 因此本手冊以 VM 層級的 In 與 Out 規則控管各區 (推論, 信心: 中).
-- `policy_in` 與 `policy_out` 的預設值官方文件未列出, 設定檔中請明確寫出.
+- `policy_in` 與 `policy_out` 的預設值, 官方文件未列出 (2026-10-27 查詢); 防火牆程式 pve-firewall 的原始碼在兩者未設定時, 分別採用 DROP 與 ACCEPT, VM 層級與叢集層級相同 (來源: pve-firewall 原始碼 6.0.6 版 src/PVE/Firewall.pm). 預設值可能隨版本調整, 本手冊在設定檔中一律明確寫出.
 
 下圖是一個連入 VM 的封包, 依上述行為判斷能否通過的順序.
 
@@ -174,7 +174,7 @@ flowchart TD
 
 ### 各區允許連線對照表
 
-下表依[組裝總覽](/build/overview)的部署分區表, 列出每一區「只允許」的連入來源. 未列出的連線一律拒絕 (預設拒絕). 表中的 LiteLLM 是統一轉送模型請求的模型閘道 (M5), MCP gateway 是控管工具呼叫的工具閘道 (M7), vLLM 是跑模型的推論伺服器 (M1), LangGraph 是串接代理步驟的框架 (M8), n8n 是流程自動化平台 (M9).
+下表依[組裝總覽](/build/overview)的部署分區表, 列出每一區「只允許」的連入來源. 未列出的連線一律拒絕 (預設拒絕). 表中的 LiteLLM 是統一轉送模型請求的模型閘道 (M5), MCP gateway 是控管工具呼叫的工具閘道 (M7), vLLM 是跑模型的推論伺服器 (M1), LangGraph 是串接代理步驟的框架 (M8), n8n 是流程自動化平台 (M9). 表中只寫出 vLLM, Proxmox VE, Proxmox Backup Server 與 SSH 的連接埠, 其他服務的連接埠見各模組章節.
 
 | 目的區 | 允許的來源 | 用途 |
 |---|---|---|
@@ -370,7 +370,7 @@ pvesm status --storage <儲存名稱>
 
 **驗證**: 設定驗證工作 (verification job) 定期檢查備份資料; 官方建議至少每月重新驗證全部備份一次, 以發現位元衰減 (來源同上). 驗證通過仍不等於還原成功, 所以 M0.5 節另外要求實際還原.
 
-要再把備份同步到第二台 Proxmox Backup Server 時, 見官方文件 Managing Remotes & Sync 章節 (本輪未核對內容).
+要再把備份同步到第二台 Proxmox Backup Server 時, 使用官方的 remote 與 sync job 功能: 先在本機登記另一台伺服器 (remote, 含主機, 帳號與憑證指紋), 再建立同步工作 (sync job) 依排程把資料拉 (pull, 預設) 或推 (push) 到另一台; 官方建議每個 push 方向的同步工作使用專屬的 remote 設定 (來源: Proxmox Backup Server 文件 Managing Remotes & Sync).
 
 ### 還原
 
@@ -423,6 +423,10 @@ nmap -p 8000 <推論區 VM 位址>
 - [Proxmox Backup Server 文件: Installation](https://pbs.proxmox.com/docs/installation.html)
 - [Proxmox Backup Server 文件: Proxmox VE Integration](https://pbs.proxmox.com/docs/pve-integration.html)
 - [Proxmox Backup Server 文件: Maintenance Tasks](https://pbs.proxmox.com/docs/maintenance.html)
+- [Proxmox Backup Server 文件: Managing Remotes & Sync](https://pbs.proxmox.com/docs/managing-remotes.html)
+- [pve-firewall 原始碼 (GitHub 鏡像, 6.0.6 版, src/PVE/Firewall.pm 中 policy_in 與 policy_out 未設定時的預設處理)](https://github.com/proxmox/pve-firewall)
+- [Docker 文件: GPU support in Docker Desktop for Windows (--gpus 只支援 Windows WSL 2 與 NVIDIA)](https://docs.docker.com/desktop/features/gpu/)
+- [Docker 部落格: Docker Model Runner Brings vLLM to macOS with Apple Silicon (2026-02-26, Metal 沒有容器 GPU 直通)](https://www.docker.com/blog/docker-model-runner-vllm-metal-macos/)
 - [Docker 文件: Port publishing and mapping](https://docs.docker.com/engine/network/port-publishing/)
 - [Docker 文件: Packet filtering and firewalls](https://docs.docker.com/engine/network/packet-filtering-firewalls/)
 - [Docker 文件: docker image pull](https://docs.docker.com/reference/cli/docker/image/pull/)

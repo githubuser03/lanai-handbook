@@ -6,9 +6,9 @@ description: "Ollama 是負責載入模型並提供 API 的推論伺服器, 初�
 
 ::: info 本章屬性
 - 等級: ● 必要
-- 狀態: 可閱讀 (指令未實機驗證)
+- 狀態: 可閱讀
 - 資料基準日: 2026-10-27
-- 待查證: 本章所有指令依官方文件整理, 尚未在實機執行; llama.cpp 與 LM Studio 的操作步驟本輪未核對, 僅列定位; 標示「推論」的段落未有官方文件依據; M1.10 節的 vLLM 指令依官方文件改寫, 未實機驗證, 以 `Authorization: Bearer` 標頭帶金鑰的寫法未找到 vLLM 官方 curl 範例; vLLM 映像在唯讀模型目錄與 `HF_HUB_OFFLINE=1` 下能否完整離線啟動, 本輪未驗證; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 實機驗證: 未進行 (本章指令依官方文件整理, 尚未在實機執行; 需實機確認: vLLM 在唯讀模型目錄與 `HF_HUB_OFFLINE=1` 下能否完整離線啟動, Ollama 與介面的日誌是否含有對話內容)
 :::
 
 **結論**: Ollama 是負責載入模型並提供 API 的推論伺服器, 初階讀者用它完成第一次對話最快: 安裝, 執行一行指令, 即可開始. 完成後再依[組裝總覽](/build/overview)加上介面 (M2). 本章也整理上線前常遺漏的五項工作: GPU 驅動確認, 模型下載驗證, 離線安裝, 日誌, 以及參數調校. 多人同時使用時改用 vLLM, 見 M1.10 節.
@@ -38,10 +38,20 @@ description: "Ollama 是負責載入模型並提供 API 的推論伺服器, 初�
 | 工具 | 定位 | 適用讀者 | 本章是否提供步驟 |
 |---|---|---|---|
 | Ollama | 命令列加背景服務, 內建模型下載與管理 | 初階到中階, 想最快開始 | 是 |
-| llama.cpp (llama-server) | 底層推論引擎, 可調參數最多 | 想精細控制, 或搭配 llama-swap (依請求自動切換要載入的模型) 者 | 否 (未核對, 請讀官方文件) |
-| LM Studio | 桌面圖形介面 | 不想用命令列者 | 否 (未核對, 請讀官方文件) |
+| llama.cpp (llama-server) | 底層推論引擎, 可調參數最多 | 想精細控制, 或搭配 llama-swap (依請求自動切換要載入的模型) 者 | 只提供啟動方式 (見下方) |
+| LM Studio | 桌面圖形介面 | 不想用命令列者 | 只提供啟動方式 (見下方) |
 
 以上定位為整理者的歸納 (信心: 中). 版本資訊見[版本頁](/ref/versions).
+
+本章的完整步驟以 Ollama 為主. llama.cpp 與 LM Studio 只列出啟動本機 API 的方式, 細部參數請讀各自的官方文件. llama.cpp 可用官方 GitHub Releases 的預編譯執行檔或官方安裝腳本安裝 (來源: llama.cpp README); 其伺服器程式 llama-server 預設只監聽 127.0.0.1 的 8080 連接埠, 並提供 OpenAI 相容的對話與嵌入路由 (來源: llama.cpp server README). LM Studio 安裝桌面應用程式後, 可用它的命令列工具 `lms` 啟動本機 API 伺服器 (來源: LM Studio 開發者文件). 下列指令依上述官方文件整理, 未實機驗證:
+
+```bash
+# llama.cpp: 載入本機的 GGUF 模型檔, 預設只監聽 127.0.0.1:8080
+llama-server -m <模型檔.gguf>
+
+# LM Studio: 以命令列工具啟動本機 API 伺服器 (官方範例使用 1234 連接埠)
+lms server start --port 1234
+```
 
 下圖依上表與 M1.10 節整理選擇方式 (信心: 中).
 
@@ -132,7 +142,7 @@ flowchart TD
 
 ## M1.4 GPU 驅動確認
 
-GPU (顯示卡) 是讓模型跑得快的關鍵, 但作業系統要裝對驅動程式, 推論伺服器才看得到它. 未確認驅動時, 模型可能自動改用 CPU 執行, 速度差距很大, 且不易察覺 (信心: 高, 屬一般經驗).
+GPU (顯示卡) 是讓模型跑得快的關鍵, 但作業系統要裝對驅動程式, 推論伺服器才看得到它. 驅動沒有裝好時, 模型可能自動改用 CPU 執行, 速度差距很大, 且不易察覺 (信心: 高, 屬一般經驗).
 
 | 平台 | 條件 | 確認方式 |
 |---|---|---|
@@ -286,7 +296,7 @@ flowchart LR
 **維運建議** (信心: 中, 屬一般經驗):
 
 - 記錄日誌的保留期間與磁碟占用, 避免日誌占滿磁碟空間.
-- 先確認日誌是否含有對話內容, 再決定存取權限與保留天數 (本輪未驗證 Ollama 與介面的日誌內容).
+- 日誌是否含有對話內容, Ollama 官方 FAQ 與 Troubleshooting 文件都未說明 (2026-10-27 查詢). 部署後先實際檢查一次日誌內容, 再決定存取權限與保留天數.
 - 每週檢查時順便掃一次錯誤訊息, 特別是 GPU 偵測失敗與記憶體不足.
 - 需要更多資訊時才開啟 `OLLAMA_DEBUG=1`, 事後關閉.
 
@@ -341,7 +351,7 @@ flowchart TD
   P --> N
 ```
 
-macOS 的環境變數設定方式, Ollama 文件頁面未說明, 本輪未核對.
+macOS 上以應用程式執行 Ollama 時, 官方 FAQ 的做法是對每個環境變數執行 `launchctl setenv <變數名稱> <值>`, 設定後重新啟動 Ollama 應用程式才會生效 (來源: Ollama 文件 FAQ). 設定 `OLLAMA_HOST` 時, 同樣只綁 127.0.0.1 或內網位址, 不要綁 0.0.0.0.
 
 ## M1.9 常見錯誤排除
 
@@ -449,7 +459,7 @@ docker run -d --name vllm --restart always \
 | `-p <內網位址>:8000:8000` | 只在推論區 VM 的內網介面發布; 8000 是 vLLM 預設連接埠 | Docker 文件 Port publishing and mapping; vLLM 文件 CLI serve |
 | `-v /mnt/models:/models:ro` | 以唯讀方式掛載 M3 的模型存放區, 容器無法改動模型檔 | Docker 文件 Bind mounts; 見 M3.3 節 |
 | `--model /models/...` | `--model` 接受 Hugging Face 模型名稱或路徑; 改指向存放區內含 revision 的路徑, 不從網路下載 | vLLM 文件 Engine Arguments |
-| `HF_HUB_OFFLINE=1` | 不對 Hugging Face Hub 發出任何 HTTP 請求 | Hugging Face 文件 Environment variables |
+| `HF_HUB_OFFLINE=1` | 不對 Hugging Face Hub 發出任何 HTTP 請求; vLLM 官方文件未說明這個設定加上唯讀模型目錄能否完整離線啟動 (2026-10-27 查詢), 第一次部署時在沒有對外連線的環境實際啟動確認 | Hugging Face 文件 Environment variables |
 | `--env-file ./.env` 中的 `VLLM_API_KEY` | 與 `--api-key` 等效; 以環境變數檔傳入, 金鑰不出現在指令參數與行程清單中 | vLLM 文件 Security, Quickstart; Docker 文件 docker container run |
 | `@sha256:<摘要值>` | 以摘要值鎖定映像, 不使用官方範例的 `latest` | Docker 文件 docker image pull; 見 O2 |
 | `--served-model-name` | API 中使用的模型名稱; 未設定時沿用 `--model` 的值 | vLLM 文件 Engine Arguments |
@@ -543,7 +553,7 @@ Prometheus 是開源的監控系統, 會定期向各服務讀取數值 (指標),
 
 ### 驗收測試
 
-指令依 vLLM 文件 Quickstart 與 Metrics 的範例改寫, 未實機驗證. 金鑰放在 `Authorization: Bearer` 標頭是 OpenAI 相容 API 的慣例; vLLM 文件只說明金鑰須放在標頭中, 本輪未找到官方的 curl 範例.
+指令依 vLLM 文件 Quickstart 與 Metrics 的範例改寫, 未實機驗證. 金鑰以 `Authorization: Bearer <金鑰>` 標頭帶入; vLLM 官方文件的範例說明, 伺服器設定 `--api-key` 或 `VLLM_API_KEY` 時, 請求要加上這個標頭 (來源: vLLM 原始碼庫 docs/serving/online_serving/renderer.md).
 
 ```bash
 # 從閘道區: 帶金鑰應成功, 不帶金鑰應回應錯誤
@@ -632,6 +642,10 @@ flowchart TD
 - [vLLM 文件: Online Serving](https://docs.vllm.ai/en/latest/serving/online_serving/)
 - [vLLM 文件: Metrics](https://docs.vllm.ai/en/latest/usage/metrics/)
 - [vLLM GitHub Security Advisories](https://github.com/vllm-project/vllm/security/advisories)
+- [vLLM 原始碼庫 (docs/serving/online_serving/renderer.md: 設定 --api-key 時以 Authorization: Bearer 標頭帶入)](https://github.com/vllm-project/vllm)
+- [llama.cpp README (安裝方式)](https://github.com/ggml-org/llama.cpp)
+- [llama.cpp server README (llama-server 預設 127.0.0.1:8080, OpenAI 相容路由)](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
+- [LM Studio 開發者文件 (lms server start)](https://www.lmstudio.ai/docs/developer)
 - [vLLM GitHub Security Advisory: GHSA-3c86-2m5g-59q7](https://github.com/vllm-project/vllm/security/advisories/GHSA-3c86-2m5g-59q7)
 - [Hugging Face 文件: Environment variables](https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables)
 - [Docker 文件: GPU access](https://docs.docker.com/engine/containers/gpu/)
