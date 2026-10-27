@@ -6,9 +6,9 @@ description: "代理讓模型自己決定下一步要呼叫哪個工具, 所以�
 
 ::: info 本章屬性
 - 等級: ◇ 進階
-- 狀態: 可閱讀 (指令未實機驗證)
-- 資料基準日: 2026-10-26
-- 待查證: Rego 政策, 測試與 LangGraph 程式片段依官方文件撰寫, 未實機執行; 隔離模型的結構檢查, 斷路器, kill switch 與 A2 雙模型審查為整理者的設計建議 (推論); M8.4 節的模擬結果為內部研究紀錄, 模型判斷與分析師行為為腳本模擬; M8.1 節「LangGraph Platform 改名」的說法未查到官方原文; M8.5 節的每代理白名單政策, 共用配額與信任邊界為設計建議, 未實機驗證, `Send` 與 `max_concurrency` 僅有社群討論串為據, `max_parallel_requests` 在 `/key/generate` 的欄位名稱待實機確認; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 狀態: 可閱讀
+- 資料基準日: 2026-10-27
+- 實機驗證: 未進行 (Rego 政策與測試依 OPA 官方文件撰寫, 未以 OPA 實際執行; LangGraph 人工核准片段依官方文件與原始碼撰寫, 未接真實模型與工具執行)
 :::
 
 **結論**: 代理讓模型自己決定下一步要呼叫哪個工具, 所以每個動作都要在模型之外再檢查一次. 本手冊的做法是: LangGraph 負責流程控制, OPA 負責政策判定, 讀取不可信內容的工作交給沒有工具的隔離模型. 需要多個代理同時執行或協作時, 見 M8.5 節.
@@ -36,7 +36,7 @@ description: "代理讓模型自己決定下一步要呼叫哪個工具, 所以�
 LangGraph 負責代理的流程控制: 每一步做什麼, 下一步走哪裡, 哪裡要停下來等人核准. 它有開源函式庫與商業平台兩種用法, 本節說明為何選函式庫.
 
 - 程式庫採 MIT 授權, 可完全地端執行, 無商業限制 (來源: LangGraph GitHub 儲存庫).
-- LangSmith Deployment 是 LangChain 公司代管與部署代理的商業平台 (舊稱 LangGraph Platform; 改名說法為訓練資料內資訊, 可能已過時). 官方文件寫明, 自架部署需要 Enterprise 方案與隨方案提供的 LangSmith 授權金鑰 (來源: LangChain 文件 Self-hosted deployment overview).
+- LangSmith Deployment 是 LangChain 公司代管與部署代理的商業平台 (舊稱 LangGraph Platform; 官方產品頁寫明自 2025 年 10 月起改名為 LangSmith Deployment). 官方文件寫明, 自架部署需要 Enterprise 方案與隨方案提供的 LangSmith 授權金鑰 (來源: LangChain 文件 Self-hosted deployment overview).
 - 因此本手冊建議把 LangGraph 當函式庫, 嵌入自己的 FastAPI (以 Python 撰寫 API 服務的框架) 或腳本 (信心: 高).
 - 需要理解狀態圖, 檢查點與節點等概念, 對初階讀者偏陡 (信心: 中, 屬推論).
 
@@ -379,9 +379,9 @@ flowchart TD
   K --> K3["工具閘道撤銷代理的身分或金鑰"]
 ```
 
-### 內部模擬結果
+### 控制的效果要以自己的測試資料確認
 
-2026-10 的一次藍隊代理模擬 (使用真實的 LangGraph 1.2.17 與 OPA 1.4.2, 模型判斷與分析師行為以腳本模擬) 顯示: 沒有政策層時, 16 項注入攻擊全部得逞; 加上預設拒絕, 關鍵資產清單, 單次工具配額 (`siem.query` 每次執行上限 30 次) 與斷路器之後, 16 項中有 15 項由確定性規則擋下, 1 項由分析師拒絕; 政策判定延遲的中位數為 0.82 毫秒 (內部模擬, 推論). 這個結果的限制是模型判斷與分析師行為皆為模擬, 不代表真實模型與真實人員的表現; 讀者應以 M8.5 節的方法, 用自己的工具與測試資料重做.
+預設拒絕, 關鍵資產清單, 單次配額與斷路器屬確定性規則: 只要動作落在規則涵蓋的範圍內, 不論模型輸出什麼, 判定結果都相同; 規則沒有涵蓋的動作, 仍取決於隔離模型的結構檢查與人工核准 (推論, 信心: 中). 這些控制合起來能擋下多少注入, 公開資料查無可直接套用的量化結果 (2026-10-27 查詢), 結果也會隨工具清單, 規則內容與測試資料而不同. 讀者應以 M8.6 節的提示注入測試, 用自己的工具與測試資料逐項確認: 先在沒有政策層的情況下記錄哪些有害動作會執行, 再逐一加上各項控制, 比較每一步擋下的項目, 並以 OPA 的決策紀錄 (見 M8.2 節) 核對判定原因.
 
 ## M8.5 多代理: 同時執行與協作
 
@@ -407,7 +407,7 @@ flowchart TD
 
 並行之後, 稽核與切斷都以「代理」為單位, 因此每個代理要有自己的身分與權限, 不共用:
 
-1. **各用一把虛擬金鑰**: 在 LiteLLM 為每個代理各發一把 (`/key/generate` 的做法見 M5.6 節的驗收測試), 設定自己的 `rpm_limit`, `tpm_limit` 與 `max_parallel_requests`. 官方文件說明這些限制對任何設定了它們的金鑰, 使用者或團隊都生效; 金鑰超過預算 (`max_budget`) 後請求會失敗, 但預設不檢查預算 (來源: LiteLLM 文件 Virtual Keys 與 Users). `max_parallel_requests` 在 `/key/generate` 的欄位名稱, 官方頁面的範例未直接展示, 實機驗證時請確認 (待查證).
+1. **各用一把虛擬金鑰**: 在 LiteLLM 為每個代理各發一把 (`/key/generate` 的做法見 M5.6 節的驗收測試), 設定自己的 `rpm_limit`, `tpm_limit` 與 `max_parallel_requests`. 官方文件說明這些限制對任何設定了它們的金鑰, 使用者或團隊都生效; 金鑰超過預算 (`max_budget`) 後請求會失敗, 但預設不檢查預算 (來源: LiteLLM 文件 Virtual Keys 與 Users). `/key/generate` 接受 `max_parallel_requests` 欄位, 同時進行的請求超過上限時回應 429 (來源: LiteLLM 原始碼 key_management_endpoints.py 的參數說明, 2026-10-26 版).
 2. **各設工具範圍**: MCP 權限依金鑰, 團隊與組織設定 (來源: LiteLLM MCP 文件); 沒有設定伺服器清單時預設全部可連, 設定方式見 M7.2 節的表格. 每個代理的金鑰只列它需要的伺服器與工具.
 3. **OPA 以代理編號判定**: 呼叫 OPA 時帶入 `agent_id`, 政策依代理查白名單. `agent_id` 由 LangGraph 服務依自己的設定填入, 不取自模型輸出, 也不取自代理之間傳遞的訊息 (設計建議, 信心: 高).
 
@@ -452,7 +452,7 @@ LangChain 官方的 supervisor 遷移說明指出, `langgraph-supervisor` 套件
 - 子圖設為「每個執行緒保留狀態」(`checkpointer=True`) 時, 不支援對同一個子圖的平行呼叫, 否則會發生 checkpoint 衝突.
 - 多個這類子圖在節點內呼叫時, 各自要用獨立的節點名稱, 避免 checkpoint 相互覆蓋.
 
-動態展開多個平行分支, 社群討論串提到可用 `Send`, 並以 `max_concurrency` 控制同時數量 (二手來源, 為社群論壇討論, 實際行為待對照官方文件).
+動態展開多個平行分支時, 可在條件邊回傳多個 `Send`: LangGraph 原始碼說明, `Send` 讓同一個節點以不同的狀態平行執行多次, 再把結果彙整回主圖, 也就是 map-reduce 的做法. 同時執行的數量以呼叫時 config 的 `max_concurrency` 限制: 非同步執行 (`ainvoke`, `astream`) 時以 semaphore 控制, 同步執行時交給執行緒池 (來源: LangGraph 原始碼 types.py 與 pregel/_executor.py, 2026-10-26 版). 上限應與 M8.5 的代理配額和 vLLM 的同時請求數一起規劃 (推論, 信心: 中).
 
 固定流程協作的示意如下 (依上述文件整理的設計, 未實機驗證):
 
@@ -556,9 +556,13 @@ flowchart TD
 - [OWASP GenAI: LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
 - [LangGraph 文件: Subgraphs](https://docs.langchain.com/oss/python/langgraph/use-subgraphs)
 - [LangChain 文件: Migrate from langgraph-supervisor](https://docs.langchain.com/oss/python/migrate/langgraph-supervisor.md)
-- [LangChain 社群論壇: Best practices for parallel nodes (fanouts)](https://forum.langchain.com/t/best-practices-for-parallel-nodes-fanouts/1900.md) (二手來源, 社群討論)
+- [LangGraph 原始碼: types.py (Send)](https://github.com/langchain-ai/langgraph/blob/858891a/libs/langgraph/langgraph/types.py)
+- [LangGraph 原始碼: pregel/_executor.py (max_concurrency)](https://github.com/langchain-ai/langgraph/blob/858891a/libs/langgraph/langgraph/pregel/_executor.py)
+- [LiteLLM 原始碼: key_management_endpoints.py (/key/generate 參數說明)](https://github.com/BerriAI/litellm/blob/c905cd0/litellm/proxy/management_endpoints/key_management_endpoints.py)
+- [LangChain 產品頁: LangSmith Deployment (FAQ: LangGraph Platform 已改名)](https://www.langchain.com/langsmith/deployment)
 - [LiteLLM 文件: Virtual Keys, Budgets, Rate Limits](https://docs.litellm.ai/docs/proxy/users)
 - [LiteLLM 文件: MCP](https://docs.litellm.ai/docs/mcp)
 - [vLLM 文件: Optimization and Tuning](https://docs.vllm.ai/en/latest/configuration/optimization/)
 - [OWASP GenAI Security Project: Top 10 for Agentic Applications](https://genai.owasp.org/2025/12/09/owasp-top-10-for-agentic-applications-the-benchmark-for-agent)
+- 整理者的設計與判斷 (推論, 無外部來源): 隔離模型的結構檢查, 斷路器, kill switch 與 A2 雙模型審查的做法, M8.5 節的每代理白名單, 共用配額與信任邊界; M8.4 節「控制的效果要以自己的測試資料確認」為整理者依規則性質所做的判斷 (信心: 中).
 - 文中的類比 (新進同仁的授權範圍, 簽核規章, 郵件室的制式登記表, 電路開關): 整理者所寫, 無外部來源, 不應當作技術定義引用.

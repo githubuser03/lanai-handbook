@@ -6,9 +6,9 @@ description: "初階讀者不需要追蹤平台, 需要的是一份 30 至 100 �
 
 ::: info 本章屬性
 - 等級: ● 必要 (測試集); ○ 依情境 (追蹤平台)
-- 狀態: 可閱讀 (部分資料待核對)
-- 資料基準日: 2026-10-26
-- 待查證: M6.2 節 promptfoo 範例未實機驗證, 收購案完成日期未確認; OpenTelemetry GenAI 語意規範的最新狀態; M6.4 與 M6.5 節的 Langfuse, OTel Collector, Prometheus 設定與指令未實機驗證; Langfuse 開源版的組織層級角色範圍, 以及 OTLP 端點是否接收指標與日誌, 官方文件未寫明; llama-server `/metrics` 是否受 `--api-key` 保護未確認; Open WebUI OTel 軌跡的欄位內容未確認; OPA 政策判定紀錄的送出方式待 M8 定案; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 狀態: 可閱讀
+- 資料基準日: 2026-10-27
+- 實機驗證: 未進行 (M6.2 節 promptfoo 範例, M6.4 與 M6.5 節的 Langfuse, OTel Collector, Prometheus 設定與指令依官方文件整理)
 :::
 
 **結論**: 初階讀者不需要追蹤平台, 需要的是一份 30 至 100 題的固定測試集. 每次換模型, 換提示或升級元件時跑一次, 就能回答「變好還是變壞」(信心: 高). 多人共用之後, 再加上可觀測與稽核平台, 記錄誰在什麼時候讓 AI 做了什麼.
@@ -79,7 +79,7 @@ T2 微調後的驗證, 沿用同一份測試集.
 
 promptfoo 的用途是把測試集自動跑一遍, 並比較不同模型或提示的結果, 省去逐題手動貼上的工作.
 
-promptfoo 是命令列工具, 不需要常駐服務, 採 MIT 授權. OpenAI 於 2026-03-09 宣布收購, 官方聲明 "remains open source under MIT" (來源: 研究 2 引用之官方聲明). 收購案的完成日期未能確認; 長期所有權變動屬鎖定風險, 須持續追蹤 (信心: 中).
+promptfoo 是命令列工具, 不需要常駐服務, 採 MIT 授權. OpenAI 於 2026-03-09 宣布收購 (TechCrunch 報導, 二手來源); promptfoo 官網的 About 頁寫明 "Promptfoo is now part of OpenAI" 與 "Promptfoo remains open source", 程式庫的 LICENSE 仍為 MIT (2026-10-27 查詢). 交易完成的確切日期, 官方頁面沒有寫明 (2026-10-27 查詢). 所有權變動可能影響日後的授權與維護方向, 升級前先看 LICENSE 與發行說明 (推論, 信心: 中).
 
 下列最小可行步驟依 promptfoo 官方文件 Installation, Getting Started 與 OpenAI provider 整理, 未實機驗證. 設定檔語法會隨版本變動, 升級後請對照官方文件.
 
@@ -206,12 +206,12 @@ flowchart TD
 
 **部署方式**: Docker Compose 是用一個設定檔同時啟動多個容器的工具, Kubernetes 是管理大量容器的叢集平台 (Helm 是它的套件管理工具). 官方把 Docker Compose 定位為本機使用與測試, 標示為單一 VM, 沒有高可用, 擴充與備份; 正式環境的選項為 Kubernetes (Helm) 與各雲端平台 (來源: 同上). 依官方 Docker Compose 文件, 步驟為 `git clone https://github.com/langfuse/langfuse.git`, 進入目錄後修改所有標示 `# CHANGEME` 的機密值, 再執行 `docker compose up`. 介面在 3000 連接埠; worker (3030), MinIO 主控台 (9091) 與資料庫只綁 127.0.0.1 (來源: Langfuse 文件 Docker Compose). 但官方 compose 檔中, Web 介面的 `3000:3000` 與 MinIO API 的 `9090:9000` 沒有指定位址, 會綁定主機所有介面; 映像也使用浮動標籤 (例如 `langfuse:4`) (來源: Langfuse GitHub 儲存庫 docker-compose.yml). 部署到稽核區時, 這兩個連接埠改綁稽核區的內網位址並以防火牆限制來源, 所有 `CHANGEME` 的值都要替換, 映像改以摘要值鎖定 (見 M0.3 節). 本手冊的稽核區若採 Docker Compose, 須自行排程備份 PostgreSQL, ClickHouse 與 MinIO 的資料卷 (見 O1) (推論, 信心: 中).
 
-**OTLP 端點**: Langfuse 在 `/api/public/otel` 接收軌跡, 只支援 OTLP over HTTP (JSON 與 protobuf), 不支援 gRPC. 驗證方式為 HTTP Basic, 值是「public key:secret key」的 base64 編碼. 這個端點從 Langfuse v3.22.0 開始提供, 自架版本至少要 v3.22.0 (來源: Langfuse 文件 OpenTelemetry). 官方文件只描述接收軌跡, 沒有說明是否接收指標與日誌, 因此本手冊只把軌跡送進 Langfuse.
+**OTLP 端點**: Langfuse 在 `/api/public/otel` 接收軌跡, 只支援 OTLP over HTTP (JSON 與 protobuf), 不支援 gRPC. 驗證方式為 HTTP Basic, 值是「public key:secret key」的 base64 編碼. 這個端點從 Langfuse v3.22.0 開始提供, 自架版本至少要 v3.22.0 (來源: Langfuse 文件 OpenTelemetry). 官方文件只寫明這個端點接收軌跡 (trace 端點為 `/api/public/otel/v1/traces`), 沒有提到指標與日誌 (2026-10-27 查詢), 因此本手冊只把軌跡送進 Langfuse, 指標交給 Prometheus, 日誌交給 SIEM.
 
 **存取權限**: Langfuse 存放完整的提示與回應, 敏感程度等同對話資料庫 (推論, 信心: 高). 建議如下:
 
 - 以 `AUTH_DISABLE_SIGNUP=true` 關閉自行註冊, 並以 Keycloak (集中管理帳號與登入的身分驗證伺服器) 單一登入 (見 M5.4 節).
-- 角色分為 Owner, Admin, Member, Viewer, None. 官方文件標示, 自架環境的專案層級角色屬於企業版 (Enterprise Edition) (來源: Langfuse 文件 RBAC). 只用開源版時, 權限只能以組織層級控管, 應只把需要看軌跡的人加入組織 (推論, 信心: 中).
+- 角色分為 Owner, Admin, Member, Viewer, None. 官方文件標示, 自架環境的專案層級角色屬於企業版 (Enterprise Edition) (來源: Langfuse 文件 RBAC). Langfuse 自架價格頁的開源版功能列有「Enterprise SSO and RBAC」, 企業版另加專案層級 RBAC 與稽核紀錄 (來源: Langfuse 自架價格頁). 因此開源版可用組織層級的角色, 專案層級的權限要企業版; 只用開源版時, 應只把需要看軌跡的人加入組織 (推論, 信心: 中).
 - 3000 連接埠只對管理者網段開放, 不對一般使用者網段開放.
 
 **資料保存期限**: Langfuse 的資料保存設定以專案為單位, 最少 3 天; 但官方標示自架環境的這項功能屬於企業版, 沒有設定時資料會無限期保存 (來源: Langfuse 文件 Data Retention). 只用開源版時, 可改以介面或 API 刪除軌跡 (`DELETE /api/public/traces/{traceId}` 刪除單筆, `DELETE /api/public/traces` 批次刪除) (來源: Langfuse 文件 Data Deletion), 再以排程定期執行 (推論, 信心: 中). 保存天數由公司資料保存政策決定, 本手冊不提供建議值.
@@ -285,8 +285,10 @@ service:
 **送進 Collector 的來源**:
 
 - **LiteLLM**: 以環境變數 `LITELLM_OTEL_V2=true`, `OTEL_EXPORTER="otlp_http"`, `OTEL_ENDPOINT="http://<Collector>:4318"` 開啟 (來源: LiteLLM 文件 OpenTelemetry v2). LiteLLM 也有直接送 Langfuse 的 `langfuse_otel` callback, 但經 Collector 才能同一份資料同時送 SIEM (推論).
-- **Open WebUI**: `ENABLE_OTEL` 與 `ENABLE_OTEL_TRACES` 預設為 `False`; `OTEL_EXPORTER_OTLP_ENDPOINT` 預設為 `http://localhost:4317` (來源: Open WebUI 文件 Environment Variable Configuration). 改指向 Collector 即可. Open WebUI 送出的軌跡包含哪些欄位, 本輪未確認.
-- **政策判定 (OPA)**: OPA 是判定代理動作能否執行的政策引擎, 紀錄由 M8 的代理服務送出; 格式與送出方式待 M8 定案.
+- **Open WebUI**: `ENABLE_OTEL` 與 `ENABLE_OTEL_TRACES` 預設為 `False`; `OTEL_EXPORTER_OTLP_ENDPOINT` 預設為 `http://localhost:4317` (來源: Open WebUI 文件 Environment Variable Configuration). 改指向 Collector 即可. 依 Open WebUI 原始碼 (2026-10-25 版), 它以 OpenTelemetry 的通用儀表化套件記錄 FastAPI 請求, SQLAlchemy 資料庫操作, Redis 指令與對外的 HTTP 請求, 欄位為網址, 方法, 狀態碼與資料庫操作; 其中 Redis 的欄位包含完整指令與參數. 原始碼中沒有記錄模型名稱或 token 用量的 GenAI 欄位, 這類資料以 LiteLLM 送出的軌跡為準. Redis 指令可能含有對話相關的資料, Collector 端可先刪除 `db.statement` 欄位再轉送 (推論, 信心: 中).
+- **政策判定 (OPA)**: OPA 是判定代理動作能否執行的政策引擎, 紀錄由 OPA 的 decision log 功能送出, 格式, 遮罩與送往 SIEM 的方式見 M8.2 節.
+
+LLM 專用的軌跡欄位 (例如 `gen_ai.*`) 由 OpenTelemetry 的 GenAI 語意規範定義. 這份規範已移到獨立的 semantic-conventions-genai 儲存庫, 截至 2026-10-27 尚無版本標籤 (以 git 查詢), 第三方說明指出各欄位仍屬 Development 階段 (Dash0, 二手來源). 因此各工具送出的欄位名稱可能隨版本變動; 升級 LiteLLM 或 Collector 後, 先確認 Langfuse 與 SIEM 端的欄位對應仍然正確 (推論, 信心: 中).
 
 ### Prometheus 與 Grafana
 
@@ -297,7 +299,7 @@ Prometheus 每隔幾秒向各服務詢問一次目前的數值 (例如有幾個�
 | 元件 | 指標端點 | 重點指標 | 注意事項 |
 |---|---|---|---|
 | vLLM | OpenAI 相容 API 伺服器的 `/metrics` (來源: vLLM 文件 Production Metrics) | `vllm:num_requests_running`, `vllm:num_requests_waiting`, `vllm:kv_cache_usage_perc` (gauge); `vllm:time_to_first_token_seconds`, `vllm:e2e_request_latency_seconds` (histogram) | vLLM 安全文件把 `/metrics` 列為即使設定 `--api-key` 也不需金鑰的端點 (來源: vLLM 文件 Security) |
-| llama-server | 啟動時加 `--metrics` (環境變數 `LLAMA_ARG_ENDPOINT_METRICS`) 才有 `/metrics`, 預設關閉 (來源: llama.cpp server README) | `llamacpp:requests_processing`, `llamacpp:requests_deferred`, `llamacpp:predicted_tokens_seconds`, `llamacpp:tokens_predicted_total` | `/metrics` 是否檢查 `--api-key`, 本輪未確認 |
+| llama-server | 啟動時加 `--metrics` (環境變數 `LLAMA_ARG_ENDPOINT_METRICS`) 才有 `/metrics`, 預設關閉 (來源: llama.cpp server README) | `llamacpp:requests_processing`, `llamacpp:requests_deferred`, `llamacpp:predicted_tokens_seconds`, `llamacpp:tokens_predicted_total` | 設定 `--api-key` 後, `/metrics` 也要帶金鑰: 依 llama.cpp 原始碼 (b11913), 免金鑰的端點只有 `/health`, `/v1/health` 與內建網頁介面的靜態檔案 |
 | Ollama | 官方 API 文件沒有列出指標端點 (來源: Ollama API 文件) | 回應中帶 `eval_count`, `eval_duration`, `total_duration` 等欄位 | 改在閘道層蒐集 |
 | LiteLLM (閘道層) | 在 `litellm_settings` 加 `callbacks: ["prometheus"]` 後, 提供 `/metrics` (來源: LiteLLM 文件 Prometheus metrics) | `litellm_request_total_latency_metric` (histogram), `litellm_proxy_total_requests_metric` | 自 v1.85.0 起 `/metrics` 預設需要 LiteLLM API 金鑰 (同上) |
 
@@ -446,4 +448,11 @@ flowchart TD
 - [Prometheus 文件: Alertmanager configuration](https://prometheus.io/docs/alerting/latest/configuration/)
 - [Alertmanager README](https://github.com/prometheus/alertmanager/blob/main/README.md)
 - [Grafana 文件: Prometheus data source](https://grafana.com/docs/grafana/latest/datasources/prometheus/)
+- [promptfoo 官網: About ("Promptfoo is now part of OpenAI", 2026-10-27 查詢)](https://www.promptfoo.dev/about)
+- [TechCrunch: OpenAI acquires Promptfoo to secure its AI agents (2026-03-09, 二手來源)](https://techcrunch.com/2026/03/09/openai-acquires-promptfoo-to-secure-its-ai-agents/embed/)
+- [Langfuse 自架價格頁 (開源版與企業版功能)](https://langfuse.com/pricing-self-host)
+- [llama.cpp 原始碼: server-http.cpp (API 金鑰檢查與免金鑰端點, b11913)](https://github.com/ggml-org/llama.cpp/blob/b11913/tools/server/server-http.cpp)
+- [Open WebUI 原始碼: telemetry/instrumentors.py (OTel 儀表化與欄位, 2026-10-25 版)](https://github.com/open-webui/open-webui/blob/33c1978/backend/open_webui/utils/telemetry/instrumentors.py)
+- [GitHub: open-telemetry/semantic-conventions-genai](https://github.com/open-telemetry/semantic-conventions-genai)
+- [Dash0: OpenTelemetry GenAI semantic conventions explained (2026-09-14, 二手來源)](https://www.dash0.com/knowledge/opentelemetry-genai-semantic-conventions-explained)
 - 文中的類比 (固定考卷, 行車紀錄器與儀表板, 郵件分揀中心): 整理者所寫, 無外部來源, 不應當作技術定義引用.

@@ -6,9 +6,9 @@ description: "工具讓模型能讀寫系統, 也是風險最集中的地方. �
 
 ::: info 本章屬性
 - 等級: ◇ 進階
-- 狀態: 可閱讀 (指令未實機驗證)
-- 資料基準日: 2026-10-26
-- 待查證: 本章指令與設定檔依官方文件整理, 未實機執行; MCP 授權規範細節未逐條驗證; M7.1 節事件表的 postmark-mcp 一筆引自二手報導; ToolHive vMCP 的命令列操作步驟未核對; `thv run` 以摘要值指定映像的寫法未見官方示範; Open WebUI 連 LiteLLM 時能否設定 `x-litellm-api-key` 標頭未核對; Open Terminal 能否以 gVisor 執行未驗證; gVisor 效能額外負擔未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 狀態: 可閱讀
+- 資料基準日: 2026-10-27
+- 實機驗證: 未進行 (本章指令與設定檔依官方文件整理; 需實機確認: gVisor 在自己工作負載下的效能負擔, Open Terminal 改以 runsc 執行能否正常運作, Open WebUI 連線設定中的自訂標頭欄位位置)
 :::
 
 **結論**: 工具讓模型能讀寫系統, 也是風險最集中的地方. 所有工具都放在獨立的 VM 工具區, 經同一個工具閘道 (MCP gateway) 呼叫; 會執行程式碼的工具一律放進沙箱. 唯一的例外是 Open WebUI 的 Open Terminal 整合, 官方只支援由介面直連 (見 M7.4 節). 工具只有幾個時, 可以由 LiteLLM (M5 的模型閘道) 兼任工具閘道.
@@ -52,7 +52,7 @@ MCP 伺服器多半由第三方開發, 安裝一個 MCP 伺服器, 等於讓一�
 | 2025-04 | Invariant Labs 公開工具投毒 (tool poisoning) 攻擊: 在工具描述中藏入使用者看不到的指令, 示範讓模型讀取 `~/.ssh/id_rsa` 等檔案並送出 | Invariant Labs 部落格 |
 | 2025-06 | 官方 MCP Inspector (開發者測試 MCP 伺服器用的除錯工具) 缺乏驗證, 可經惡意網頁執行程式碼 | GitHub Security Advisory (CVE 與修補版本見[版本頁](/ref/versions)) |
 | 2025-07 | mcp-remote (讓只支援本機連線的客戶端連上遠端 MCP 伺服器的轉接套件) 連到惡意伺服器時, 可被注入作業系統命令 | NVD (CVE 與修補版本見[版本頁](/ref/versions)) |
-| 2025-09 | npm (JavaScript 套件平台) 上仿冒的 postmark-mcp 套件在新版本加入後門, 把寄出的郵件副本轉寄給攻擊者; 發現者 Koi Security 稱這是首次在實際環境發現的惡意 MCP 伺服器 | The Hacker News (二手來源) |
+| 2025-09 | npm (JavaScript 套件平台) 上仿冒的 postmark-mcp 套件在新版本加入後門, 把寄出的郵件副本轉寄給攻擊者; 發現者 Koi Security 稱這是首次在實際環境發現的惡意 MCP 伺服器 | The Hacker News (二手來源; Koi Security 的原始文章網址已轉址至其他網站, 2026-10-27 無法擷取) |
 | 2026-06 | Miasma 蠕蟲擴散到 73 個 Microsoft GitHub 儲存庫, 在 Claude Code, Cursor, VS Code 等 AI 開發工具的設定檔植入後門, 開發者開啟專案時自動執行 | Cloud Security Alliance 研究筆記 |
 
 另有研究 "MCP at First Glance" (arXiv:2506.13538) 分析 1,899 個開源 MCP 伺服器, 摘要指出 7.2% 含一般漏洞, 5.5% 有 MCP 特有的工具投毒 (來源: 該論文摘要).
@@ -108,7 +108,7 @@ sequenceDiagram
 
 ### 擺放方式
 
-ToolHive 是管理 MCP 伺服器的開源工具 (細節見下一小節). 它的命令列工具 `thv` 會在本機的容器執行環境 (Docker, Podman 或 Colima, 三者都能在本機執行容器) 為每個 MCP 伺服器啟動一個容器, 並在前面加一個 HTTP proxy (來源: ToolHive CLI quickstart). 因此本手冊把 `thv` 與 MCP 伺服器容器放在 VM 工具區; 閘道區保留單一入口, 由 ToolHive 的 Virtual MCP Server (vMCP, 將多個 MCP 伺服器匯整為一個端點) 或 LiteLLM 的 MCP gateway 擔任 (推論, 信心: 中). vMCP 的命令列用法官方另有指南, 本輪只核對了概念頁, 未核對操作步驟.
+ToolHive 是管理 MCP 伺服器的開源工具 (細節見下一小節). 它的命令列工具 `thv` 會在本機的容器執行環境 (Docker, Podman 或 Colima, 三者都能在本機執行容器) 為每個 MCP 伺服器啟動一個容器, 並在前面加一個 HTTP proxy (來源: ToolHive CLI quickstart). 因此本手冊把 `thv` 與 MCP 伺服器容器放在 VM 工具區; 閘道區保留單一入口, 由 ToolHive 的 Virtual MCP Server (vMCP, 將多個 MCP 伺服器匯整為一個端點) 或 LiteLLM 的 MCP gateway 擔任 (推論, 信心: 中). vMCP 在單機上以 `thv vmcp init`, `validate`, `serve` 三個子命令操作, 見下方「vMCP 單機模式」.
 
 下圖最上方是呼叫工具的一方: 對話介面 Open WebUI, 代理框架 LangGraph 與流程自動化平台 n8n.
 
@@ -154,7 +154,7 @@ thv run \
   <映像名稱>@sha256:<摘要值>
 ```
 
-映像以摘要值指定是本手冊的版本鎖定原則 (見 K6.2 節); `thv run` 參考文件說明參數接受映像參照, 但官方頁面沒有直接示範摘要值寫法, 須實機確認.
+映像以摘要值指定是本手冊的版本鎖定原則 (見 K6.2 節). 官方 `thv run` 參考頁沒有直接示範摘要值寫法; 依 ToolHive 原始碼 (2026-10-26 版), 映像參照接受「標籤@摘要值」與只有摘要值兩種寫法, 拉取時改由 Docker daemon 直接處理, 因此可寫成 `<映像>@sha256:<摘要值>`.
 
 **Cedar 授權檔** (格式依官方 Authentication 指南的範例; 只允許呼叫 `search_tickets` 一個工具):
 
@@ -188,6 +188,17 @@ thv run \
 ```
 
 ToolHive 的網路隔離靠注入 `HTTP_PROXY` 與 `HTTPS_PROXY` 環境變數, 把對外流量導向 egress proxy; 不讀這兩個變數的伺服器會連線失敗 (來源: Network isolation 指南). 因此 VM 工具區的防火牆仍須限制對外連線, 不能只靠 ToolHive (推論, 信心: 中).
+
+**vMCP 單機模式**: 不使用 Kubernetes 時, `thv vmcp` 子命令可在本機執行 vMCP, 把一個 ToolHive 群組中的多個 MCP 伺服器彙整成單一端點. 它有三個子命令: `thv vmcp init` 依執行中的群組產生設定檔範本, `thv vmcp validate` 檢查設定檔, `thv vmcp serve` 啟動彙整後的伺服器, 架構文件中的範例監聽 4483 連接埠 (來源: ToolHive 架構文件 Local vMCP CLI Mode). 對外提供時, 同樣綁工具區的內網位址, 並以 M5.4 節的 OIDC 驗證身分.
+
+**MCP 授權規範的要點**: MCP 規範 (2026-07-28 版) 把授權定為選用; 採 HTTP 傳輸並啟用授權時, 建議遵循規範, 使用 stdio 的本機伺服器則改從環境變數取得憑證. 規範的主要要求如下 (來源: MCP 規範 Authorization):
+
+- 授權伺服器採 OAuth 2.1; MCP 伺服器必須提供 OAuth 2.0 Protected Resource Metadata (RFC 9728), 告訴用戶端該向哪個授權伺服器取得權杖.
+- 用戶端在授權與換取權杖時, 必須以 `resource` 參數 (RFC 8707) 指明要使用的 MCP 伺服器; MCP 伺服器必須確認權杖是發給自己的, 不接受發給其他服務的權杖, 也不可把收到的權杖轉送給下游服務.
+- 權杖放在每個請求的 `Authorization: Bearer` 標頭, 不可放在網址; 無效或過期的權杖回應 401, 權限不足回應 403.
+- 動態用戶端註冊 (Dynamic Client Registration) 已標示為不建議使用, 僅為相容保留; 這一版另要求用戶端驗證授權回應中的 `iss` (RFC 9207).
+
+本手冊的閘道以 Keycloak 簽發的 OIDC 權杖驗證身分, 並以 `--oidc-audience` 限定權杖的對象, 對應上面第二點 (推論, 信心: 中).
 
 ### 以 LiteLLM 兼任的條件
 
@@ -314,7 +325,7 @@ docker run --rm \
 
 **執行逾時**: Docker 官方的 run 參數中, `--stop-timeout` 是「停止容器時的等待秒數」, 不是執行時間上限 (來源: Docker run 參考). 執行時間上限須由呼叫端程式控制: 啟動時記下容器名稱, 超過時限即執行 `docker kill <容器名稱>`, 再由 `--rm` 清除 (推論, 信心: 中).
 
-gVisor 官方文件說明, 可經 nvproxy 支援部分 NVIDIA GPU (來源: gVisor GPU 文件). 本手冊的沙箱只執行一般程式碼, 不需要 GPU, 因此不啟用 nvproxy; 推論區的 vLLM 也不放進 gVisor. gVisor 的效能額外負擔依工作負載而異, 本輪未實測.
+gVisor 官方文件說明, 可經 nvproxy 支援部分 NVIDIA GPU (來源: gVisor GPU 文件). 本手冊的沙箱只執行一般程式碼, 不需要 GPU, 因此不啟用 nvproxy; 推論區的 vLLM 也不放進 gVisor. gVisor 官方效能指南說明, 額外負擔主要出現在大量系統呼叫, 網路與大量小型檔案操作, 純運算的工作幾乎不受影響 (來源: gVisor 效能指南; 詳見 K6.3 節). 實際負擔依工作負載而異, 須在自己的環境測量.
 
 ### 以小型 MCP 伺服器包裝沙箱
 
@@ -345,7 +356,7 @@ flowchart TD
   W -.->|"關閉"| X["Code Interpreter<br/>Pyodide, Jupyter (舊版)"]
 ```
 
-**連接工具閘道**: Open WebUI 從 v0.6.31 起原生支援 MCP, 但只支援 Streamable HTTP; stdio 與 SSE 伺服器須經 mcpo (Open WebUI 提供的轉接工具) 轉成 OpenAPI 端點 (以 OpenAPI 標準描述的一般 HTTP API) (來源: Open WebUI MCP 文件). 設定路徑為 Admin Settings → External Tools → 「+ (Add Server)」, Type 選 MCP (Streamable HTTP), 填入閘道區的工具閘道網址與驗證資訊後儲存. 官方頁面提及需要時可用 OAuth 2.1; 以 LiteLLM 兼任時, 需要的 `x-litellm-api-key` 標頭能否在此畫面設定, 本輪未核對. 官方頁面也提醒, 瀏覽器端的多人部署會增加攻擊面 (CORS, CSRF, 使用者隔離), 對外開放前須檢視驗證, 代理與速率限制政策.
+**連接工具閘道**: Open WebUI 從 v0.6.31 起原生支援 MCP, 但只支援 Streamable HTTP; stdio 與 SSE 伺服器須經 mcpo (Open WebUI 提供的轉接工具) 轉成 OpenAPI 端點 (以 OpenAPI 標準描述的一般 HTTP API) (來源: Open WebUI MCP 文件). 設定路徑為 Admin Settings → External Tools → 「+ (Add Server)」, Type 選 MCP (Streamable HTTP), 填入閘道區的工具閘道網址與驗證資訊後儲存. 官方頁面提及需要時可用 OAuth 2.1. 以 LiteLLM 兼任時需要帶 `x-litellm-api-key` 標頭: 依 Open WebUI 原始碼 (2026-10-25 版), 工具伺服器連線設定可帶自訂標頭 (`headers`), 送出 MCP 請求時會一併加入, 因此可在這裡設定這個標頭; 若管理介面沒有標頭欄位, 改用 ToolHive vMCP 並以 Bearer 權杖驗證. 官方頁面也提醒, 瀏覽器端的多人部署會增加攻擊面 (CORS, CSRF, 使用者隔離), 對外開放前須檢視驗證, 代理與速率限制政策.
 
 **關閉舊版程式碼執行引擎**: Open WebUI 的程式碼執行有 Pyodide (瀏覽器端) 與 Jupyter (伺服器端) 兩種引擎, 官方文件將兩者都標為舊版 (legacy), 並建議多人或組織部署不要使用 Jupyter; Jupyter 預設沒有沙箱 (來源: Open WebUI Code Execution 文件). 建議做法:
 
@@ -376,12 +387,13 @@ docker run -d \
 - 不要加在 External Tools 或 Tool Servers 底下.
 - 使用高強度 API 金鑰, 不要寫在指令列上 (上例改用 `.env` 檔, 見 K6.3 節).
 - 設定記憶體與 CPU 上限; 不掛載 `/var/run/docker.sock`.
+- Open Terminal 官方安全文件以一般 Docker 容器作為隔離方式, 沒有提到 gVisor (2026-10-27 查詢). 它是一般容器, 技術上可比照 M7.3 節加上 `--runtime=runsc`, 但官方沒有這樣的組合說明; 需要更強隔離時, 先在測試環境確認指令與檔案操作都正常, 再改用 runsc (推論, 信心: 中).
 - 以 `OPEN_TERMINAL_ALLOWED_DOMAINS` 限制對外網域; 這項過濾需要 `NET_ADMIN` capability. 不需要對外時, 以工具區防火牆完全封鎖.
 - 內建多人模式 (`OPEN_TERMINAL_MULTI_USER=true`) 的使用者共用核心, 行程與網路, 只適合信任程度相同的使用者; 需要互相隔離時, 每位使用者各用一個容器.
 - 可用存取控制限定只有特定群組能使用.
 - Code Interpreter 與 Open Terminal 的切換開關不能同時啟用.
 
-Open Terminal 是本手冊「所有工具經同一個工具閘道」原則的例外: 官方文件只說明由 Open WebUI 伺服器以網址加 API 金鑰直接連線, 並要求加在 Integrations, 不要加在 Tool Servers, 因此無法放在工具閘道之後. 工具區防火牆因此另外允許入口區連到 Open Terminal 的連接埠, 只開這一個連接埠 (見 M0.2 節的對照表; 推論, 信心: 中). Open Terminal 容器能否改以 `--runtime=runsc` 執行, 官方文件未說明, 本輪未驗證.
+Open Terminal 是本手冊「所有工具經同一個工具閘道」原則的例外: 官方文件只說明由 Open WebUI 伺服器以網址加 API 金鑰直接連線, 並要求加在 Integrations, 不要加在 Tool Servers, 因此無法放在工具閘道之後. 工具區防火牆因此另外允許入口區連到 Open Terminal 的連接埠, 只開這一個連接埠 (見 M0.2 節的對照表; 推論, 信心: 中). Open Terminal 改以 runsc 執行的做法見本節部署要點.
 
 ## M7.5 驗收測試
 
@@ -464,4 +476,10 @@ M7.1 節事件與研究:
 - [Open WebUI 文件: Open Terminal 安裝](https://docs.openwebui.com/features/open-terminal/setup/installation)
 - [Open WebUI 文件: 連接 Open Terminal](https://docs.openwebui.com/features/open-terminal/setup/connecting)
 - [Open WebUI 文件: Open Terminal 安全建議](https://docs.openwebui.com/features/open-terminal/advanced/security.md)
+- [MCP 規範 (2026-07-28 版): Authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)
+- [ToolHive 架構文件: Local vMCP CLI Mode](https://github.com/stacklok/toolhive/blob/1d6b531/docs/arch/vmcp-local.md)
+- [ToolHive 原始碼: pkg/container/images/registry.go (摘要值映像參照)](https://github.com/stacklok/toolhive/blob/1d6b531/pkg/container/images/registry.go)
+- [Open WebUI 原始碼: utils/tools.py (工具伺服器連線的自訂標頭, 2026-10-25 版)](https://github.com/open-webui/open-webui/blob/33c1978/backend/open_webui/utils/tools.py)
+- [Open WebUI 文件: Open Terminal Security Best Practices](https://docs.openwebui.com/features/open-terminal/advanced/security.md)
+- [gVisor 文件: Performance Guide](https://gvisor.dev/docs/architecture_guide/performance/)
 - 文中的類比 (化學實驗室的密閉操作箱, 大樓收發室, 審核外包廠商): 整理者所寫, 無外部來源, 不應當作技術定義引用.

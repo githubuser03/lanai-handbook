@@ -6,9 +6,9 @@ description: "規則固定的工作 (排程彙整, 告警轉 ticket) 交給 n8n 
 
 ::: info 本章屬性
 - 等級: ○ 依情境
-- 狀態: 可閱讀 (指令未實機驗證)
-- 資料基準日: 2026-10-26
-- 待查證: M9.1 節表格中 Dify 一列引自二手來源, Flowise 的修補版本未見於 CVE 紀錄; M9.3 節的 docker run 與環境變數組合依官方文件整理, 未實機執行; LocalFileTrigger 節點的類型名稱未查到官方寫法; task runner 加固文件未核對; SSRF 防護設定與閘道區位址的搭配未實測; 文中的類比為整理者所寫, 不代表技術上完全等同
+- 狀態: 可閱讀
+- 資料基準日: 2026-10-27
+- 實機驗證: 未進行 (M9.3 節的 docker run 與環境變數組合依官方文件整理; 需實機確認: SSRF 防護在只允許閘道區網段時, 流程仍能正常呼叫閘道)
 :::
 
 **結論**: 規則固定的工作 (排程彙整, 告警轉 ticket) 交給 n8n 這類流程自動化平台, 不需要模型自己判斷. 這類平台設計上會執行使用者提供的程式碼, 又保存憑證, 是 2026 年漏洞最集中的元件之一. 因此 n8n 放在獨立 VM, 只經模型閘道與工具閘道對外, 本身不保存外部系統的金鑰.
@@ -39,8 +39,8 @@ Langflow, Flowise 與 Dify 是以拖拉方式組合模型, 知識庫與工具的
 |---|---|---|
 | Langflow | MIT | 未經身分驗證即可遠端執行程式碼的漏洞列入 CISA KEV (已知遭利用漏洞目錄); 資安廠商 Sysdig 觀測到公告約 20 小時後即出現利用 (CISA KEV, Cloud Security Alliance 研究筆記) |
 | n8n | Sustainable Use License, 官方文件明言非 OSI 開源 | 2026-03 有漏洞列入 CISA KEV (CISA KEV) |
-| Flowise | Apache 2.0 (企業目錄另有授權) | 2.2.4 及以前版本有未經身分驗證即可上傳任意檔案的漏洞, 2026-06-25 公開; 修補版本以 Flowise 官方 release 為準 (CVE.org 紀錄, CNA 為 VulnCheck) |
-| Dify | Dify Open Source License (非 OSI) | 2026-06 公開 4 個漏洞 (DifyTap), 其中 3 個影響多租戶雲端服務, 可能讓其他租戶看到資料; 報導未提到遭實際利用 (The Hacker News, 二手來源) |
+| Flowise | Apache 2.0 (企業目錄另有授權) | 2.2.4 及以前版本有未經身分驗證即可上傳任意檔案的漏洞, 2026-06-25 公開; CVE 紀錄把受影響範圍標為 2.2.4 及以前, 沒有寫明修補版本, 使用時至少升到 2.2.4 以後的版本, 並以 Flowise 官方發行說明確認 (CVE.org 紀錄, CNA 為 VulnCheck) |
+| Dify | Dify Open Source License (非 OSI) | GitHub Advisory Database 在 2026 年收錄多筆 Dify 漏洞, 其中 2026-05-18 公開的兩筆為 Critical: 1.14.1 及以前版本, 已登入的編輯者可替不屬於自己的應用設定追蹤服務, 讓訊息送到攻擊者的服務 (CVE-2026-41947); 已登入使用者可經路徑穿越存取 Plugin Daemon 的內部 API (CVE-2026-41948) |
 
 各筆的 CVE 編號, 受影響與修補版本見[版本頁](/ref/versions).
 
@@ -154,7 +154,7 @@ N8N_ENCRYPTION_KEY=<另行產生並備份的金鑰>
 # 安全設定
 N8N_BLOCK_ENV_ACCESS_IN_NODE=true
 # 自訂清單會取代 2.0 的預設清單, 因此要把預設停用的兩個節點一併列入;
-# localFileTrigger 的類型名稱待實機確認
+# 節點類型名稱為「n8n-nodes-base.」加上原始碼中的節點名稱
 NODES_EXCLUDE=["n8n-nodes-base.executeCommand", "n8n-nodes-base.localFileTrigger", "n8n-nodes-base.readWriteFile"]
 N8N_PUBLIC_API_DISABLED=true
 N8N_PUBLIC_API_SWAGGERUI_DISABLED=true
@@ -186,11 +186,11 @@ N8N_SSRF_ALLOWED_IP_RANGES=<閘道區網段>
 
 設定時須注意下列事項:
 
-- **NODES_EXCLUDE 會取代預設清單**: n8n 2.0 起預設停用 ExecuteCommand 與 LocalFileTrigger 兩個節點, 可經由變更 `NODES_EXCLUDE` 重新啟用 (來源: 2.0 重大變更文件). 由此推論, 自行設定 `NODES_EXCLUDE` 時, 清單應包含這兩個節點, 上例已列入; LocalFileTrigger 的節點類型名稱 `n8n-nodes-base.localFileTrigger` 依其他節點的命名方式推得, 官方文件未列出, 須以實機確認 (推論, 信心: 中).
+- **NODES_EXCLUDE 會取代預設清單**: n8n 2.0 起預設停用 ExecuteCommand 與 LocalFileTrigger 兩個節點, 可經由變更 `NODES_EXCLUDE` 重新啟用 (來源: 2.0 重大變更文件). 由此推論, 自行設定 `NODES_EXCLUDE` 時, 清單應包含這兩個節點, 上例已列入; LocalFileTrigger 在 n8n 原始碼中的節點名稱為 `localFileTrigger`, 依封鎖特定節點文件的寫法 (以 `n8n-nodes-base.executeCommand` 為例), 完整類型名稱為 `n8n-nodes-base.localFileTrigger` (來源: n8n 原始碼 LocalFileTrigger.node.ts, 2026-10-26 版).
 - **SSRF 允許清單的順序**: 判定順序為主機名稱允許清單, IP 允許清單, IP 封鎖清單; 主機名稱允許清單會略過 IP 封鎖檢查, 因此只能放自己控管的主機名稱 (來源: SSRF 防護文件). 本範例只用 IP 範圍.
 - **SSRF 防護不取代防火牆**: 它只涵蓋使用者可控制的節點發出的 HTTP 請求; VM 自動化區的防火牆仍是主要控制 (推論, 信心: 高).
 - **Cookie 與 HTTPS**: `N8N_SECURE_COOKIE` 預設為 `true`, 只在 HTTPS 下傳送 cookie (來源: 安全環境變數文件), 因此編輯介面須經反向代理的 HTTPS 存取.
-- **Code 節點**: n8n 2.0 起預設啟用 task runner (在主程式之外另行執行 Code 節點程式碼的元件) 執行 Code 節點; Python Code 節點只能搭配外部模式的 task runner 使用 (來源: 2.0 重大變更文件). 官方另有 task runner 加固文件, 本輪未核對.
+- **Code 節點**: n8n 2.0 起預設啟用 task runner (在主程式之外另行執行 Code 節點程式碼的元件) 執行 Code 節點; Python Code 節點只能搭配外部模式的 task runner 使用 (來源: 2.0 重大變更文件). 官方的 task runner 加固文件建議: 以外部模式讓 task runner 在獨立的 sidecar 容器執行; 使用 `-distroless` 映像 (不含套件管理工具與 shell); 以非 root 的 `nobody` 使用者 (UID/GID 65532) 執行; 根檔案系統設為唯讀, 只在 `/tmp` 掛一個小型暫存空間; 並以 AppArmor 規則禁止讀取各行程的 `environ` 與 `mounts`, 避免機密外洩 (來源: n8n 文件 Harden task runners). 允許 Code 節點的環境應採用這些做法 (推論, 信心: 中).
 - **資料庫**: 預設使用 SQLite (存成單一檔案的輕量資料庫); 改用 PostgreSQL (獨立運作的資料庫伺服器) 時, 加上 `DB_TYPE=postgresdb` 與 `DB_POSTGRESDB_*` 一組變數 (來源: Docker 安裝文件).
 - **更新**: 以固定版本標籤拉取新映像, 停止並移除舊容器後重新啟動 (來源: Docker 安裝文件). 版本鎖定與升級流程見 O2. M9.1 節列出的漏洞都已有修補版, 應維持在最新修補版.
 - **Webhook 網址**: 經反向代理提供 Webhook 時, 須設定對外網址變數; 官方 Compose 範例使用 `N8N_WEBHOOK_URL`, 並註明此變數須 n8n 2.30.0 以上, 較舊版本使用 `WEBHOOK_URL` (來源: Docker Compose 文件).
@@ -294,7 +294,10 @@ flowchart TD
 - [CISA: Known Exploited Vulnerabilities Catalog](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)
 - [Cloud Security Alliance: Langflow RCE CVE-2026-33017 Exploited Within 20 Hours](https://labs.cloudsecurityalliance.org/research/csa-research-note-cve-2026-33017-langflow-ai-pipeline-rce-20/)
 - [CVE.org 紀錄: CVE-2025-71333 (Flowise, CNA: VulnCheck)](https://cveawg.mitre.org/api/cve/CVE-2025-71333)
-- [The Hacker News: Researchers Detail DifyTap Flaws (2026-06-22, 二手來源)](https://thehackernews.com/2026/06/researchers-detail-difytap-flaws-in.html)
+- [GitHub Advisory Database: GHSA-48v9-p8g8-55vg (Dify, CVE-2026-41947)](https://github.com/advisories/GHSA-48v9-p8g8-55vg)
+- [GitHub Advisory Database: GHSA-h666-98mq-949j (Dify, CVE-2026-41948)](https://github.com/advisories/GHSA-h666-98mq-949j)
+- [n8n 原始碼: LocalFileTrigger.node.ts (節點名稱)](https://github.com/n8n-io/n8n/blob/e145ac4/packages/nodes-base/nodes/LocalFileTrigger/LocalFileTrigger.node.ts)
+- [n8n 文件: Harden task runners](https://docs.n8n.io/deploy/host-n8n/configure-n8n/security/harden-task-runners/)
 - [n8n 文件: Docker 安裝](https://docs.n8n.io/hosting/installation/docker/)
 - [n8n 文件: Docker Compose](https://docs.n8n.io/deploy/host-n8n/install-options/use-a-cloud-provider/use-docker-compose)
 - [n8n 文件: 安全相關環境變數](https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/use-environment-variables/security.md)

@@ -243,7 +243,7 @@ OWASP 對照與護欄模型:
 - [Hugging Face 模型卡: meta-llama/Llama-Prompt-Guard-2-22M](https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-22M)
 - [GitHub: protectai/llm-guard (2026-07-09 封存)](https://github.com/protectai/llm-guard)
 
-內部研究紀錄與整理者判斷:
+整理者判斷:
 
 - 整理者判斷 (推論, 信心: 中, 無外部來源): K6.1 依使用人數區分的存取控制做法, 以及「四項措施涵蓋 2026 年已知的主要攻擊途徑」的結論.
 - 文中的類比 (住家的門, 門牌與指紋, 玻璃隔間, 金屬探測門): 整理者所寫, 無外部來源, 不應當作技術定義引用.
